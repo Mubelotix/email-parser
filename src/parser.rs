@@ -91,6 +91,7 @@ pub fn parse_message(data: &[u8]) -> Result<(Vec<(&[u8], &[u8])>, Option<&[u8]>)
     }
 }
 
+#[cfg(test)]
 mod test {
     #[test]
     fn header_test() {
