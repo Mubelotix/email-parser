@@ -9,10 +9,8 @@ fn is_ftext(character: u8) -> bool {
 }
 
 fn is_text(character: u8) -> bool {
-    character >= 1 && character <= 9 ||
-    character >= 14 && character <= 127 ||
-    character == 11 ||
-    character == 12
+    character >= 1 && character <= 127 &&
+    character != 10 && character != 13
 }
 
 fn unstructured_header_value(data: &[u8]) -> IResult<&[u8], &[u8]> {
