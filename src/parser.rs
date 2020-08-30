@@ -5,8 +5,7 @@ use nom::combinator::opt;
 use nom::multi::many0;
 
 fn is_ftext(character: u8) -> bool {
-    character >= 33 && character <= 57 ||
-    character >= 59 && character <= 126
+    character >= 33 && character != 58 && character <= 126
 }
 
 fn is_text(character: u8) -> bool {
