@@ -15,3 +15,4 @@
 //! Tests require a `mail.txt` file containing a raw mail next to the `Cargo.toml`.
 
 pub mod parser;
+pub mod new_parser;
