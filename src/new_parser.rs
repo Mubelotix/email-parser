@@ -31,10 +31,30 @@ impl<'a> String<'a> {
 impl<'a> std::ops::Add for String<'a> {
     type Output = String<'a>;
 
-    fn add(self, rhs: String<'a>) -> Self::Output {
+    fn add(mut self, rhs: String<'a>) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl<'a> std::cmp::PartialEq<&str> for String<'a> {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str().eq(*other)
+    }
+}
+
+impl<'a> std::ops::AddAssign for String<'a> {
+    fn add_assign(&mut self, rhs: Self) {
         match self {
             String::Reference(data1) => {
                 if let String::Reference(data2) = rhs {
+                    if data2.is_empty() {
+                        return;
+                    }
+                    if data1.is_empty() {
+                        *data1 = data2;
+                        return;
+                    }
                     if let (Some(first1), Some(last1), Some(first2), Some(last2)) = (data1.first(), data1.last(), data2.first(), data2.last()) {
                         // if the two references are consecutive in memory, we create a third reference containing them
                         unsafe {
@@ -44,16 +64,17 @@ impl<'a> std::ops::Add for String<'a> {
                             let last2 = last2 as *const u8;
                             if last1 as usize + std::mem::size_of::<u8>() == first2 as usize { // this is what guarantee safety
                                 let slice = std::slice::from_raw_parts(first1, last2 as usize - first1 as usize + 1);
-                                return String::Reference(slice);
+                                *data1 = slice;
+                                return;
                             }
                         }
                     }
                 }
-                self.into_owned() + rhs.into_owned()
+                let string = self.as_str().to_string();
+                *self = String::Owned(string + rhs.as_str());
             },
-            String::Owned(mut string) => {
+            String::Owned(ref mut string) => {
                 string.push_str(rhs.as_str());
-                String::Owned(string)
             },
         }
     }
@@ -73,7 +94,7 @@ fn unsafe_add_test() {
 }
 
 pub mod combinators {
-    use super::Error;
+    use super::{Error, String};
 
     pub fn inc_while<F>(input: &[u8], idx: &mut usize, mut condition: F) where
         F: FnMut(u8) -> bool {
@@ -106,11 +127,11 @@ pub mod combinators {
         Ok(())
     }
 
-    pub fn take_while1<F>(input: &[u8], condition: F) -> Result<(&[u8], &[u8]), ()> where
+    pub fn take_while1<F>(input: &[u8], condition: F) -> Result<(&[u8], String), ()> where
     F: FnMut(u8) -> bool {
         let mut idx = 0;
         inc_while1(input, &mut idx, condition)?;
-        Ok((&input[idx..], &input[..idx]))
+        Ok((&input[idx..], String::Reference(&input[..idx])))
     }
 
     pub fn inc_tag(input: &[u8], idx: &mut usize, tag: &[u8]) -> Result<(), ()> {
@@ -122,12 +143,11 @@ pub mod combinators {
         }
     }
 
-    #[allow(unused_must_use)]
     pub fn inc_after_opt<F, G>(input: &[u8], idx: &mut usize, mut optional_pattern: F, mut required_pattern: G) -> Result<(), Error> where
         F: FnMut(&[u8], &mut usize) -> Result<(), Error>,
         G: FnMut(&[u8], &mut usize) -> Result<(), Error> {
         let before = *idx;
-        optional_pattern(input, idx);
+        let _ = optional_pattern(input, idx);
         match required_pattern(input, idx) {
             Ok(()) => Ok(()),
             Err(e) => {
@@ -261,11 +281,11 @@ pub mod whitespaces {
         Ok(())
     }
     
-    pub fn take_fws(input: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+    pub fn take_fws(input: &[u8]) -> Result<(&[u8], String), Error> {
         let mut idx = 0;
         inc_fws(input, &mut idx)?;
     
-        Ok((&input[idx..], &input[..idx]))
+        Ok((&input[idx..], String::Reference(&input[..idx])))
     }
     
     fn inc_ccontent(input: &[u8], idx: &mut usize) -> Result<(), Error> {
@@ -301,10 +321,10 @@ pub mod whitespaces {
         }
     }
 
-    pub fn take_cfws(input: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+    pub fn take_cfws(input: &[u8]) -> Result<(&[u8], String), Error> {
         let mut idx = 0;
         inc_cfws(input, &mut idx)?;
-        Ok((&input[idx..], &input[..idx]))
+        Ok((&input[idx..], String::Reference(&input[..idx])))
     }
 
     #[cfg(test)]
@@ -313,8 +333,8 @@ pub mod whitespaces {
 
         #[test]
         fn test_fws() {
-            assert_eq!(take_fws(b"   test").unwrap().1, b"   ");
-            assert_eq!(take_fws(b"   \r\n  test").unwrap().1, b"   \r\n  ");
+            assert_eq!(take_fws(b"   test").unwrap().1, "   ");
+            assert_eq!(take_fws(b"   \r\n  test").unwrap().1, "   \r\n  ");
         
             assert!(take_fws(b"  \r\ntest").is_err());
             assert!(take_fws(b"\r\ntest").is_err());
@@ -384,11 +404,11 @@ pub fn inc_quoted_pair(input: &[u8], idx: &mut usize) -> Result<(), Error> {
     }
 }
 
-pub fn take_quoted_pair(input: &[u8]) -> Result<char, Error> {
+pub fn take_quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
     if input.starts_with(b"\\") {
         if let Some(character) = input.get(1) {
             if is_vchar(*character) || is_wsp(*character) {
-                Ok(*character as char)
+                Ok((&input[2..], String::Reference(&input[1..2])))
             } else {
                 Err(Error::Known("The quoted-pair character is no a vchar or a wsp."))
             }
@@ -400,31 +420,64 @@ pub fn take_quoted_pair(input: &[u8]) -> Result<char, Error> {
     }
 }
 
-pub fn take_quoted_string(input: &[u8]) -> Result<String, Error> {
-    let input = if let Ok((input, cfws)) = take_cfws(input) {
+pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
+    let input = if let Ok((input, _cfws)) = take_cfws(input) {
         input
     } else {
         input
     };
-    let input = if input.starts_with(b"\"") {
+
+    let mut input = if input.starts_with(b"\"") {
         &input[1..]
     } else {
         return Err(Error::Known("Quoted string must begin with a dquote"));
     };
+    let mut output = String::Reference(&[]);
 
     loop {
+        let mut additionnal_output = String::Reference(&[]);
+        
+        let new_input = if let Ok((new_input, fws)) = take_fws(input) {
+            additionnal_output += fws;
+            new_input
+        } else {
+            input
+        };
 
+        let new_input = if let Ok((new_input, str)) = take_while1(new_input, is_qtext) {
+            additionnal_output += str;
+            new_input
+        } else if let Ok((new_input, str)) = take_quoted_pair(new_input) {
+            additionnal_output += str;
+            new_input
+        } else {
+            break;
+        };
+
+        output += additionnal_output;
+        input = new_input;
     }
+
+    let input = if let Ok((input, fws)) = take_fws(input) {
+        output += fws;
+        input
+    } else {
+        input
+    };
+
     let input = if input.starts_with(b"\"") {
         &input[1..]
     } else {
         return Err(Error::Known("Quoted string must end with a dquote"));
     };
-    let input = if let Ok((input, cfws)) = take_cfws(input) {
+
+    let input = if let Ok((input, _cfws)) = take_cfws(input) {
         input
     } else {
         input
     };
+
+    Ok((input, output))
 }
 
 pub fn inc_atom(input: &[u8], idx: &mut usize) -> Result<(), Error> {
@@ -463,7 +516,7 @@ pub fn inc_dot_atom(input: &[u8], idx: &mut usize) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn take_atom(mut input: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+pub fn take_atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     if let Ok((new_input, _)) = take_cfws(input) {
         input = new_input
     }
@@ -474,13 +527,13 @@ pub fn take_atom(mut input: &[u8]) -> Result<(&[u8], &[u8]), Error> {
     Ok((input, atom))
 }
 
-pub fn take_dot_atom_text(input: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+pub fn take_dot_atom_text(input: &[u8]) -> Result<(&[u8], String), Error> {
     let mut idx = 0;
     inc_dot_atom_text(input, &mut idx)?;
-    Ok((&input[idx..], &input[..idx]))
+    Ok((&input[idx..], String::Reference(&input[..idx])))
 }
 
-pub fn take_dot_atom(mut input: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+pub fn take_dot_atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     if let Ok((new_input, _)) = take_cfws(input) {
         input = new_input
     }
@@ -496,8 +549,8 @@ fn test_quoted_pair() {
     assert!(inc_quoted_pair(b"\\rtest", &mut 0).is_ok());
     assert!(inc_quoted_pair(b"\\ test", &mut 0).is_ok());
 
-    assert_eq!(take_quoted_pair(b"\\rtest"), Ok('r'));
-    assert_eq!(take_quoted_pair(b"\\ test"), Ok(' '));
+    assert_eq!(take_quoted_pair(b"\\rtest").unwrap().1, "r");
+    assert_eq!(take_quoted_pair(b"\\ test").unwrap().1, " ");
 
     assert!(inc_quoted_pair(b"\\", &mut 0).is_err());
     assert!(inc_quoted_pair(b"\\\0", &mut 0).is_err());
@@ -505,13 +558,18 @@ fn test_quoted_pair() {
 }
 
 #[test]
-fn test_atom() {
-    fn strize<'a, T: std::fmt::Debug>(i: Result<(&'a [u8], &'a [u8]), T>) -> &'a str {
-        std::str::from_utf8(i.unwrap().1).unwrap()
-    }
+fn test_quoted_string() {
+    assert_eq!(take_quoted_string(b" \"This\\ is\\ a\\ test\"").unwrap().1, "This is a test");
+    assert_eq!(take_quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ").unwrap().1, "This is a test");
 
-    assert_eq!(strize(take_atom(b"this is a test")), "this");
-    assert_eq!(strize(take_atom(b"   averylongatom ")), "averylongatom");
-    assert_eq!(strize(take_dot_atom_text(b"this.is.a.test")), "this.is.a.test");
-    assert_eq!(strize(take_dot_atom(b"  this.is.a.test ")), "this.is.a.test");
+    assert!(matches!(take_quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ").unwrap().1, String::Owned(_)));
+    assert!(matches!(take_quoted_string(b"\r\n  \"hey\"  ").unwrap().1, String::Reference(_)));
+}
+
+#[test]
+fn test_atom() {
+    assert_eq!(take_atom(b"this is a test").unwrap().1, "this");
+    assert_eq!(take_atom(b"   averylongatom ").unwrap().1, "averylongatom");
+    assert_eq!(take_dot_atom_text(b"this.is.a.test").unwrap().1, "this.is.a.test");
+    assert_eq!(take_dot_atom(b"  this.is.a.test ").unwrap().1, "this.is.a.test");
 }
