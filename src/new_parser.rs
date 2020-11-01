@@ -544,6 +544,66 @@ pub fn take_dot_atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     Ok((input, dot_atom))
 }
 
+pub fn take_word(input: &[u8]) -> Result<(&[u8], String), Error> {
+    if let Ok((input, word)) = take_atom(input) {
+        Ok((input, word))
+    } else if let Ok((input, word)) = take_quoted_string(input) {
+        Ok((input, word))
+    } else {
+        Err(Error::Known("Word is not an atom and is not a quoted_string."))
+    }
+}
+
+pub fn take_phrase(input: &[u8]) -> Result<(&[u8], Vec<String>), Error> {
+    let mut words = Vec::new();
+    let (mut input, word) = take_word(input)?;
+    words.push(word);
+
+    while let Ok((new_input, word)) = take_word(input) {
+        input = new_input;
+        words.push(word)
+    }
+
+    Ok((input, words))
+}
+
+pub fn take_unstructured(mut input: &[u8]) -> Result<(&[u8], String), Error>{
+    let mut output = String::Reference(&[]);
+
+    loop {
+        let (new_input, fws) = if let Ok((new_input, fws)) = take_fws(input) {
+            (new_input, fws)
+        } else {
+            (input, String::Reference(&[]))
+        };
+
+        if let Ok((new_input, characters)) = take_while1(new_input, is_vchar) {
+            output += fws;
+            output += characters;
+            input = new_input;
+        } else {
+            break;
+        };
+    }
+
+    while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
+        input = new_input;
+    }
+
+    Ok((input, output))
+}
+
+#[test]
+fn test_word_and_phrase() {
+    assert_eq!(take_word(b" this is a \"rust\\ test\" ").unwrap().1, "this");
+    assert_eq!(take_phrase(b" this is a \"rust\\ test\" ").unwrap().1, vec!["this", "is", "a", "rust test"]);
+}
+
+#[test]
+fn test_unstructured() {
+    assert_eq!(take_unstructured(b"the quick brown fox jumps\r\n over the lazy dog   ").unwrap().1, "the quick brown fox jumps\r\n over the lazy dog");
+}
+
 #[test]
 fn test_quoted_pair() {
     assert!(inc_quoted_pair(b"\\rtest", &mut 0).is_ok());
