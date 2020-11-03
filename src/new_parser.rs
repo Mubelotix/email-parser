@@ -87,17 +87,71 @@ impl<'a> std::ops::AddAssign for String<'a> {
     }
 }
 
-#[test]
-fn unsafe_add_test() {
-    let data = b"abcdef";
-    let data1 = String::Reference(&data[..3]);
-    let data2 = String::Reference(&data[3..]);
+pub type Res<'a, T> = Result<(&'a [u8], T), Error>;
 
-    let data3 = String::Reference(&data[..2]);
-    let data4 = String::Reference(&data[3..]);
+fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
+    if input.starts_with(expected) {
+        Ok((&input[expected.len()..], ()))
+    } else {
+        Err(Error::Known("Tag error, data does not match"))
+    }
+}
 
-    assert!(matches!(data1+data2, String::Reference(_)));
-    assert!(matches!(data3+data4, String::Owned(_)));
+fn tag_no_case<'a>(input: &'a [u8], expected: &'static [u8], expected2: &'static [u8]) -> Res<'a, ()> {
+    debug_assert_eq!(expected.len(), expected2.len());
+
+    if input.len() < expected.len() {
+        return Err(Error::Known("Tag error, input is smaller than expected string"));
+    }
+
+    for idx in 0..expected.len() {
+        if input[idx] != expected[idx] && input[idx] != expected2[idx] {
+            return Err(Error::Known("Tag error, data does not match"));
+        }
+    }
+
+    Ok((&input[expected.len()..], ()))
+}
+
+pub fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], Option<T>) where
+    F: FnMut(&'a [u8]) -> Res<T> {
+    if let Ok((input, parser)) = parser(input) {
+        (input, Some(parser))
+    } else {
+        (input, None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unsafe_add_test() {
+        let data = b"abcdef";
+        let data1 = String::Reference(&data[..3]);
+        let data2 = String::Reference(&data[3..]);
+
+        let data3 = String::Reference(&data[..2]);
+        let data4 = String::Reference(&data[3..]);
+
+        assert!(matches!(data1+data2, String::Reference(_)));
+        assert!(matches!(data3+data4, String::Owned(_)));
+    }
+
+    #[test]
+    fn test_optional() {
+        assert!(optional(b"abcdef", |input| tag(input, b"efg")).1.is_none());
+        assert!(optional(b"abcdef", |input| tag(input, b"abc")).1.is_some());
+    }
+
+    #[test]
+    fn test_tag() {
+        assert!(tag(b"abc", b"def").is_err());
+        assert!(tag(b"abc", b"ab").is_ok());
+        assert!(tag(b"abc", b"Ab").is_err());
+        assert!(tag_no_case(b"abc", b"Ab", b"aB").is_ok());
+    }
 }
 
 pub mod combinators {
@@ -321,7 +375,7 @@ pub mod whitespaces {
         Ok(())
     }
     
-    pub fn take_fws(input: &[u8]) -> Result<(&[u8], String), Error> {
+    pub fn take_fws(input: &[u8]) -> Res<String> {
         let mut idx = 0;
         inc_fws(input, &mut idx)?;
     
@@ -361,7 +415,7 @@ pub mod whitespaces {
         }
     }
 
-    pub fn take_cfws(input: &[u8]) -> Result<(&[u8], String), Error> {
+    pub fn take_cfws(input: &[u8]) -> Res<String> {
         let mut idx = 0;
         inc_cfws(input, &mut idx)?;
         Ok((&input[idx..], String::Reference(&input[..idx])))
@@ -425,7 +479,11 @@ pub mod whitespaces {
 }
 
 pub mod date {
-    use super::{Error, String, whitespaces::*, combinators::*, character_groups::*};
+    use super::{*, whitespaces::*, combinators::*, character_groups::*};
+
+    pub type Zone = (bool, u8, u8);
+    pub type Time = ((u8, u8, u8), Zone);
+    pub type Date = (usize, Month, usize);
 
     #[derive(Debug, PartialEq)]
     pub enum Day {
@@ -448,7 +506,7 @@ pub mod date {
         December,
     }
 
-    pub fn take_day_name(input: &[u8]) -> Result<(&[u8], Day), Error> {
+    pub fn take_day_name(input: &[u8]) -> Res<Day> {
         if let (Some(input), Some(letters)) = (input.get(3..), input.get(..3)) {
             let letters = letters.to_ascii_lowercase();
             match letters.as_slice() {
@@ -466,7 +524,7 @@ pub mod date {
         }
     }
 
-    pub fn take_month(input: &[u8]) -> Result<(&[u8], Month), Error> {
+    pub fn take_month(input: &[u8]) -> Res<Month> {
         if let (Some(input), Some(letters)) = (input.get(3..), input.get(..3)) {
             let letters = letters.to_ascii_lowercase();
             match letters.as_slice() {
@@ -489,7 +547,7 @@ pub mod date {
         }
     }
 
-    pub fn take_day_of_week(mut input: &[u8]) -> Result<(&[u8], Day), Error> {
+    pub fn take_day_of_week(mut input: &[u8]) -> Res<Day> {
         if let Ok((new_input, _fws)) = take_fws(input) {
             input = new_input;
         }
@@ -503,7 +561,7 @@ pub mod date {
         }
     }
 
-    pub fn take_year(input: &[u8]) -> Result<(&[u8], usize), Error> {
+    pub fn take_year(input: &[u8]) -> Res<usize> {
         let (input, _) = take_fws(input)?;
 
         let (input, year) = take_while1(input, is_digit).map_err(|()| Error::Known("no digit in year"))?;
@@ -521,7 +579,7 @@ pub mod date {
         Ok((input, year))
     }
 
-    pub fn take_day(mut input: &[u8]) -> Result<(&[u8], usize), Error> {
+    pub fn take_day(mut input: &[u8]) -> Res<usize> {
         if let Ok((new_input, _)) = take_fws(input) {
             input = new_input;
         };
@@ -543,7 +601,7 @@ pub mod date {
         Ok((input, day as usize))
     }
 
-    pub fn take_time_of_day(input: &[u8]) -> Result<(&[u8], (u8, u8, u8)), Error> {
+    pub fn take_time_of_day(input: &[u8]) -> Res<(u8, u8, u8)> {
         let (mut input, hour) = take_two_digits(input)?;
         if hour > 23 {
             return Err(Error::Known("There is only 24 hours in a day"));
@@ -572,7 +630,7 @@ pub mod date {
         Ok((input, (hour, minutes, 0)))
     }
 
-    pub fn take_zone(input: &[u8]) -> Result<(&[u8], (bool, u8, u8)), Error> {
+    pub fn take_zone(input: &[u8]) -> Res<Zone> {
         let (mut input, _fws) = take_fws(input)?;
 
         let sign = match input.get(0) {
@@ -593,17 +651,25 @@ pub mod date {
         Ok((input, (sign, hours, minutes)))
     }
 
-    pub fn take_time(input: &[u8]) -> Result<(&[u8], ((u8, u8, u8), (bool, u8, u8))), Error> {
+    pub fn take_time(input: &[u8]) -> Res<Time> {
         let (input, time_of_day) = take_time_of_day(input)?;
         let (input, zone) = take_zone(input)?;
         Ok((input, (time_of_day, zone)))
     }
 
-    pub fn take_date(input: &[u8]) -> Result<(&[u8], (usize, Month, usize)), Error> {
+    pub fn take_date(input: &[u8]) -> Res<Date> {
         let (input, day) = take_day(input)?;
         let (input, month) = take_month(input)?;
         let (input, year) = take_year(input)?;
         Ok((input, (day, month, year)))
+    }
+
+    pub fn take_date_time(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
+        let (input, day) = optional(input, take_day_of_week);
+        let (input, date) = take_date(input)?;
+        let (input, time) = take_time(input)?;
+        let (input, _cfws) = optional(input, take_cfws);
+        Ok((input, (day, date, time)))
     }
 
     #[cfg(test)]
@@ -641,6 +707,9 @@ pub mod date {
         fn test_date() {
             assert_eq!(take_date(b"1 nov 2020 ").unwrap().1, (1, Month::November, 2020));
             assert_eq!(take_date(b"25 dec 2038 ").unwrap().1, (25, Month::December, 2038));
+
+            assert_eq!(take_date_time(b"Mon, 12 Apr 2023 10:25:03 +0000").unwrap().1, (Some(Day::Monday), (12, Month::April, 2023), ((10, 25, 3), (true, 0, 0))));
+            assert_eq!(take_date_time(b"5 May 2003 18:59:03 +0000").unwrap().1, (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0))));
         }
 
         #[test]
@@ -676,7 +745,7 @@ pub mod address {
         (c >= 94 && c <= 126)
     }
 
-    pub fn take_addr_spec(input: &[u8]) -> Result<(&[u8], (String, String)), Error> {
+    pub fn take_addr_spec(input: &[u8]) -> Res<(String, String)> {
         let (mut input, local_part) = take_local_part(input)?;
         if input.starts_with(b"@") {
             input = &input[1..];
@@ -687,7 +756,7 @@ pub mod address {
         Ok((input, (local_part, domain)))
     }
 
-    pub fn take_name_addr(mut input: &[u8]) -> Result<(&[u8], Mailbox), Error> {
+    pub fn take_name_addr(mut input: &[u8]) -> Res<Mailbox> {
         let display_name = if let Ok((new_input, display_name)) = take_phrase(input) {
             input = new_input;
             Some(display_name)
@@ -720,7 +789,7 @@ pub mod address {
         Ok((input, (display_name, addr_spec)))
     }
 
-    pub fn take_local_part(input: &[u8]) -> Result<(&[u8], String), Error> {
+    pub fn take_local_part(input: &[u8]) -> Res<String> {
         if let Ok((input, local_part)) = take_dot_atom(input) {
             Ok((input, local_part))
         } else if let Ok((input, local_part)) = take_quoted_string(input) {
@@ -730,7 +799,7 @@ pub mod address {
         }
     }
 
-    pub fn take_domain(input: &[u8]) -> Result<(&[u8], String), Error> {
+    pub fn take_domain(input: &[u8]) -> Res<String> {
         if let Ok((input, domain)) = take_dot_atom(input) {
             Ok((input, domain))
         } else if let Ok((input, domain)) = take_domain_literal(input) {
@@ -740,7 +809,7 @@ pub mod address {
         }
     }
 
-    pub fn take_domain_literal(mut input: &[u8]) -> Result<(&[u8], String), Error> {
+    pub fn take_domain_literal(mut input: &[u8]) -> Res<String> {
         if let Ok((new_input, _cfws)) = take_cfws(input) {
             input = new_input;
         }
@@ -780,7 +849,7 @@ pub mod address {
         Ok((input, output))
     }
 
-    pub fn take_mailbox(input: &[u8]) -> Result<(&[u8], Mailbox), Error> {
+    pub fn take_mailbox(input: &[u8]) -> Res<Mailbox> {
         if let Ok((input, mailbox)) = take_name_addr(input) {
             Ok((input, mailbox))
         } else if let Ok((input, mailbox)) = take_addr_spec(input) {
@@ -790,7 +859,7 @@ pub mod address {
         }
     }
 
-    pub fn take_mailbox_list(input: &[u8]) -> Result<(&[u8], Vec<Mailbox>), Error> {
+    pub fn take_mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
         let mut mailboxes = Vec::new();
         let (mut input, first_mailbox) = take_mailbox(input)?;
         mailboxes.push(first_mailbox);
@@ -803,7 +872,7 @@ pub mod address {
         Ok((input, mailboxes))
     }
 
-    pub fn take_group(input: &[u8]) -> Result<(&[u8], (Vec<String>, Vec<Mailbox>)), Error> {
+    pub fn take_group(input: &[u8]) -> Res<(Vec<String>, Vec<Mailbox>)> {
         let (mut input, display_name) = take_phrase(input)?;
 
         if input.starts_with(b":") {
@@ -835,7 +904,7 @@ pub mod address {
         Ok((input, (display_name, group_list)))
     }
 
-    pub fn take_address(input: &[u8]) -> Result<(&[u8], Address), Error> {
+    pub fn take_address(input: &[u8]) -> Res<Address> {
         if let Ok((input, mailbox)) = take_mailbox(input) {
             Ok((input, Address::Mailbox(mailbox)))
         } else if let Ok((input, group)) = take_group(input) {
@@ -845,7 +914,7 @@ pub mod address {
         }
     }
 
-    pub fn take_address_list(input: &[u8]) -> Result<(&[u8], Vec<Address>), Error> {
+    pub fn take_address_list(input: &[u8]) -> Res<Vec<Address>> {
         let mut addresses = Vec::new();
         let (mut input, first_address) = take_address(input)?;
         addresses.push(first_address);
@@ -920,6 +989,23 @@ pub mod address {
 
             assert_eq!(take_address_list(b"mubelotix@gmail.com,guy@gmail.com,Developers:mubelotix@gmail.com,guy@gmail.com;").unwrap().1.len(), 3);
         }
+    }
+}
+
+pub mod fields {
+    use super::{Error, String, whitespaces::*, combinators::*, character_groups::*, *, date::*};
+
+    pub struct Date {
+        pub date_time: (Option<Day>, date::Date, Time)
+    }
+
+    pub fn take_date(input: &[u8]) -> Result<(&[u8], Date), Error> {
+        todo!()
+    }
+
+    #[cfg(test)]
+    mod tests {
+
     }
 }
 
