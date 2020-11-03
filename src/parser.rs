@@ -1,19 +1,18 @@
-use nom::IResult;
 use nom::bytes::complete::{tag, take_while, take_while1};
-use nom::sequence::tuple;
 use nom::combinator::opt;
 use nom::multi::many0;
+use nom::sequence::tuple;
+use nom::IResult;
 
 fn is_ftext(character: u8) -> bool {
-    character >= 33 && character <= 57 ||
-    character >= 59 && character <= 126
+    character >= 33 && character <= 57 || character >= 59 && character <= 126
 }
 
 fn is_text(character: u8) -> bool {
-    character >= 1 && character <= 9 ||
-    character >= 14 && character <= 127 ||
-    character == 11 ||
-    character == 12
+    character >= 1 && character <= 9
+        || character >= 14 && character <= 127
+        || character == 11
+        || character == 12
 }
 
 fn unstructured_header_value(data: &[u8]) -> IResult<&[u8], Vec<u8>> {
@@ -27,19 +26,25 @@ fn unstructured_header_value(data: &[u8]) -> IResult<&[u8], Vec<u8>> {
     let mut state = State::CarriageReturn;
     for (mut idx, character) in data.iter().enumerate() {
         match state {
-            State::CarriageReturn => if *character == b'\r' {
-                state = State::LineFeed
-            },
-            State::LineFeed => if *character == b'\n' {
-                state = State::AnythingButWhitespace
-            } else {
-                state = State::CarriageReturn
-            },
-            State::AnythingButWhitespace => if *character != b' ' && *character != b'\t' {
-                idx -= 2;
-                return Ok((&data[idx..], (&data[..idx]).to_vec()))
-            } else {
-                state = State::CarriageReturn
+            State::CarriageReturn => {
+                if *character == b'\r' {
+                    state = State::LineFeed
+                }
+            }
+            State::LineFeed => {
+                if *character == b'\n' {
+                    state = State::AnythingButWhitespace
+                } else {
+                    state = State::CarriageReturn
+                }
+            }
+            State::AnythingButWhitespace => {
+                if *character != b' ' && *character != b'\t' {
+                    idx -= 2;
+                    return Ok((&data[idx..], (&data[..idx]).to_vec()));
+                } else {
+                    state = State::CarriageReturn
+                }
             }
         }
     }
@@ -64,16 +69,29 @@ fn header_separator(data: &[u8]) -> IResult<&[u8], &[u8]> {
         idx += 1;
         Ok((&data[idx..], &data[..idx]))
     } else {
-        Err(nom::Err::Failure((&data[idx..],nom::error::ErrorKind::CrLf)))
+        Err(nom::Err::Failure((
+            &data[idx..],
+            nom::error::ErrorKind::CrLf,
+        )))
     }
 }
 
 fn optionnal_field(data: &[u8]) -> IResult<&[u8], (&[u8], Vec<u8>)> {
-    let result = tuple((field_name, header_separator, unstructured_header_value, tag("\r\n")))(data)?;
+    let result = tuple((
+        field_name,
+        header_separator,
+        unstructured_header_value,
+        tag("\r\n"),
+    ))(data)?;
     Ok((result.0, ((result.1).0, (result.1).2)))
 }
 fn optionnal_field_with_separator(data: &[u8]) -> IResult<&[u8], (&[u8], &[u8], Vec<u8>)> {
-    let result = tuple((field_name, header_separator, unstructured_header_value, tag("\r\n")))(data)?;
+    let result = tuple((
+        field_name,
+        header_separator,
+        unstructured_header_value,
+        tag("\r\n"),
+    ))(data)?;
     Ok((result.0, ((result.1).0, (result.1).1, (result.1).2)))
 }
 
@@ -95,7 +113,10 @@ fn body(data: &[u8]) -> IResult<&[u8], &[u8]> {
             idx += 2;
             line_lenght = 0;
         } else {
-            return Err(nom::Err::Failure((&data[idx..],nom::error::ErrorKind::CrLf))); // todo
+            return Err(nom::Err::Failure((
+                &data[idx..],
+                nom::error::ErrorKind::CrLf,
+            ))); // todo
         }
     }
     Ok((&data[idx..], &data[..idx]))
@@ -106,16 +127,16 @@ fn body(data: &[u8]) -> IResult<&[u8], &[u8]> {
 pub fn parse_message(data: &[u8]) -> Result<(Vec<(&[u8], Vec<u8>)>, Option<&[u8]>), ()> {
     match tuple((fields, opt(tuple((tag("\r\n"), body)))))(data) {
         Ok(result) => Ok(((result.1).0, (result.1).1.map(|b| b.1))),
-        Err(_e) => {
-            Err(())
-        }
+        Err(_e) => Err(()),
     }
 }
 
 /// Like `parse_message()` but headers are a tuple of three values: (name, separator, value).  
 ///   
 /// Example: `"HeaderName  : header value\r\n"` gives `("HeaderName", "  :", "header value")`
-pub fn parse_message_with_separators(data: &[u8]) -> Result<(Vec<(&[u8], &[u8], Vec<u8>)>, Option<&[u8]>), ()> {
+pub fn parse_message_with_separators(
+    data: &[u8],
+) -> Result<(Vec<(&[u8], &[u8], Vec<u8>)>, Option<&[u8]>), ()> {
     if let Ok(result) = tuple((fields_with_separators, opt(tuple((tag("\r\n"), body)))))(data) {
         Ok(((result.1).0, (result.1).1.map(|b| b.1)))
     } else {
@@ -125,7 +146,7 @@ pub fn parse_message_with_separators(data: &[u8]) -> Result<(Vec<(&[u8], &[u8], 
 
 #[cfg(test)]
 mod test {
-    use super::{parse_message, header_separator};
+    use super::{header_separator, parse_message};
 
     #[test]
     fn main_test() {
@@ -135,7 +156,11 @@ mod test {
 
         let (headers, body) = parse_message(mail.as_bytes()).unwrap();
         for (name, value) in headers {
-            println!("{}:{}", std::str::from_utf8(name).unwrap(), std::str::from_utf8(&value).unwrap())
+            println!(
+                "{}:{}",
+                std::str::from_utf8(name).unwrap(),
+                std::str::from_utf8(&value).unwrap()
+            )
         }
         println!("{}", std::str::from_utf8(body.unwrap()).unwrap())
     }
@@ -143,9 +168,9 @@ mod test {
     #[test]
     fn secondary_test() {
         let mail = b"A: X\r\nB : Y\t\r\n\tZ  \r\n\r\n C \r\nD \t E\r\n\r\n\r\n";
-        
+
         let (headers, _body) = parse_message(mail).unwrap();
-        
+
         assert_eq!(headers.len(), 2);
     }
 

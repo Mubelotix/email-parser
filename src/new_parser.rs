@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
-    Known(&'static str)
+    Known(&'static str),
 }
 
 #[derive(Debug)]
@@ -16,14 +16,14 @@ impl<'a> String<'a> {
                 // the parser is using only safe ASCII characters
                 std::str::from_utf8_unchecked(string)
             },
-            String::Owned(string) => &string
+            String::Owned(string) => &string,
         }
     }
 
     fn into_owned(self) -> String<'static> {
         match self {
             String::Reference(_) => String::Owned(self.as_str().to_string()),
-            String::Owned(string) => String::Owned(string)
+            String::Owned(string) => String::Owned(string),
         }
     }
 
@@ -62,15 +62,21 @@ impl<'a> std::ops::AddAssign for String<'a> {
                         *data1 = data2;
                         return;
                     }
-                    if let (Some(first1), Some(last1), Some(first2), Some(last2)) = (data1.first(), data1.last(), data2.first(), data2.last()) {
+                    if let (Some(first1), Some(last1), Some(first2), Some(last2)) =
+                        (data1.first(), data1.last(), data2.first(), data2.last())
+                    {
                         // if the two references are consecutive in memory, we create a third reference containing them
                         unsafe {
                             let first1 = first1 as *const u8;
                             let last1 = last1 as *const u8;
                             let first2 = first2 as *const u8;
                             let last2 = last2 as *const u8;
-                            if last1 as usize + std::mem::size_of::<u8>() == first2 as usize { // this is what guarantee safety
-                                let slice = std::slice::from_raw_parts(first1, last2 as usize - first1 as usize + 1);
+                            if last1 as usize + std::mem::size_of::<u8>() == first2 as usize {
+                                // this is what guarantee safety
+                                let slice = std::slice::from_raw_parts(
+                                    first1,
+                                    last2 as usize - first1 as usize + 1,
+                                );
                                 *data1 = slice;
                                 return;
                             }
@@ -79,10 +85,10 @@ impl<'a> std::ops::AddAssign for String<'a> {
                 }
                 let string = self.as_str().to_string();
                 *self = String::Owned(string + rhs.as_str());
-            },
+            }
             String::Owned(ref mut string) => {
                 string.push_str(rhs.as_str());
-            },
+            }
         }
     }
 }
@@ -97,11 +103,17 @@ pub(crate) fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
     }
 }
 
-pub(crate) fn tag_no_case<'a>(input: &'a [u8], expected: &'static [u8], expected2: &'static [u8]) -> Res<'a, ()> {
+pub(crate) fn tag_no_case<'a>(
+    input: &'a [u8],
+    expected: &'static [u8],
+    expected2: &'static [u8],
+) -> Res<'a, ()> {
     debug_assert_eq!(expected.len(), expected2.len());
 
     if input.len() < expected.len() {
-        return Err(Error::Known("Tag error, input is smaller than expected string"));
+        return Err(Error::Known(
+            "Tag error, input is smaller than expected string",
+        ));
     }
 
     for idx in 0..expected.len() {
@@ -113,8 +125,10 @@ pub(crate) fn tag_no_case<'a>(input: &'a [u8], expected: &'static [u8], expected
     Ok((&input[expected.len()..], ()))
 }
 
-pub(crate) fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], Option<T>) where
-    F: FnMut(&'a [u8]) -> Res<T> {
+pub(crate) fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], Option<T>)
+where
+    F: FnMut(&'a [u8]) -> Res<T>,
+{
     if let Ok((input, parser)) = parser(input) {
         (input, Some(parser))
     } else {
@@ -122,8 +136,10 @@ pub(crate) fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], O
     }
 }
 
-pub(crate) fn match_parsers<'a, T, F>(input: &'a [u8], parsers: &mut [F]) -> Res<'a, T> where
-    F: FnMut(&'a [u8]) -> Res<T> {
+pub(crate) fn match_parsers<'a, T, F>(input: &'a [u8], parsers: &mut [F]) -> Res<'a, T>
+where
+    F: FnMut(&'a [u8]) -> Res<T>,
+{
     for parser in parsers {
         let result = parser(input);
         if result.is_ok() {
@@ -146,8 +162,8 @@ mod tests {
         let data3 = String::Reference(&data[..2]);
         let data4 = String::Reference(&data[3..]);
 
-        assert!(matches!(data1+data2, String::Reference(_)));
-        assert!(matches!(data3+data4, String::Owned(_)));
+        assert!(matches!(data1 + data2, String::Reference(_)));
+        assert!(matches!(data3 + data4, String::Owned(_)));
     }
 
     #[test]
@@ -168,8 +184,10 @@ mod tests {
 pub mod combinators {
     use super::{Error, String};
 
-    pub fn inc_while<F>(input: &[u8], idx: &mut usize, mut condition: F) where
-        F: FnMut(u8) -> bool {
+    pub fn inc_while<F>(input: &[u8], idx: &mut usize, mut condition: F)
+    where
+        F: FnMut(u8) -> bool,
+    {
         while let Some(character) = input.get(*idx) {
             if condition(*character) {
                 *idx += 1;
@@ -179,8 +197,10 @@ pub mod combinators {
         }
     }
 
-    pub fn inc_while1<F>(input: &[u8], idx: &mut usize, mut condition: F) -> Result<(), ()> where
-        F: FnMut(u8) -> bool {
+    pub fn inc_while1<F>(input: &[u8], idx: &mut usize, mut condition: F) -> Result<(), ()>
+    where
+        F: FnMut(u8) -> bool,
+    {
         match input.get(*idx) {
             Some(c) if condition(*c) => {
                 *idx += 1;
@@ -199,15 +219,23 @@ pub mod combinators {
         Ok(())
     }
 
-    pub fn take_while1<F>(input: &[u8], condition: F) -> Result<(&[u8], String), ()> where
-    F: FnMut(u8) -> bool {
+    pub fn take_while1<F>(input: &[u8], condition: F) -> Result<(&[u8], String), ()>
+    where
+        F: FnMut(u8) -> bool,
+    {
         let mut idx = 0;
         inc_while1(input, &mut idx, condition)?;
         Ok((&input[idx..], String::Reference(&input[..idx])))
     }
 
-    pub fn take_prefixed<'a, 'b, T, F>(mut input: &'a [u8], mut parser: F, prefix: &'b str) -> Result<(&'a [u8], T), Error> where
-        F: FnMut(&'a [u8]) -> Result<(&'a [u8], T), Error> {
+    pub fn take_prefixed<'a, 'b, T, F>(
+        mut input: &'a [u8],
+        mut parser: F,
+        prefix: &'b str,
+    ) -> Result<(&'a [u8], T), Error>
+    where
+        F: FnMut(&'a [u8]) -> Result<(&'a [u8], T), Error>,
+    {
         if input.starts_with(prefix.as_bytes()) {
             input = &input[prefix.len()..];
         } else {
@@ -225,9 +253,16 @@ pub mod combinators {
         }
     }
 
-    pub fn inc_after_opt<F, G>(input: &[u8], idx: &mut usize, mut optional_pattern: F, mut required_pattern: G) -> Result<(), Error> where
+    pub fn inc_after_opt<F, G>(
+        input: &[u8],
+        idx: &mut usize,
+        mut optional_pattern: F,
+        mut required_pattern: G,
+    ) -> Result<(), Error>
+    where
         F: FnMut(&[u8], &mut usize) -> Result<(), Error>,
-        G: FnMut(&[u8], &mut usize) -> Result<(), Error> {
+        G: FnMut(&[u8], &mut usize) -> Result<(), Error>,
+    {
         let before = *idx;
         let _ = optional_pattern(input, idx);
         match required_pattern(input, idx) {
@@ -241,8 +276,8 @@ pub mod combinators {
 
     #[cfg(test)]
     mod test {
-        use super::*;
         use super::super::character_groups::*;
+        use super::*;
 
         #[test]
         fn test_inc_while() {
@@ -264,9 +299,9 @@ pub mod character_groups {
 
     #[inline]
     pub fn is_ctext(character: u8) -> bool {
-        (character >= 33 && character <= 39) ||
-        (character >= 42 && character <= 91) ||
-        (character >= 93 && character <= 126)
+        (character >= 33 && character <= 39)
+            || (character >= 42 && character <= 91)
+            || (character >= 93 && character <= 126)
     }
 
     #[inline]
@@ -276,8 +311,7 @@ pub mod character_groups {
 
     #[inline]
     pub fn is_alpha(c: u8) -> bool {
-        (c >= 0x41 && c <= 0x5a) ||
-        (c >= 0x61 && c <= 0x7a)
+        (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)
     }
 
     #[inline]
@@ -297,7 +331,7 @@ pub mod character_groups {
             Some(b'7') => Ok((&input[1..], 7)),
             Some(b'8') => Ok((&input[1..], 8)),
             Some(b'9') => Ok((&input[1..], 9)),
-            _ => Err(super::Error::Known("Invalid digit"))
+            _ => Err(super::Error::Known("Invalid digit")),
         }
     }
 
@@ -310,44 +344,44 @@ pub mod character_groups {
 
     #[inline]
     pub fn is_atext(c: u8) -> bool {
-        is_alpha(c) ||
-        is_digit(c) ||
-        c == b'!' ||
-        c == b'#' ||
-        c == b'$' ||
-        c == b'%' ||
-        c == b'&' ||
-        c == b'\''||
-        c == b'*' ||
-        c == b'+' ||
-        c == b'-' ||
-        c == b'/' ||
-        c == b'=' ||
-        c == b'?' ||
-        c == b'^' ||
-        c == b'_' ||
-        c == b'`' ||
-        c == b'{' ||
-        c == b'|' ||
-        c == b'}' ||
-        c == b'~'
+        is_alpha(c)
+            || is_digit(c)
+            || c == b'!'
+            || c == b'#'
+            || c == b'$'
+            || c == b'%'
+            || c == b'&'
+            || c == b'\''
+            || c == b'*'
+            || c == b'+'
+            || c == b'-'
+            || c == b'/'
+            || c == b'='
+            || c == b'?'
+            || c == b'^'
+            || c == b'_'
+            || c == b'`'
+            || c == b'{'
+            || c == b'|'
+            || c == b'}'
+            || c == b'~'
     }
 
     #[inline]
     pub fn special(c: u8) -> bool {
-        c == b'(' ||
-        c == b')' ||
-        c == b'<' ||
-        c == b'>' ||
-        c == b'[' ||
-        c == b']' ||
-        c == b':' ||
-        c == b';' ||
-        c == b'@' ||
-        c == b'\\' ||
-        c == b',' ||
-        c == b'.' ||
-        c == b'"'
+        c == b'('
+            || c == b')'
+            || c == b'<'
+            || c == b'>'
+            || c == b'['
+            || c == b']'
+            || c == b':'
+            || c == b';'
+            || c == b'@'
+            || c == b'\\'
+            || c == b','
+            || c == b'.'
+            || c == b'"'
     }
 
     #[inline]
@@ -370,9 +404,9 @@ pub mod character_groups {
 }
 
 pub mod whitespaces {
-    use super::*;
-    use super::combinators::*;
     use super::character_groups::*;
+    use super::combinators::*;
+    use super::*;
 
     pub fn inc_fws(input: &[u8], mut idx: &mut usize) -> Result<(), Error> {
         let first_value = *idx;
@@ -385,37 +419,40 @@ pub mod whitespaces {
         }
         Ok(())
     }
-    
+
     pub fn take_fws(input: &[u8]) -> Res<String> {
         let mut idx = 0;
         inc_fws(input, &mut idx)?;
-    
+
         Ok((&input[idx..], String::Reference(&input[..idx])))
     }
-    
+
     fn inc_ccontent(input: &[u8], idx: &mut usize) -> Result<(), Error> {
-        if inc_while1(input, idx, is_ctext).is_ok() || inc_quoted_pair(input, idx).is_ok() || inc_comment(input, idx).is_ok() {
+        if inc_while1(input, idx, is_ctext).is_ok()
+            || inc_quoted_pair(input, idx).is_ok()
+            || inc_comment(input, idx).is_ok()
+        {
             Ok(())
         } else {
             Err(Error::Known("Invalid ccontent"))
         }
     }
-    
+
     pub fn inc_comment(input: &[u8], idx: &mut usize) -> Result<(), Error> {
         if inc_tag(input, idx, b"(").is_err() {
             return Err(Error::Known("Comment is expected to start with a '('."));
         }
-        
-        while inc_after_opt(input, idx, inc_fws, inc_ccontent).is_ok() { }
-    
+
+        while inc_after_opt(input, idx, inc_fws, inc_ccontent).is_ok() {}
+
         let _ = inc_fws(input, idx);
         if inc_tag(input, idx, b")").is_err() {
             return Err(Error::Known("Comment is expected to end with a ')'."));
         }
-    
+
         Ok(())
     }
-    
+
     pub fn inc_cfws(input: &[u8], idx: &mut usize) -> Result<(), Error> {
         if inc_after_opt(input, idx, inc_fws, inc_comment).is_ok() {
             while inc_after_opt(input, idx, inc_fws, inc_comment).is_ok() {}
@@ -441,7 +478,7 @@ pub mod whitespaces {
             assert_eq!(take_fws(b"   test").unwrap().1, "   ");
             assert_eq!(take_fws(b" test").unwrap().1, " ");
             assert_eq!(take_fws(b"   \r\n  test").unwrap().1, "   \r\n  ");
-        
+
             assert!(take_fws(b"  \r\ntest").is_err());
             assert!(take_fws(b"\r\ntest").is_err());
             assert!(take_fws(b"test").is_err());
@@ -452,7 +489,7 @@ pub mod whitespaces {
             let mut idx = 0;
             inc_ccontent(b"abcde", &mut idx).unwrap();
             assert_eq!(idx, 5);
-        
+
             let mut idx = 0;
             inc_ccontent(b"ab)cde", &mut idx).unwrap();
             assert_eq!(idx, 2);
@@ -463,15 +500,19 @@ pub mod whitespaces {
             let mut idx = 0;
             inc_comment(b"(this is a comment)", &mut idx).unwrap();
             assert_eq!(idx, 19);
-            
+
             let mut idx = 0;
             inc_comment(b"(a comment) and a value", &mut idx).unwrap();
             assert_eq!(idx, 11);
-        
+
             let mut idx = 0;
-            inc_comment(b"(this is a comment (and another comment)) and a value", &mut idx).unwrap();
+            inc_comment(
+                b"(this is a comment (and another comment)) and a value",
+                &mut idx,
+            )
+            .unwrap();
             assert_eq!(idx, 41);
-        
+
             assert!(inc_comment(b"a value", &mut 0).is_err());
             assert!(inc_comment(b"(unclosed comment", &mut 0).is_err());
         }
@@ -479,18 +520,26 @@ pub mod whitespaces {
         #[test]
         fn test_inc_cfws() {
             let mut idx = 0;
-            inc_cfws(b"  (this is a comment)\r\n (this is a second comment)  value", &mut idx).unwrap();
+            inc_cfws(
+                b"  (this is a comment)\r\n (this is a second comment)  value",
+                &mut idx,
+            )
+            .unwrap();
             assert_eq!(idx, 52);
-        
+
             idx = 0;
-            inc_cfws(b"  (this is a comment)\r\n (this is a second comment)\r\n  value", &mut idx).unwrap();
+            inc_cfws(
+                b"  (this is a comment)\r\n (this is a second comment)\r\n  value",
+                &mut idx,
+            )
+            .unwrap();
             assert_eq!(idx, 54);
         }
     }
 }
 
 pub mod date {
-    use super::{*, whitespaces::*, combinators::*, character_groups::*};
+    use super::{character_groups::*, combinators::*, whitespaces::*, *};
 
     pub type Zone = (bool, u8, u8);
     pub type Time = ((u8, u8, u8), Zone);
@@ -498,7 +547,13 @@ pub mod date {
 
     #[derive(Debug, PartialEq)]
     pub enum Day {
-        Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday,
+        Sunday,
     }
 
     #[derive(Debug, PartialEq)]
@@ -531,7 +586,9 @@ pub mod date {
                 _ => Err(Error::Known("Not a valid day_name")),
             }
         } else {
-            Err(Error::Known("Expected day_name, but characters are missing (at least 3)."))
+            Err(Error::Known(
+                "Expected day_name, but characters are missing (at least 3).",
+            ))
         }
     }
 
@@ -554,7 +611,9 @@ pub mod date {
                 _ => Err(Error::Known("Not a valid month")),
             }
         } else {
-            Err(Error::Known("Expected month, but characters are missing (at least 3)."))
+            Err(Error::Known(
+                "Expected month, but characters are missing (at least 3).",
+            ))
         }
     }
 
@@ -568,14 +627,18 @@ pub mod date {
     pub fn take_year(input: &[u8]) -> Res<usize> {
         let (input, _) = take_fws(input)?;
 
-        let (input, year) = take_while1(input, is_digit).map_err(|()| Error::Known("no digit in year"))?;
+        let (input, year) =
+            take_while1(input, is_digit).map_err(|()| Error::Known("no digit in year"))?;
         if year.len() < 4 {
-            return Err(Error::Known("year is expected to have 4 digits or more"))
+            return Err(Error::Known("year is expected to have 4 digits or more"));
         }
-        let year: usize = year.as_str().parse().map_err(|_e| Error::Known("Failed to parse year"))?;
+        let year: usize = year
+            .as_str()
+            .parse()
+            .map_err(|_e| Error::Known("Failed to parse year"))?;
 
         if year < 1990 {
-            return Err(Error::Known("year must be after 1990"))
+            return Err(Error::Known("year must be after 1990"));
         }
 
         let (input, _) = take_fws(input)?;
@@ -592,7 +655,7 @@ pub mod date {
             input = new_input;
         }
         if day > 31 {
-            return Err(Error::Known("day must be less than 31"))
+            return Err(Error::Known("day must be less than 31"));
         }
         let (input, _) = take_fws(input)?;
         Ok((input, day as usize))
@@ -609,11 +672,12 @@ pub mod date {
         if minutes > 59 {
             return Err(Error::Known("There is only 60 minutes per hour"));
         }
-        
+
         if input.starts_with(b":") {
             let new_input = &input[1..];
             if let Ok((new_input, seconds)) = take_two_digits(new_input) {
-                if seconds > 60 { // leap second allowed
+                if seconds > 60 {
+                    // leap second allowed
                     return Err(Error::Known("There is only 60 seconds in a minute"));
                 }
                 return Ok((new_input, (hour, minutes, seconds)));
@@ -695,14 +759,32 @@ pub mod date {
             assert_eq!(take_year(b"\r\n 1995 ").unwrap().1, 1995);
             assert_eq!(take_year(b" 250032 ").unwrap().1, 250032);
         }
-        
+
         #[test]
         fn test_date() {
-            assert_eq!(take_date(b"1 nov 2020 ").unwrap().1, (1, Month::November, 2020));
-            assert_eq!(take_date(b"25 dec 2038 ").unwrap().1, (25, Month::December, 2038));
+            assert_eq!(
+                take_date(b"1 nov 2020 ").unwrap().1,
+                (1, Month::November, 2020)
+            );
+            assert_eq!(
+                take_date(b"25 dec 2038 ").unwrap().1,
+                (25, Month::December, 2038)
+            );
 
-            assert_eq!(take_date_time(b"Mon, 12 Apr 2023 10:25:03 +0000").unwrap().1, (Some(Day::Monday), (12, Month::April, 2023), ((10, 25, 3), (true, 0, 0))));
-            assert_eq!(take_date_time(b"5 May 2003 18:59:03 +0000").unwrap().1, (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0))));
+            assert_eq!(
+                take_date_time(b"Mon, 12 Apr 2023 10:25:03 +0000")
+                    .unwrap()
+                    .1,
+                (
+                    Some(Day::Monday),
+                    (12, Month::April, 2023),
+                    ((10, 25, 3), (true, 0, 0))
+                )
+            );
+            assert_eq!(
+                take_date_time(b"5 May 2003 18:59:03 +0000").unwrap().1,
+                (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0)))
+            );
         }
 
         #[test]
@@ -714,16 +796,24 @@ pub mod date {
             assert_eq!(take_zone(b" +1000 ").unwrap().1, (true, 10, 0));
             assert_eq!(take_zone(b" -0523 ").unwrap().1, (false, 5, 23));
 
-            assert_eq!(take_time(b"06:44 +0100").unwrap().1, ((6, 44, 0), (true, 1, 0)));
-            assert_eq!(take_time(b"23:57 +0000").unwrap().1, ((23, 57, 0), (true, 0, 0)));
-            assert_eq!(take_time(b"08:23:02 -0500").unwrap().1, ((8, 23, 2), (false, 5, 0)));
-
+            assert_eq!(
+                take_time(b"06:44 +0100").unwrap().1,
+                ((6, 44, 0), (true, 1, 0))
+            );
+            assert_eq!(
+                take_time(b"23:57 +0000").unwrap().1,
+                ((23, 57, 0), (true, 0, 0))
+            );
+            assert_eq!(
+                take_time(b"08:23:02 -0500").unwrap().1,
+                ((8, 23, 2), (false, 5, 0))
+            );
         }
     }
 }
 
 pub mod address {
-    use super::{Error, String, whitespaces::*, combinators::*, character_groups::*, *};
+    use super::{character_groups::*, combinators::*, whitespaces::*, Error, String, *};
 
     type Mailbox<'a> = (Option<Vec<String<'a>>>, (String<'a>, String<'a>));
 
@@ -734,8 +824,7 @@ pub mod address {
 
     #[inline]
     pub fn is_dtext(c: u8) -> bool {
-        (c >= 33 && c <= 90) ||
-        (c >= 94 && c <= 126)
+        (c >= 33 && c <= 90) || (c >= 94 && c <= 126)
     }
 
     pub fn take_addr_spec(input: &[u8]) -> Res<(String, String)> {
@@ -784,7 +873,14 @@ pub mod address {
     }
 
     pub fn take_mailbox(input: &[u8]) -> Res<Mailbox> {
-        match_parsers(input, &mut [take_name_addr, (|input| take_addr_spec(input).map(|(i, m)| (i, (None, m)))) as fn(input: &[u8]) -> Res<Mailbox>][..])
+        match_parsers(
+            input,
+            &mut [
+                take_name_addr,
+                (|input| take_addr_spec(input).map(|(i, m)| (i, (None, m))))
+                    as fn(input: &[u8]) -> Res<Mailbox>,
+            ][..],
+        )
     }
 
     pub fn take_mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
@@ -849,15 +945,27 @@ pub mod address {
         #[test]
         fn test_local_part() {
             assert_eq!(take_local_part(b"mubelotix").unwrap().1, "mubelotix");
-            assert_eq!(take_local_part(b"\"mubelotix\\ the\\ admin\"").unwrap().1, "mubelotix the admin");
+            assert_eq!(
+                take_local_part(b"\"mubelotix\\ the\\ admin\"").unwrap().1,
+                "mubelotix the admin"
+            );
         }
 
         #[test]
         fn test_domain() {
-            assert_eq!(take_domain_literal(b"[mubelotix.dev]").unwrap().1, "mubelotix.dev");
-            assert_eq!(take_domain_literal(b"[mubelotix\r\n .dev]").unwrap().1, "mubelotix.dev");
+            assert_eq!(
+                take_domain_literal(b"[mubelotix.dev]").unwrap().1,
+                "mubelotix.dev"
+            );
+            assert_eq!(
+                take_domain_literal(b"[mubelotix\r\n .dev]").unwrap().1,
+                "mubelotix.dev"
+            );
 
-            assert_eq!(take_domain(b"[mubelotix\r\n .dev]").unwrap().1, "mubelotix.dev");
+            assert_eq!(
+                take_domain(b"[mubelotix\r\n .dev]").unwrap().1,
+                "mubelotix.dev"
+            );
             assert_eq!(take_domain(b"mubelotix.dev").unwrap().1, "mubelotix.dev");
         }
 
@@ -876,7 +984,8 @@ pub mod address {
             assert_eq!(username, "mubelotix");
             assert_eq!(domain, "gmail.com");
 
-            let (name, (username, domain)) = take_name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
+            let (name, (username, domain)) =
+                take_name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
             assert_eq!(name.unwrap().len(), 2);
             assert_eq!(username, "someone");
             assert_eq!(domain, "gmail.com");
@@ -886,17 +995,30 @@ pub mod address {
             assert_eq!(username, "mubelotix");
             assert_eq!(domain, "mubelotix.dev");
 
-            let (name, (username, domain)) = take_mailbox(b"Random Guy <someone@gmail.com>").unwrap().1;
+            let (name, (username, domain)) =
+                take_mailbox(b"Random Guy <someone@gmail.com>").unwrap().1;
             assert_eq!(name.unwrap().len(), 2);
             assert_eq!(username, "someone");
             assert_eq!(domain, "gmail.com");
         }
-    
+
         #[test]
         fn test_lists() {
-            assert_eq!(take_mailbox_list(b"test@gmail.com,Michel<michel@gmail.com>,<postmaster@mubelotix.dev>").unwrap().1.len(), 3);
+            assert_eq!(
+                take_mailbox_list(
+                    b"test@gmail.com,Michel<michel@gmail.com>,<postmaster@mubelotix.dev>"
+                )
+                .unwrap()
+                .1
+                .len(),
+                3
+            );
 
-            let (name, list) = take_group(b"Developers: Mubelotix <mubelotix@mubelotix.dev>, Someone <guy@gmail.com>;").unwrap().1;
+            let (name, list) = take_group(
+                b"Developers: Mubelotix <mubelotix@mubelotix.dev>, Someone <guy@gmail.com>;",
+            )
+            .unwrap()
+            .1;
             assert_eq!(name[0], "Developers");
             assert_eq!(list[0].0.as_ref().unwrap()[0], "Mubelotix");
             assert_eq!(list[0].1.0, "mubelotix");
@@ -908,10 +1030,10 @@ pub mod address {
 }
 
 pub mod fields {
-    use super::{Error, String, whitespaces::*, combinators::*, character_groups::*, *, date::*};
+    use super::{character_groups::*, combinators::*, date::*, whitespaces::*, Error, String, *};
 
     pub struct Date {
-        pub date_time: (Option<Day>, date::Date, Time)
+        pub date_time: (Option<Day>, date::Date, Time),
     }
 
     pub fn take_date(input: &[u8]) -> Result<(&[u8], Date), Error> {
@@ -919,15 +1041,13 @@ pub mod fields {
     }
 
     #[cfg(test)]
-    mod tests {
-
-    }
+    mod tests {}
 }
 
 use character_groups::*;
 use combinators::*;
-use whitespaces::*;
 use date::*;
+use whitespaces::*;
 
 pub fn inc_quoted_pair(input: &[u8], idx: &mut usize) -> Result<(), Error> {
     if input[*idx..].starts_with(b"\\") {
@@ -936,7 +1056,9 @@ pub fn inc_quoted_pair(input: &[u8], idx: &mut usize) -> Result<(), Error> {
                 *idx += 2;
                 Ok(())
             } else {
-                Err(Error::Known("The quoted-pair character is no a vchar or a wsp."))
+                Err(Error::Known(
+                    "The quoted-pair character is no a vchar or a wsp.",
+                ))
             }
         } else {
             Err(Error::Known("The quoted-pair has no second character."))
@@ -952,7 +1074,9 @@ pub fn take_quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
             if is_vchar(*character) || is_wsp(*character) {
                 Ok((&input[2..], String::Reference(&input[1..2])))
             } else {
-                Err(Error::Known("The quoted-pair character is no a vchar or a wsp."))
+                Err(Error::Known(
+                    "The quoted-pair character is no a vchar or a wsp.",
+                ))
             }
         } else {
             Err(Error::Known("The quoted-pair has no second character."))
@@ -978,7 +1102,7 @@ pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
 
     loop {
         let mut additionnal_output = String::Reference(&[]);
-        
+
         let new_input = if let Ok((new_input, fws)) = take_fws(input) {
             additionnal_output += fws;
             new_input
@@ -1033,7 +1157,9 @@ pub fn inc_atom(input: &[u8], idx: &mut usize) -> Result<(), Error> {
 
 pub fn inc_dot_atom_text(input: &[u8], idx: &mut usize) -> Result<(), Error> {
     if inc_while1(input, idx, is_atext).is_err() {
-        return Err(Error::Known("Expected atom character at the beggining of a dot_atom_text"));
+        return Err(Error::Known(
+            "Expected atom character at the beggining of a dot_atom_text",
+        ));
     }
 
     loop {
@@ -1062,7 +1188,8 @@ pub fn take_atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     if let Ok((new_input, _)) = take_cfws(input) {
         input = new_input
     }
-    let (mut input, atom) = take_while1(input, is_atext).map_err(|_| Error::Known("Atom required"))?;
+    let (mut input, atom) =
+        take_while1(input, is_atext).map_err(|_| Error::Known("Atom required"))?;
     if let Ok((new_input, _)) = take_cfws(input) {
         input = new_input
     }
@@ -1092,7 +1219,9 @@ pub fn take_word(input: &[u8]) -> Result<(&[u8], String), Error> {
     } else if let Ok((input, word)) = take_quoted_string(input) {
         Ok((input, word))
     } else {
-        Err(Error::Known("Word is not an atom and is not a quoted_string."))
+        Err(Error::Known(
+            "Word is not an atom and is not a quoted_string.",
+        ))
     }
 }
 
@@ -1109,7 +1238,7 @@ pub fn take_phrase(input: &[u8]) -> Result<(&[u8], Vec<String>), Error> {
     Ok((input, words))
 }
 
-pub fn take_unstructured(mut input: &[u8]) -> Result<(&[u8], String), Error>{
+pub fn take_unstructured(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     let mut output = String::Reference(&[]);
 
     loop {
@@ -1138,12 +1267,20 @@ pub fn take_unstructured(mut input: &[u8]) -> Result<(&[u8], String), Error>{
 #[test]
 fn test_word_and_phrase() {
     assert_eq!(take_word(b" this is a \"rust\\ test\" ").unwrap().1, "this");
-    assert_eq!(take_phrase(b" this is a \"rust\\ test\" ").unwrap().1, vec!["this", "is", "a", "rust test"]);
+    assert_eq!(
+        take_phrase(b" this is a \"rust\\ test\" ").unwrap().1,
+        vec!["this", "is", "a", "rust test"]
+    );
 }
 
 #[test]
 fn test_unstructured() {
-    assert_eq!(take_unstructured(b"the quick brown fox jumps\r\n over the lazy dog   ").unwrap().1, "the quick brown fox jumps\r\n over the lazy dog");
+    assert_eq!(
+        take_unstructured(b"the quick brown fox jumps\r\n over the lazy dog   ")
+            .unwrap()
+            .1,
+        "the quick brown fox jumps\r\n over the lazy dog"
+    );
 }
 
 #[test]
@@ -1161,17 +1298,39 @@ fn test_quoted_pair() {
 
 #[test]
 fn test_quoted_string() {
-    assert_eq!(take_quoted_string(b" \"This\\ is\\ a\\ test\"").unwrap().1, "This is a test");
-    assert_eq!(take_quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ").unwrap().1, "This is a test");
+    assert_eq!(
+        take_quoted_string(b" \"This\\ is\\ a\\ test\"").unwrap().1,
+        "This is a test"
+    );
+    assert_eq!(
+        take_quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ")
+            .unwrap()
+            .1,
+        "This is a test"
+    );
 
-    assert!(matches!(take_quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ").unwrap().1, String::Owned(_)));
-    assert!(matches!(take_quoted_string(b"\r\n  \"hey\"  ").unwrap().1, String::Reference(_)));
+    assert!(matches!(
+        take_quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ")
+            .unwrap()
+            .1,
+        String::Owned(_)
+    ));
+    assert!(matches!(
+        take_quoted_string(b"\r\n  \"hey\"  ").unwrap().1,
+        String::Reference(_)
+    ));
 }
 
 #[test]
 fn test_atom() {
     assert_eq!(take_atom(b"this is a test").unwrap().1, "this");
     assert_eq!(take_atom(b"   averylongatom ").unwrap().1, "averylongatom");
-    assert_eq!(take_dot_atom_text(b"this.is.a.test").unwrap().1, "this.is.a.test");
-    assert_eq!(take_dot_atom(b"  this.is.a.test ").unwrap().1, "this.is.a.test");
+    assert_eq!(
+        take_dot_atom_text(b"this.is.a.test").unwrap().1,
+        "this.is.a.test"
+    );
+    assert_eq!(
+        take_dot_atom(b"  this.is.a.test ").unwrap().1,
+        "this.is.a.test"
+    );
 }
