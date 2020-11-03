@@ -141,6 +141,16 @@ pub mod combinators {
         Ok((&input[idx..], String::Reference(&input[..idx])))
     }
 
+    pub fn take_prefixed<'a, 'b, T, F>(mut input: &'a [u8], mut parser: F, prefix: &'b str) -> Result<(&'a [u8], T), Error> where
+        F: FnMut(&'a [u8]) -> Result<(&'a [u8], T), Error> {
+        if input.starts_with(prefix.as_bytes()) {
+            input = &input[prefix.len()..];
+        } else {
+            return Err(Error::Known("Expected a prefix"));
+        }
+        parser(input)
+    }
+
     pub fn inc_tag(input: &[u8], idx: &mut usize, tag: &[u8]) -> Result<(), ()> {
         if input[*idx..].starts_with(tag) {
             *idx += tag.len();
@@ -646,6 +656,269 @@ pub mod date {
             assert_eq!(take_time(b"23:57 +0000").unwrap().1, ((23, 57, 0), (true, 0, 0)));
             assert_eq!(take_time(b"08:23:02 -0500").unwrap().1, ((8, 23, 2), (false, 5, 0)));
 
+        }
+    }
+}
+
+pub mod address {
+    use super::{Error, String, whitespaces::*, combinators::*, character_groups::*, *};
+
+    type Mailbox<'a> = (Option<Vec<String<'a>>>, (String<'a>, String<'a>));
+
+    pub enum Address<'a> {
+        Mailbox(Mailbox<'a>),
+        Group((Vec<String<'a>>, Vec<Mailbox<'a>>)),
+    }
+
+    #[inline]
+    pub fn is_dtext(c: u8) -> bool {
+        (c >= 33 && c <= 90) ||
+        (c >= 94 && c <= 126)
+    }
+
+    pub fn take_addr_spec(input: &[u8]) -> Result<(&[u8], (String, String)), Error> {
+        let (mut input, local_part) = take_local_part(input)?;
+        if input.starts_with(b"@") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("Expected @ in addr-spec"));
+        }
+        let (input, domain) = take_domain(input)?;
+        Ok((input, (local_part, domain)))
+    }
+
+    pub fn take_name_addr(mut input: &[u8]) -> Result<(&[u8], Mailbox), Error> {
+        let display_name = if let Ok((new_input, display_name)) = take_phrase(input) {
+            input = new_input;
+            Some(display_name)
+        } else {
+            None
+        };
+
+        if let Ok((new_input, _)) = take_cfws(input) {
+            input = new_input;
+        }
+
+        if input.starts_with(b"<") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("Expected < before addr-spec in angle-addr"));
+        }
+
+        let (mut input, addr_spec) = take_addr_spec(input)?;
+
+        if input.starts_with(b">") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("Expected > after addr-spec in angle-addr"));
+        }
+
+        if let Ok((new_input, _)) = take_cfws(input) {
+            input = new_input;
+        }
+
+        Ok((input, (display_name, addr_spec)))
+    }
+
+    pub fn take_local_part(input: &[u8]) -> Result<(&[u8], String), Error> {
+        if let Ok((input, local_part)) = take_dot_atom(input) {
+            Ok((input, local_part))
+        } else if let Ok((input, local_part)) = take_quoted_string(input) {
+            Ok((input, local_part))
+        } else {
+            Err(Error::Known("local_part is not a dot_atom nor a quoted_string"))
+        }
+    }
+
+    pub fn take_domain(input: &[u8]) -> Result<(&[u8], String), Error> {
+        if let Ok((input, domain)) = take_dot_atom(input) {
+            Ok((input, domain))
+        } else if let Ok((input, domain)) = take_domain_literal(input) {
+            Ok((input, domain))
+        } else {
+            Err(Error::Known("domain is not a dot_atom nor a domain_literal"))
+        }
+    }
+
+    pub fn take_domain_literal(mut input: &[u8]) -> Result<(&[u8], String), Error> {
+        if let Ok((new_input, _cfws)) = take_cfws(input) {
+            input = new_input;
+        }
+
+        if input.starts_with(b"[") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("domain literal must start with a '['"))
+        }
+
+        let mut output = String::Reference(&[]);
+        loop {
+            let (new_input, fws) = take_fws(input).unwrap_or((input, String::Reference(&[])));
+            if let Ok((new_input, text)) = take_while1(new_input, is_dtext) {
+                input = new_input;
+                //output += fws; should it be added?
+                output += text;
+            } else {
+                break;
+            }
+        }
+
+        if let Ok((new_input, _fws)) = take_fws(input) {
+            input = new_input;
+        }
+
+        if input.starts_with(b"]") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("domain literal must end with a ']'"))
+        }
+
+        if let Ok((new_input, _cfws)) = take_cfws(input) {
+            input = new_input;
+        }
+
+        Ok((input, output))
+    }
+
+    pub fn take_mailbox(input: &[u8]) -> Result<(&[u8], Mailbox), Error> {
+        if let Ok((input, mailbox)) = take_name_addr(input) {
+            Ok((input, mailbox))
+        } else if let Ok((input, mailbox)) = take_addr_spec(input) {
+            Ok((input, (None, mailbox)))
+        } else {
+            Err(Error::Known("mailbox is not a name_addr not an addr_spec"))
+        }
+    }
+
+    pub fn take_mailbox_list(input: &[u8]) -> Result<(&[u8], Vec<Mailbox>), Error> {
+        let mut mailboxes = Vec::new();
+        let (mut input, first_mailbox) = take_mailbox(input)?;
+        mailboxes.push(first_mailbox);
+
+        while let Ok((new_input, new_mailbox)) = take_prefixed(input, take_mailbox, ",") {
+            input = new_input;
+            mailboxes.push(new_mailbox);
+        }
+
+        Ok((input, mailboxes))
+    }
+
+    pub fn take_group(input: &[u8]) -> Result<(&[u8], (Vec<String>, Vec<Mailbox>)), Error> {
+        let (mut input, display_name) = take_phrase(input)?;
+
+        if input.starts_with(b":") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("Expected : after display_name in group"));
+        }
+
+        let group_list = if let Ok((new_input, mailbox_list)) = take_mailbox_list(input) {
+            input = new_input;
+            mailbox_list
+        } else if let Ok((new_input, _cfws)) = take_cfws(input) {
+            input = new_input;
+            Vec::new()
+        } else {
+            Vec::new()
+        };
+
+        if input.starts_with(b";") {
+            input = &input[1..];
+        } else {
+            return Err(Error::Known("Expected ; after group_list in group"));
+        }
+
+        if let Ok((new_input, _cfws)) = take_cfws(input) {
+            input = new_input
+        }
+
+        Ok((input, (display_name, group_list)))
+    }
+
+    pub fn take_address(input: &[u8]) -> Result<(&[u8], Address), Error> {
+        if let Ok((input, mailbox)) = take_mailbox(input) {
+            Ok((input, Address::Mailbox(mailbox)))
+        } else if let Ok((input, group)) = take_group(input) {
+            Ok((input, Address::Group(group)))
+        } else {
+            Err(Error::Known("Invalid address: not a mailbox nor a group"))
+        }
+    }
+
+    pub fn take_address_list(input: &[u8]) -> Result<(&[u8], Vec<Address>), Error> {
+        let mut addresses = Vec::new();
+        let (mut input, first_address) = take_address(input)?;
+        addresses.push(first_address);
+
+        while let Ok((new_input, new_address)) = take_prefixed(input, take_address, ",") {
+            input = new_input;
+            addresses.push(new_address);
+        }
+
+        Ok((input, addresses))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_local_part() {
+            assert_eq!(take_local_part(b"mubelotix").unwrap().1, "mubelotix");
+            assert_eq!(take_local_part(b"\"mubelotix\\ the\\ admin\"").unwrap().1, "mubelotix the admin");
+        }
+
+        #[test]
+        fn test_domain() {
+            assert_eq!(take_domain_literal(b"[mubelotix.dev]").unwrap().1, "mubelotix.dev");
+            assert_eq!(take_domain_literal(b"[mubelotix\r\n .dev]").unwrap().1, "mubelotix.dev");
+
+            assert_eq!(take_domain(b"[mubelotix\r\n .dev]").unwrap().1, "mubelotix.dev");
+            assert_eq!(take_domain(b"mubelotix.dev").unwrap().1, "mubelotix.dev");
+        }
+
+        #[test]
+        fn test_addr() {
+            let (username, domain) = take_addr_spec(b"mubelotix@mubelotix.dev").unwrap().1;
+            assert_eq!(username, "mubelotix");
+            assert_eq!(domain, "mubelotix.dev");
+
+            let (username, domain) = take_addr_spec(b"\"special\\ person\"@gmail.com").unwrap().1;
+            assert_eq!(username, "special person");
+            assert_eq!(domain, "gmail.com");
+
+            let (name, (username, domain)) = take_name_addr(b"<mubelotix@gmail.com>").unwrap().1;
+            assert!(name.is_none());
+            assert_eq!(username, "mubelotix");
+            assert_eq!(domain, "gmail.com");
+
+            let (name, (username, domain)) = take_name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
+            assert_eq!(name.unwrap().len(), 2);
+            assert_eq!(username, "someone");
+            assert_eq!(domain, "gmail.com");
+
+            let (name, (username, domain)) = take_mailbox(b"mubelotix@mubelotix.dev").unwrap().1;
+            assert!(name.is_none());
+            assert_eq!(username, "mubelotix");
+            assert_eq!(domain, "mubelotix.dev");
+
+            let (name, (username, domain)) = take_mailbox(b"Random Guy <someone@gmail.com>").unwrap().1;
+            assert_eq!(name.unwrap().len(), 2);
+            assert_eq!(username, "someone");
+            assert_eq!(domain, "gmail.com");
+        }
+    
+        #[test]
+        fn test_lists() {
+            assert_eq!(take_mailbox_list(b"test@gmail.com,Michel<michel@gmail.com>,<postmaster@mubelotix.dev>").unwrap().1.len(), 3);
+
+            let (name, list) = take_group(b"Developers: Mubelotix <mubelotix@mubelotix.dev>, Someone <guy@gmail.com>;").unwrap().1;
+            assert_eq!(name[0], "Developers");
+            assert_eq!(list[0].0.as_ref().unwrap()[0], "Mubelotix");
+            assert_eq!(list[0].1.0, "mubelotix");
+            assert_eq!(list[0].1.1, "mubelotix.dev");
+
+            assert_eq!(take_address_list(b"mubelotix@gmail.com,guy@gmail.com,Developers:mubelotix@gmail.com,guy@gmail.com;").unwrap().1.len(), 3);
         }
     }
 }
