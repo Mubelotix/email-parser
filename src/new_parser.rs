@@ -89,7 +89,7 @@ impl<'a> std::ops::AddAssign for String<'a> {
 
 pub type Res<'a, T> = Result<(&'a [u8], T), Error>;
 
-fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
+pub(crate) fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
     if input.starts_with(expected) {
         Ok((&input[expected.len()..], ()))
     } else {
@@ -97,7 +97,7 @@ fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
     }
 }
 
-fn tag_no_case<'a>(input: &'a [u8], expected: &'static [u8], expected2: &'static [u8]) -> Res<'a, ()> {
+pub(crate) fn tag_no_case<'a>(input: &'a [u8], expected: &'static [u8], expected2: &'static [u8]) -> Res<'a, ()> {
     debug_assert_eq!(expected.len(), expected2.len());
 
     if input.len() < expected.len() {
@@ -113,13 +113,24 @@ fn tag_no_case<'a>(input: &'a [u8], expected: &'static [u8], expected2: &'static
     Ok((&input[expected.len()..], ()))
 }
 
-pub fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], Option<T>) where
+pub(crate) fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], Option<T>) where
     F: FnMut(&'a [u8]) -> Res<T> {
     if let Ok((input, parser)) = parser(input) {
         (input, Some(parser))
     } else {
         (input, None)
     }
+}
+
+pub(crate) fn match_parsers<'a, T, F>(input: &'a [u8], parsers: &mut [F]) -> Res<'a, T> where
+    F: FnMut(&'a [u8]) -> Res<T> {
+    for parser in parsers {
+        let result = parser(input);
+        if result.is_ok() {
+            return result;
+        }
+    }
+    Err(Error::Known("No match arm is matching the data"))
 }
 
 #[cfg(test)]
@@ -547,18 +558,11 @@ pub mod date {
         }
     }
 
-    pub fn take_day_of_week(mut input: &[u8]) -> Res<Day> {
-        if let Ok((new_input, _fws)) = take_fws(input) {
-            input = new_input;
-        }
-
+    pub fn take_day_of_week(input: &[u8]) -> Res<Day> {
+        let (input, _fws) = optional(input, take_fws);
         let (input, day) = take_day_name(input)?;
-
-        if input.starts_with(b",") {
-            Ok((&input[1..], day))
-        } else {
-            Err(Error::Known("day_of_week must end with a comma."))
-        }
+        let (input, ()) = tag(input, b",")?;
+        Ok((input, day))
     }
 
     pub fn take_year(input: &[u8]) -> Res<usize> {
@@ -579,44 +583,33 @@ pub mod date {
         Ok((input, year))
     }
 
-    pub fn take_day(mut input: &[u8]) -> Res<usize> {
-        if let Ok((new_input, _)) = take_fws(input) {
-            input = new_input;
-        };
-
+    pub fn take_day(input: &[u8]) -> Res<usize> {
+        let (input, _fws) = optional(input, take_fws);
         let (mut input, mut day) = take_digit(input)?;
-
         if let Ok((new_input, digit)) = take_digit(input) {
             day *= 10;
             day += digit;
             input = new_input;
         }
-
         if day > 31 {
             return Err(Error::Known("day must be less than 31"))
         }
-
         let (input, _) = take_fws(input)?;
-
         Ok((input, day as usize))
     }
 
     pub fn take_time_of_day(input: &[u8]) -> Res<(u8, u8, u8)> {
-        let (mut input, hour) = take_two_digits(input)?;
+        let (input, hour) = take_two_digits(input)?;
         if hour > 23 {
             return Err(Error::Known("There is only 24 hours in a day"));
         }
-        if input.starts_with(b":") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("Expected colon after hour"));
-        }
+        let (input, ()) = tag(input, b":")?;
 
         let (input, minutes) = take_two_digits(input)?;
         if minutes > 59 {
             return Err(Error::Known("There is only 60 minutes per hour"));
         }
-
+        
         if input.starts_with(b":") {
             let new_input = &input[1..];
             if let Ok((new_input, seconds)) = take_two_digits(new_input) {
@@ -699,7 +692,7 @@ pub mod date {
             assert_eq!(take_month(b"deC ").unwrap().1, Month::December);
 
             assert_eq!(take_year(b" 2020 ").unwrap().1, 2020);
-            assert_eq!(take_year(b"\r\n 1958 ").unwrap().1, 1958);
+            assert_eq!(take_year(b"\r\n 1995 ").unwrap().1, 1995);
             assert_eq!(take_year(b" 250032 ").unwrap().1, 250032);
         }
         
@@ -746,83 +739,36 @@ pub mod address {
     }
 
     pub fn take_addr_spec(input: &[u8]) -> Res<(String, String)> {
-        let (mut input, local_part) = take_local_part(input)?;
-        if input.starts_with(b"@") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("Expected @ in addr-spec"));
-        }
+        let (input, local_part) = take_local_part(input)?;
+        let (input, ()) = tag(input, b"@")?;
         let (input, domain) = take_domain(input)?;
         Ok((input, (local_part, domain)))
     }
 
-    pub fn take_name_addr(mut input: &[u8]) -> Res<Mailbox> {
-        let display_name = if let Ok((new_input, display_name)) = take_phrase(input) {
-            input = new_input;
-            Some(display_name)
-        } else {
-            None
-        };
-
-        if let Ok((new_input, _)) = take_cfws(input) {
-            input = new_input;
-        }
-
-        if input.starts_with(b"<") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("Expected < before addr-spec in angle-addr"));
-        }
-
-        let (mut input, addr_spec) = take_addr_spec(input)?;
-
-        if input.starts_with(b">") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("Expected > after addr-spec in angle-addr"));
-        }
-
-        if let Ok((new_input, _)) = take_cfws(input) {
-            input = new_input;
-        }
-
+    pub fn take_name_addr(input: &[u8]) -> Res<Mailbox> {
+        let (input, display_name) = optional(input, take_phrase);
+        let (input, _cfws) = optional(input, take_cfws);
+        let (input, ()) = tag(input, b"<")?;
+        let (input, addr_spec) = take_addr_spec(input)?;
+        let (input, ()) = tag(input, b">")?;
+        let (input, _cfws) = optional(input, take_cfws);
         Ok((input, (display_name, addr_spec)))
     }
 
     pub fn take_local_part(input: &[u8]) -> Res<String> {
-        if let Ok((input, local_part)) = take_dot_atom(input) {
-            Ok((input, local_part))
-        } else if let Ok((input, local_part)) = take_quoted_string(input) {
-            Ok((input, local_part))
-        } else {
-            Err(Error::Known("local_part is not a dot_atom nor a quoted_string"))
-        }
+        match_parsers(input, &mut [take_dot_atom, take_quoted_string][..])
     }
 
     pub fn take_domain(input: &[u8]) -> Res<String> {
-        if let Ok((input, domain)) = take_dot_atom(input) {
-            Ok((input, domain))
-        } else if let Ok((input, domain)) = take_domain_literal(input) {
-            Ok((input, domain))
-        } else {
-            Err(Error::Known("domain is not a dot_atom nor a domain_literal"))
-        }
+        match_parsers(input, &mut [take_dot_atom, take_domain_literal][..])
     }
 
-    pub fn take_domain_literal(mut input: &[u8]) -> Res<String> {
-        if let Ok((new_input, _cfws)) = take_cfws(input) {
-            input = new_input;
-        }
-
-        if input.starts_with(b"[") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("domain literal must start with a '['"))
-        }
-
+    pub fn take_domain_literal(input: &[u8]) -> Res<String> {
+        let (input, _cfws) = optional(input, take_cfws);
+        let (mut input, ()) = tag(input, b"[")?;
         let mut output = String::Reference(&[]);
         loop {
-            let (new_input, fws) = take_fws(input).unwrap_or((input, String::Reference(&[])));
+            let (new_input, _fws) = optional(input, take_fws);
             if let Ok((new_input, text)) = take_while1(new_input, is_dtext) {
                 input = new_input;
                 //output += fws; should it be added?
@@ -831,32 +777,14 @@ pub mod address {
                 break;
             }
         }
-
-        if let Ok((new_input, _fws)) = take_fws(input) {
-            input = new_input;
-        }
-
-        if input.starts_with(b"]") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("domain literal must end with a ']'"))
-        }
-
-        if let Ok((new_input, _cfws)) = take_cfws(input) {
-            input = new_input;
-        }
-
+        let (input, _fws) = optional(input, take_fws);
+        let (input, ()) = tag(input, b"]")?;
+        let (input, _cfws) = optional(input, take_cfws);
         Ok((input, output))
     }
 
     pub fn take_mailbox(input: &[u8]) -> Res<Mailbox> {
-        if let Ok((input, mailbox)) = take_name_addr(input) {
-            Ok((input, mailbox))
-        } else if let Ok((input, mailbox)) = take_addr_spec(input) {
-            Ok((input, (None, mailbox)))
-        } else {
-            Err(Error::Known("mailbox is not a name_addr not an addr_spec"))
-        }
+        match_parsers(input, &mut [take_name_addr, (|input| take_addr_spec(input).map(|(i, m)| (i, (None, m)))) as fn(input: &[u8]) -> Res<Mailbox>][..])
     }
 
     pub fn take_mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
@@ -873,13 +801,8 @@ pub mod address {
     }
 
     pub fn take_group(input: &[u8]) -> Res<(Vec<String>, Vec<Mailbox>)> {
-        let (mut input, display_name) = take_phrase(input)?;
-
-        if input.starts_with(b":") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("Expected : after display_name in group"));
-        }
+        let (input, display_name) = take_phrase(input)?;
+        let (mut input, ()) = tag(input, b":")?;
 
         let group_list = if let Ok((new_input, mailbox_list)) = take_mailbox_list(input) {
             input = new_input;
@@ -891,16 +814,8 @@ pub mod address {
             Vec::new()
         };
 
-        if input.starts_with(b";") {
-            input = &input[1..];
-        } else {
-            return Err(Error::Known("Expected ; after group_list in group"));
-        }
-
-        if let Ok((new_input, _cfws)) = take_cfws(input) {
-            input = new_input
-        }
-
+        let (input, ()) = tag(input, b";")?;
+        let (input, _cfws) = optional(input, take_cfws);
         Ok((input, (display_name, group_list)))
     }
 
