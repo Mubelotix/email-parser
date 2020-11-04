@@ -1063,6 +1063,36 @@ pub mod fields {
 
         Ok((input, mailbox))
     }
+    
+    pub fn take_to(input: &[u8]) -> Res<Vec<Address>> {
+        let (input, ()) = tag_no_case(input, b"To:", b"tO:")?;
+        let (input, mailbox) = take_address_list(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, mailbox))
+    }
+
+    pub fn take_cc(input: &[u8]) -> Res<Vec<Address>> {
+        let (input, ()) = tag_no_case(input, b"Cc:", b"cC:")?;
+        let (input, mailbox) = take_address_list(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, mailbox))
+    }
+
+    pub fn take_bcc(input: &[u8]) -> Res<Vec<Address>> {
+        let (input, ()) = tag_no_case(input, b"Bcc:", b"bCC:")?;
+        let (input, mailbox) = if let Ok((input, list)) = take_address_list(input) {
+            (input, list)
+        } else if let Ok((input, _cfws)) = take_cfws(input) {
+            (input, Vec::new())
+        } else {
+            return Err(Error::Known("Invalid bcc field"));
+        };
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, mailbox))
+    }
 
     #[cfg(test)]
     mod tests {
@@ -1078,6 +1108,14 @@ pub mod fields {
             assert_eq!(take_from(b"FrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1[0].1.0, "mubelotix");
             assert_eq!(take_sender(b"sender: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.1.1, "gmail.com");
             assert_eq!(take_reply_to(b"Reply-to: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.len(), 1);
+        }
+
+        #[test]
+        fn test_destination() {
+            assert!(!take_to(b"To: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.is_empty());
+            assert!(!take_cc(b"Cc: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.is_empty());
+            assert!(!take_bcc(b"Bcc: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.is_empty());
+            assert!(take_bcc(b"Bcc: \r\n \r\n").unwrap().1.is_empty());
         }
     }
 }
