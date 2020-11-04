@@ -1030,7 +1030,7 @@ pub mod address {
 }
 
 pub mod fields {
-    use super::{character_groups::*, combinators::*, date::*, whitespaces::*, Error, String, *};
+    use super::{character_groups::*, combinators::*, date::*, whitespaces::*, Error, String, *, address::*};
 
     pub fn take_date(input: &[u8]) -> Res<(Option<Day>, date::Date, Time)> {
         let (input, ()) = tag_no_case(input, b"Date:", b"dATE:")?;
@@ -1040,6 +1040,14 @@ pub mod fields {
         Ok((input, date_time))
     }
 
+    pub fn take_from(input: &[u8]) -> Res<Vec<(Option<Vec<String>>, (String, String))>> {
+        let (input, ()) = tag_no_case(input, b"From:", b"fROM:")?;
+        let (input, mailbox_list) = take_mailbox_list(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, mailbox_list))
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1047,6 +1055,11 @@ pub mod fields {
         #[test]
         fn test_date() {
             assert_eq!(take_date(b"Date:5 May 2003 18:59:03 +0000\r\n").unwrap().1, (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0))));
+        }
+
+        #[test]
+        fn test_from() {
+            assert_eq!(take_from(b"FrOm: Mubelotix <mubelotix@gmaiL.com>\r\n").unwrap().1[0].1.0, "mubelotix");
         }
     }
 }
