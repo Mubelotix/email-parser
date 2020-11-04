@@ -815,7 +815,7 @@ pub mod date {
 pub mod address {
     use super::{character_groups::*, combinators::*, whitespaces::*, Error, String, *};
 
-    type Mailbox<'a> = (Option<Vec<String<'a>>>, (String<'a>, String<'a>));
+    pub type Mailbox<'a> = (Option<Vec<String<'a>>>, (String<'a>, String<'a>));
 
     pub enum Address<'a> {
         Mailbox(Mailbox<'a>),
@@ -1048,6 +1048,14 @@ pub mod fields {
         Ok((input, mailbox_list))
     }
 
+    pub fn take_sender(input: &[u8]) -> Res<Mailbox> {
+        let (input, ()) = tag_no_case(input, b"Sender:", b"sENDER:")?;
+        let (input, mailbox) = take_mailbox(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, mailbox))
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1058,8 +1066,9 @@ pub mod fields {
         }
 
         #[test]
-        fn test_from() {
+        fn test_originators() {
             assert_eq!(take_from(b"FrOm: Mubelotix <mubelotix@gmaiL.com>\r\n").unwrap().1[0].1.0, "mubelotix");
+            assert_eq!(take_sender(b"sender: Mubelotix <mubelotix@gmaiL.com>\r\n").unwrap().1.1.0, "mubelotix");
         }
     }
 }
