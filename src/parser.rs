@@ -5,14 +5,12 @@ use nom::sequence::tuple;
 use nom::IResult;
 
 fn is_ftext(character: u8) -> bool {
-    character >= 33 && character <= 57 || character >= 59 && character <= 126
+    character >= 33 && character != 58 && character <= 126
 }
 
 fn is_text(character: u8) -> bool {
-    character >= 1 && character <= 9
-        || character >= 14 && character <= 127
-        || character == 11
-        || character == 12
+    character >= 1 && character <= 127 &&
+    character != 10 && character != 13
 }
 
 fn unstructured_header_value(data: &[u8]) -> IResult<&[u8], Vec<u8>> {
