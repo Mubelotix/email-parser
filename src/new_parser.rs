@@ -149,6 +149,34 @@ where
     Err(Error::Known("No match arm is matching the data"))
 }
 
+pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<String>
+where
+    F: FnMut(u8) -> bool,
+{
+    for i in 0..input.len() {
+        if !condition(input[i]) {
+            return Ok((&input[i..], String::Reference(&input[..i])))
+        }
+    }
+    Ok((&[], String::Reference(input)))
+}
+
+pub fn take_many1<'a, T, F>(input: &'a [u8], mut parser: F) -> Res<Vec<T>>
+where
+    F: FnMut(&'a [u8]) -> Res<T>,
+{
+    let mut results = Vec::new();
+    let (mut input, first_result) = parser(input)?;
+    results.push(first_result);
+
+    while let Ok((new_input, new_result)) = parser(input) {
+        input = new_input;
+        results.push(new_result);
+    }
+
+    Ok((input, results))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -827,6 +855,25 @@ pub mod address {
         (c >= 33 && c <= 90) || (c >= 94 && c <= 126)
     }
 
+    pub fn take_message_id(input: &[u8]) -> Res<(String, String)> {
+        fn take_no_fold_litteral(input: &[u8]) -> Res<String> {
+            let (input, ()) = tag(input, b"[")?;
+            let (input, domain) = take_while(input, is_dtext)?;
+            let (input, ()) = tag(input, b"]")?;
+            Ok((input, domain))
+        }
+
+        let (input, _cfws) = optional(input, take_cfws);
+        let (input, ()) = tag(input, b"<")?;
+        let (input, id_left) = take_dot_atom_text(input)?;
+        let (input, ()) = tag(input, b"@")?;
+        let (input, id_right) = match_parsers(input, &mut [take_dot_atom_text, take_no_fold_litteral][..])?;
+        let (input, ()) = tag(input, b">")?;
+        let (input, _cfws) = optional(input, take_cfws);
+
+        Ok((input, (id_left, id_right)))
+    }
+
     pub fn take_addr_spec(input: &[u8]) -> Res<(String, String)> {
         let (input, local_part) = take_local_part(input)?;
         let (input, ()) = tag(input, b"@")?;
@@ -949,6 +996,13 @@ pub mod address {
                 take_local_part(b"\"mubelotix\\ the\\ admin\"").unwrap().1,
                 "mubelotix the admin"
             );
+        }
+
+        #[test]
+        fn test_message_id() {
+            assert_eq!(take_message_id(b"<idleft@idright>").unwrap().1.0, "idleft");
+            assert_eq!(take_message_id(b"<idleft@idright>").unwrap().1.1, "idright");
+            assert_eq!(take_message_id(b"<idleft@[idright]>").unwrap().1.1, "idright");
         }
 
         #[test]
@@ -1094,6 +1148,30 @@ pub mod fields {
         Ok((input, mailbox))
     }
 
+    pub fn take_message_id(input: &[u8]) -> Res<(String, String)> {
+        let (input, ()) = tag_no_case(input, b"Message-ID:", b"mESSAGE-id:")?;
+        let (input, id) = address::take_message_id(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, id))
+    }
+
+    pub fn take_in_reply_to(input: &[u8]) -> Res<Vec<(String, String)>> {
+        let (input, ()) = tag_no_case(input, b"In-Reply-To:", b"iN-rEPLY-tO:")?;
+        let (input, ids) = take_many1(input, address::take_message_id)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, ids))
+    }
+
+    pub fn take_references(input: &[u8]) -> Res<Vec<(String, String)>> {
+        let (input, ()) = tag_no_case(input, b"References:", b"rEFERENCES:")?;
+        let (input, ids) = take_many1(input, address::take_message_id)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, ids))
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1116,6 +1194,16 @@ pub mod fields {
             assert!(!take_cc(b"Cc: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.is_empty());
             assert!(!take_bcc(b"Bcc: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.is_empty());
             assert!(take_bcc(b"Bcc: \r\n \r\n").unwrap().1.is_empty());
+        }
+
+        #[test]
+        fn test_ids() {
+            assert_eq!(take_message_id(b"Message-ID:<556100154@gmail.com>\r\n").unwrap().1.0, "556100154");
+            assert_eq!(take_message_id(b"Message-ID:<556100154@gmail.com>\r\n").unwrap().1.1, "gmail.com");
+
+            assert_eq!(take_references(b"References:<qzdzdq@qdz.com><dzdzjd@zdzdj.dz>\r\n").unwrap().1.len(), 2);
+            
+            assert_eq!(take_in_reply_to(b"In-Reply-To:<eefes@qzd.fr><52@s.dz><adzd@zd.d>\r\n").unwrap().1.len(), 3);
         }
     }
 }
