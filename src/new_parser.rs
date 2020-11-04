@@ -161,6 +161,26 @@ where
     Ok((&[], String::Reference(input)))
 }
 
+pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<String>
+where
+    F: FnMut(u8) -> bool,
+{
+    if let Some(character) = input.get(0) {
+        if !condition(*character) {
+            return Err(Error::Known("Expected at least one character matching"))
+        }
+    } else {
+        return Err(Error::Known("Expected at least one character matching, but there is no character"))
+    }
+
+    for i in 1..input.len() {
+        if !condition(input[i]) {
+            return Ok((&input[i..], String::Reference(&input[..i])))
+        }
+    }
+    Ok((&[], String::Reference(input)))
+}
+
 pub fn take_many1<'a, T, F>(input: &'a [u8], mut parser: F) -> Res<Vec<T>>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
@@ -175,6 +195,42 @@ where
     }
 
     Ok((input, results))
+}
+
+pub fn collect_many<'a, F>(mut input: &'a [u8], mut parser: F) -> Res<String>
+where
+    F: FnMut(&'a [u8]) -> Res<String>,
+{
+    let mut result = String::Reference(&[]);
+    
+    while let Ok((new_input, new_result)) = parser(input) {
+        input = new_input;
+        result += new_result;
+    }
+
+    Ok((input, result))
+}
+
+pub fn take_pair<'a, T, U, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<(U, T)>
+where
+    F: FnMut(&'a [u8]) -> Res<U>,
+    G: FnMut(&'a [u8]) -> Res<T>,
+{
+    let (input, first) = parser1(input)?;
+    let (input, second) = parser2(input)?;
+
+    Ok((input, (first, second)))
+}
+
+pub fn collect_pair<'a, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<String>
+where
+    F: FnMut(&'a [u8]) -> Res<String>,
+    G: FnMut(&'a [u8]) -> Res<String>,
+{
+    let (input, first) = parser1(input)?;
+    let (input, second) = parser2(input)?;
+
+    Ok((input, first + second))
 }
 
 #[cfg(test)]
@@ -198,6 +254,12 @@ mod tests {
     fn test_optional() {
         assert!(optional(b"abcdef", |input| tag(input, b"efg")).1.is_none());
         assert!(optional(b"abcdef", |input| tag(input, b"abc")).1.is_some());
+    }
+
+    #[test]
+    fn test_take_while() {
+        assert_eq!(take_while(b"     abc", is_wsp).unwrap().1.len(), 5);
+        assert_eq!(take_while(b"abc", is_wsp).unwrap().1.len(), 0);
     }
 
     #[test]
@@ -225,7 +287,7 @@ pub mod combinators {
         }
     }
 
-    pub fn inc_while1<F>(input: &[u8], idx: &mut usize, mut condition: F) -> Result<(), ()>
+    pub(crate) fn inc_while1<F>(input: &[u8], idx: &mut usize, mut condition: F) -> Result<(), ()>
     where
         F: FnMut(u8) -> bool,
     {
@@ -245,15 +307,6 @@ pub mod combinators {
             }
         }
         Ok(())
-    }
-
-    pub fn take_while1<F>(input: &[u8], condition: F) -> Result<(&[u8], String), ()>
-    where
-        F: FnMut(u8) -> bool,
-    {
-        let mut idx = 0;
-        inc_while1(input, &mut idx, condition)?;
-        Ok((&input[idx..], String::Reference(&input[..idx])))
     }
 
     pub fn take_prefixed<'a, 'b, T, F>(
@@ -449,10 +502,14 @@ pub mod whitespaces {
     }
 
     pub fn take_fws(input: &[u8]) -> Res<String> {
-        let mut idx = 0;
-        inc_fws(input, &mut idx)?;
+        let (input, before) = optional(input, |input| take_pair(input, |input| take_while(input, is_wsp), |input| tag(input, b"\r\n")));
+        let (input, after) = take_while1(input, is_wsp)?;
 
-        Ok((&input[idx..], String::Reference(&input[..idx])))
+        if let Some((before, _crlf)) = before {
+            Ok((input, before + after))
+        } else {
+            Ok((input, after))
+        }
     }
 
     fn inc_ccontent(input: &[u8], idx: &mut usize) -> Result<(), Error> {
@@ -505,7 +562,7 @@ pub mod whitespaces {
         fn test_fws() {
             assert_eq!(take_fws(b"   test").unwrap().1, "   ");
             assert_eq!(take_fws(b" test").unwrap().1, " ");
-            assert_eq!(take_fws(b"   \r\n  test").unwrap().1, "   \r\n  ");
+            assert_eq!(take_fws(b"   \r\n  test").unwrap().1, "     ");
 
             assert!(take_fws(b"  \r\ntest").is_err());
             assert!(take_fws(b"\r\ntest").is_err());
@@ -656,7 +713,7 @@ pub mod date {
         let (input, _) = take_fws(input)?;
 
         let (input, year) =
-            take_while1(input, is_digit).map_err(|()| Error::Known("no digit in year"))?;
+            take_while1(input, is_digit).map_err(|_e| Error::Known("no digit in year"))?;
         if year.len() < 4 {
             return Err(Error::Known("year is expected to have 4 digits or more"));
         }
@@ -1402,24 +1459,13 @@ pub fn take_phrase(input: &[u8]) -> Result<(&[u8], Vec<String>), Error> {
     Ok((input, words))
 }
 
-pub fn take_unstructured(mut input: &[u8]) -> Result<(&[u8], String), Error> {
-    let mut output = String::Reference(&[]);
-
-    loop {
-        let (new_input, fws) = if let Ok((new_input, fws)) = take_fws(input) {
-            (new_input, fws)
-        } else {
-            (input, String::Reference(&[]))
-        };
-
-        if let Ok((new_input, characters)) = take_while1(new_input, is_vchar) {
-            output += fws;
-            output += characters;
-            input = new_input;
-        } else {
-            break;
-        };
-    }
+pub fn take_unstructured(input: &[u8]) -> Result<(&[u8], String), Error> {
+    let (mut input, output) = collect_many(input, |i| 
+        collect_pair(i, 
+            |i| Ok(take_fws(i).unwrap_or((i, String::Reference(&[])))), 
+            |i| take_while1(i, is_vchar)
+        )
+    )?;
 
     while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
         input = new_input;
@@ -1443,7 +1489,7 @@ fn test_unstructured() {
         take_unstructured(b"the quick brown fox jumps\r\n over the lazy dog   ")
             .unwrap()
             .1,
-        "the quick brown fox jumps\r\n over the lazy dog"
+        "the quick brown fox jumps over the lazy dog"
     );
 }
 
