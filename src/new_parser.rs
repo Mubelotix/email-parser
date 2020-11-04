@@ -1229,6 +1229,39 @@ pub mod fields {
         Ok((input, ids))
     }
 
+    pub fn take_subject(input: &[u8]) -> Res<String> {
+        let (input, ()) = tag_no_case(input, b"Subject:", b"sUBJECT:")?;
+        let (input, subject) = take_unstructured(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, subject))
+    }
+
+    pub fn take_comments(input: &[u8]) -> Res<String> {
+        let (input, ()) = tag_no_case(input, b"Comments:", b"cOMMENTS:")?;
+        let (input, comments) = take_unstructured(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, comments))
+    }
+
+    pub fn take_keywords(input: &[u8]) -> Res<Vec<Vec<String>>> {
+        let (input, ()) = tag_no_case(input, b"Keywords:", b"kEYWORDS:")?;
+
+        let mut keywords = Vec::new();
+        let (mut input, first_keyword) = take_phrase(input)?;
+        keywords.push(first_keyword);
+
+        while let Ok((new_input, new_keyword)) = take_prefixed(input, take_phrase, ",") {
+            input = new_input;
+            keywords.push(new_keyword);
+        }
+
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, keywords))
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1261,6 +1294,16 @@ pub mod fields {
             assert_eq!(take_references(b"References:<qzdzdq@qdz.com><dzdzjd@zdzdj.dz>\r\n").unwrap().1.len(), 2);
             
             assert_eq!(take_in_reply_to(b"In-Reply-To:<eefes@qzd.fr><52@s.dz><adzd@zd.d>\r\n").unwrap().1.len(), 3);
+        }
+
+        #[test]
+        fn test_informational() {
+            assert_eq!(take_subject(b"Subject:French school is boring\r\n").unwrap().1, "French school is boring");
+            assert_eq!(take_subject(b"Subject:Folding\r\n is slow\r\n").unwrap().1, "Folding is slow");
+            
+            assert_eq!(take_comments(b"Comments:Rust is great\r\n").unwrap().1, "Rust is great");
+
+            assert_eq!(take_keywords(b"Keywords:rust parser fast zero copy,email rfc5322\r\n").unwrap().1.len(), 2);
         }
     }
 }
