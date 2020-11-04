@@ -1032,16 +1032,30 @@ pub mod address {
 pub mod fields {
     use super::{character_groups::*, combinators::*, date::*, whitespaces::*, Error, String, *};
 
+    #[derive(Debug, PartialEq)]
     pub struct Date {
         pub date_time: (Option<Day>, date::Date, Time),
     }
 
-    pub fn take_date(input: &[u8]) -> Result<(&[u8], Date), Error> {
-        todo!()
+    pub fn take_date(input: &[u8]) -> Res<Date> {
+        let (input, ()) = tag_no_case(input, b"Date:", b"dATE:")?;
+        let (input, date_time) = take_date_time(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, Date {date_time}))
     }
 
     #[cfg(test)]
-    mod tests {}
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_date() {
+            assert_eq!(take_date(b"Date:5 May 2003 18:59:03 +0000\r\n").unwrap().1, super::Date {
+                date_time: (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0))),
+            });
+        }
+    }
 }
 
 use character_groups::*;
