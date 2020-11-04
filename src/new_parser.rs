@@ -1056,6 +1056,14 @@ pub mod fields {
         Ok((input, mailbox))
     }
 
+    pub fn take_reply_to(input: &[u8]) -> Res<Vec<Address>> {
+        let (input, ()) = tag_no_case(input, b"Reply-To:", b"rEPLY-tO:")?;
+        let (input, mailbox) = take_address_list(input)?;
+        let (input, ()) = tag(input, b"\r\n")?;
+
+        Ok((input, mailbox))
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1067,8 +1075,9 @@ pub mod fields {
 
         #[test]
         fn test_originators() {
-            assert_eq!(take_from(b"FrOm: Mubelotix <mubelotix@gmaiL.com>\r\n").unwrap().1[0].1.0, "mubelotix");
-            assert_eq!(take_sender(b"sender: Mubelotix <mubelotix@gmaiL.com>\r\n").unwrap().1.1.0, "mubelotix");
+            assert_eq!(take_from(b"FrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1[0].1.0, "mubelotix");
+            assert_eq!(take_sender(b"sender: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.1.1, "gmail.com");
+            assert_eq!(take_reply_to(b"Reply-to: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.len(), 1);
         }
     }
 }
