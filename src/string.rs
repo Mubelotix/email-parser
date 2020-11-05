@@ -32,6 +32,16 @@ impl<'a> String<'a> {
             Self::Owned(s) => s.len(),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl<'a> Default for String<'a> {
+    fn default() -> Self {
+        String::new()
+    }
 }
 
 impl<'a> std::ops::Add for String<'a> {

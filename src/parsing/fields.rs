@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::time::*;
+use crate::parsing::time::*;
 
 pub fn take_date(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
     let (input, ()) = tag_no_case(input, b"Date:", b"dATE:")?;
@@ -65,7 +65,7 @@ pub fn take_bcc(input: &[u8]) -> Res<Vec<Address>> {
 
 pub fn take_message_id(input: &[u8]) -> Res<(String, String)> {
     let (input, ()) = tag_no_case(input, b"Message-ID:", b"mESSAGE-id:")?;
-    let (input, id) = crate::address::take_message_id(input)?;
+    let (input, id) = crate::parsing::address::take_message_id(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, id))
@@ -73,7 +73,7 @@ pub fn take_message_id(input: &[u8]) -> Res<(String, String)> {
 
 pub fn take_in_reply_to(input: &[u8]) -> Res<Vec<(String, String)>> {
     let (input, ()) = tag_no_case(input, b"In-Reply-To:", b"iN-rEPLY-tO:")?;
-    let (input, ids) = take_many1(input, crate::address::take_message_id)?;
+    let (input, ids) = take_many1(input, crate::parsing::address::take_message_id)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, ids))
@@ -81,7 +81,7 @@ pub fn take_in_reply_to(input: &[u8]) -> Res<Vec<(String, String)>> {
 
 pub fn take_references(input: &[u8]) -> Res<Vec<(String, String)>> {
     let (input, ()) = tag_no_case(input, b"References:", b"rEFERENCES:")?;
-    let (input, ids) = take_many1(input, crate::address::take_message_id)?;
+    let (input, ids) = take_many1(input, crate::parsing::address::take_message_id)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, ids))

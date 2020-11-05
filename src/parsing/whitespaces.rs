@@ -49,7 +49,7 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
         let mut output = String::new();
 
         let (new_input, fws) = optional(input, take_fws);
-        if let Ok((new_input, comment)) = take_comment(new_input) {
+        if let Ok((new_input, _comment)) = take_comment(new_input) {
             input = new_input;
             if let Some(s) = fws {
                 output += s;
@@ -61,7 +61,7 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
         loop {
             let (new_input, fws) = optional(input, take_fws);
 
-            if let Ok((new_input, comment)) = take_comment(new_input) {
+            if let Ok((new_input, _comment)) = take_comment(new_input) {
                 input = new_input;
                 if let Some(s) = fws {
                     output += s;
