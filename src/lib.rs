@@ -14,12 +14,14 @@
 //! Run the benchmark by yourself with `rustup run nightly cargo bench`.  
 //! Tests require a `mail.txt` file containing a raw mail next to the `Cargo.toml`.
 
-pub mod new_parser;
 pub mod string;
+pub mod prelude;
+pub mod error;
 pub(crate) mod combinators;
 pub(crate) mod character_sets;
 pub(crate) mod whitespaces;
 pub(crate) mod time;
+pub(crate) mod common;
 pub(crate) mod quoted_string;
-pub mod prelude;
-pub mod error;
+pub(crate) mod address;
+pub(crate) mod fields;
