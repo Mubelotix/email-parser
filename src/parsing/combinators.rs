@@ -14,6 +14,7 @@ pub(crate) fn tag_no_case<'a>(
     expected2: &'static [u8],
 ) -> Res<'a, ()> {
     debug_assert_eq!(expected.len(), expected2.len());
+    // TODO case check
 
     if input.len() < expected.len() {
         return Err(Error::Known(

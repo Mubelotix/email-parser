@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::parsing::time::*;
+use crate::prelude::*;
 
 pub fn take_date(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
     let (input, ()) = tag_no_case(input, b"Date:", b"dATE:")?;
@@ -120,9 +120,81 @@ pub fn take_keywords(input: &[u8]) -> Res<Vec<Vec<String>>> {
     Ok((input, keywords))
 }
 
+pub fn take_resent_date(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, date) = take_date(input)?;
+
+    Ok((input, date))
+}
+
+pub fn take_resent_from(input: &[u8]) -> Res<Vec<(Option<Vec<String>>, (String, String))>> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, from) = take_from(input)?;
+
+    Ok((input, from))
+}
+
+pub fn take_resent_sender(input: &[u8]) -> Res<Mailbox> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, sender) = take_sender(input)?;
+
+    Ok((input, sender))
+}
+
+pub fn take_resent_to(input: &[u8]) -> Res<Vec<Address>> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, to) = take_to(input)?;
+
+    Ok((input, to))
+}
+
+pub fn take_resent_cc(input: &[u8]) -> Res<Vec<Address>> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, cc) = take_cc(input)?;
+
+    Ok((input, cc))
+}
+
+pub fn take_resent_bcc(input: &[u8]) -> Res<Vec<Address>> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, bcc) = take_bcc(input)?;
+
+    Ok((input, bcc))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_resent() {
+        assert_eq!(
+            take_resent_date(b"Resent-Date:5 May 2003 18:59:03 +0000\r\n")
+                .unwrap()
+                .1,
+            (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0)))
+        );
+        assert_eq!(take_resent_from(b"Resent-FrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1[0].1.0, "mubelotix");
+        assert_eq!(take_resent_sender(b"Resent-sender: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.1.1, "gmail.com");
+        assert!(
+            !take_resent_to(b"Resent-To: Mubelotix <mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1
+                .is_empty()
+        );
+        assert!(
+            !take_resent_cc(b"Resent-Cc: Mubelotix <mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1
+                .is_empty()
+        );
+        assert!(
+            !take_resent_bcc(b"Resent-Bcc: Mubelotix <mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1
+                .is_empty()
+        );
+    }
 
     #[test]
     fn test_date() {
