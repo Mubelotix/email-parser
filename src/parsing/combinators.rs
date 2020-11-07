@@ -61,7 +61,7 @@ where
 {
     for i in 0..input.len() {
         if !condition(input[i]) {
-            return Ok((&input[i..], String::Reference(&input[..i])))
+            return Ok((&input[i..], String::Reference(&input[..i])));
         }
     }
     Ok((&[], String::Reference(input)))
@@ -73,15 +73,17 @@ where
 {
     if let Some(character) = input.get(0) {
         if !condition(*character) {
-            return Err(Error::Known("Expected at least one character matching"))
+            return Err(Error::Known("Expected at least one character matching"));
         }
     } else {
-        return Err(Error::Known("Expected at least one character matching, but there is no character"))
+        return Err(Error::Known(
+            "Expected at least one character matching, but there is no character",
+        ));
     }
 
     for i in 1..input.len() {
         if !condition(input[i]) {
-            return Ok((&input[i..], String::Reference(&input[..i])))
+            return Ok((&input[i..], String::Reference(&input[..i])));
         }
     }
     Ok((&[], String::Reference(input)))
@@ -103,7 +105,7 @@ where
     F: FnMut(&'a [u8]) -> Res<T>,
 {
     let mut results = Vec::new();
-    
+
     while let Ok((new_input, new_result)) = parser(input) {
         input = new_input;
         results.push(new_result);
@@ -133,7 +135,7 @@ where
     F: FnMut(&'a [u8]) -> Res<String>,
 {
     let mut result = String::Reference(&[]);
-    
+
     while let Ok((new_input, new_result)) = parser(input) {
         input = new_input;
         result += new_result;

@@ -28,7 +28,7 @@ pub fn take_dot_atom_text(input: &[u8]) -> Result<(&[u8], String), Error> {
             break;
         }
     }
-    
+
     Ok((input, output))
 }
 
@@ -69,12 +69,13 @@ pub fn take_phrase(input: &[u8]) -> Result<(&[u8], Vec<String>), Error> {
 }
 
 pub fn take_unstructured(input: &[u8]) -> Result<(&[u8], String), Error> {
-    let (mut input, output) = collect_many(input, |i| 
-        collect_pair(i, 
-            |i| Ok(take_fws(i).unwrap_or((i, String::Reference(&[])))), 
-            |i| take_while1(i, is_vchar)
+    let (mut input, output) = collect_many(input, |i| {
+        collect_pair(
+            i,
+            |i| Ok(take_fws(i).unwrap_or((i, String::Reference(&[])))),
+            |i| take_while1(i, is_vchar),
         )
-    )?;
+    })?;
 
     while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
         input = new_input;

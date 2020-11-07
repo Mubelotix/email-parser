@@ -51,7 +51,7 @@ pub fn take_angle_addr(input: &[u8]) -> Res<(String, String)> {
 pub fn take_name_addr(input: &[u8]) -> Res<Mailbox> {
     let (input, display_name) = optional(input, take_phrase);
     let (input, angle_addr) = take_angle_addr(input)?;
-    
+
     Ok((input, (display_name, angle_addr)))
 }
 

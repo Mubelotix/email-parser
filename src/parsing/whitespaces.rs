@@ -31,15 +31,12 @@ pub fn take_ccontent(input: &[u8]) -> Res<String> {
 pub fn take_comment(input: &[u8]) -> Res<String> {
     let (input, ()) = tag(input, b"(")?;
 
-    let (input, _) = ignore_many(input, |input| take_pair(
-        input,
-        |i| Ok(optional(i, take_fws)),
-        take_ccontent,
-    ))?;
+    let (input, _) = ignore_many(input, |input| {
+        take_pair(input, |i| Ok(optional(i, take_fws)), take_ccontent)
+    })?;
 
     let (input, _) = optional(input, take_fws);
     let (input, ()) = tag(input, b")")?;
-
 
     Ok((input, String::new()))
 }
@@ -55,7 +52,7 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
                 output += s;
             }
         } else {
-            return Err(Error::Known("Expected at least one comment"))
+            return Err(Error::Known("Expected at least one comment"));
         }
 
         loop {
@@ -78,7 +75,7 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
 
         Ok((input, output))
     }
-    
+
     match_parsers(input, &mut [take_real_cfws, take_fws][..])
 }
 
@@ -106,8 +103,17 @@ mod test {
     #[test]
     fn test_comment() {
         assert_eq!(take_comment(b"(this is a comment)").unwrap().0.len(), 0);
-        assert_eq!(take_comment(b"(a comment) and a value").unwrap().0.len(), 12);
-        assert_eq!(take_comment(b"(this is a comment (and another comment)) and a value").unwrap().0.len(), 12);
+        assert_eq!(
+            take_comment(b"(a comment) and a value").unwrap().0.len(),
+            12
+        );
+        assert_eq!(
+            take_comment(b"(this is a comment (and another comment)) and a value")
+                .unwrap()
+                .0
+                .len(),
+            12
+        );
 
         assert!(take_comment(b"a value").is_err());
         assert!(take_comment(b"(unclosed comment").is_err());
@@ -115,15 +121,18 @@ mod test {
 
     #[test]
     fn test_cfws() {
-        assert_eq!(take_cfws(
-            b"  (this is a comment)\r\n (this is a second comment)  value"
-        )
-        .unwrap().1, "     ");
+        assert_eq!(
+            take_cfws(b"  (this is a comment)\r\n (this is a second comment)  value")
+                .unwrap()
+                .1,
+            "     "
+        );
 
-        assert_eq!(take_cfws(
-            b"  (this is a comment)\r\n (this is a second comment)\r\n  value"
-        )
-        .unwrap().1, "     ");
+        assert_eq!(
+            take_cfws(b"  (this is a comment)\r\n (this is a second comment)\r\n  value")
+                .unwrap()
+                .1,
+            "     "
+        );
     }
 }
-    

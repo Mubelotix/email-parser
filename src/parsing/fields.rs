@@ -200,7 +200,7 @@ pub fn take_received(input: &[u8]) -> Res<(Vec<ReceivedToken>, (Option<Day>, Dat
         if let Ok((word_input, word)) = take_word(input) {
             if let Ok((domain_input, domain)) = take_domain(input) {
                 if domain.len() > word.len() {
-                    return Ok((domain_input, ReceivedToken::Domain(domain)))
+                    return Ok((domain_input, ReceivedToken::Domain(domain)));
                 }
             }
             Ok((word_input, ReceivedToken::Word(word)))
@@ -221,7 +221,12 @@ pub fn take_received(input: &[u8]) -> Res<(Vec<ReceivedToken>, (Option<Day>, Dat
     Ok((input, (received_tokens, date_time)))
 }
 
-pub fn take_trace(input: &[u8]) -> Res<(Option<Option<(String, String)>>, Vec<(Vec<ReceivedToken>, (Option<Day>, Date, Time))>)> {
+pub fn take_trace(
+    input: &[u8],
+) -> Res<(
+    Option<Option<(String, String)>>,
+    Vec<(Vec<ReceivedToken>, (Option<Day>, Date, Time))>,
+)> {
     let (input, return_path) = optional(input, take_return_path);
     let (input, received) = take_many1(input, take_received)?;
 
@@ -250,7 +255,14 @@ mod tests {
     #[test]
     fn test_trace() {
         assert!(take_return_path(b"Return-Path:<>\r\n").unwrap().1.is_none());
-        assert_eq!(take_return_path(b"Return-Path:<mubelotix@gmail.com>\r\n").unwrap().1.unwrap().0, "mubelotix");
+        assert_eq!(
+            take_return_path(b"Return-Path:<mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1
+                .unwrap()
+                .0,
+            "mubelotix"
+        );
 
         assert!(matches!(take_received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[0], ReceivedToken::Word(_)));
         assert!(matches!(take_received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[1], ReceivedToken::Addr(_)));
