@@ -1,7 +1,100 @@
 use crate::parsing::time::*;
 use crate::prelude::*;
 
-pub fn take_date(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
+pub enum TraceField<'a> {
+    Date(DateTime),
+    From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
+    Sender(Mailbox<'a>),
+    To(Vec<Address<'a>>),
+    Cc(Vec<Address<'a>>),
+    Bcc(Vec<Address<'a>>),
+    MessageId((String<'a>, String<'a>)),
+}
+
+pub enum Field<'a> {
+    Date(DateTime),
+    From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
+    Sender(Mailbox<'a>),
+    ReplyTo(Vec<Address<'a>>),
+    To(Vec<Address<'a>>),
+    Cc(Vec<Address<'a>>),
+    Bcc(Vec<Address<'a>>),
+    MessageId((String<'a>, String<'a>)),
+    InReplyTo(Vec<(String<'a>, String<'a>)>),
+    References(Vec<(String<'a>, String<'a>)>),
+    Subject(String<'a>),
+    Comments(String<'a>),
+    Keywords(Vec<Vec<String<'a>>>),
+    Trace {
+        return_path: Option<Option<(String<'a>, String<'a>)>>,
+        received: Vec<(Vec<ReceivedToken<'a>>, DateTime)>,
+        fields: Vec<TraceField<'a>>,
+    },
+    Unknown {
+        name: String<'a>,
+        value: String<'a>,
+    },
+}
+
+pub fn take_fields(mut input: &[u8]) -> Res<Vec<Field>> {
+    let mut fields: Vec<Field> = Vec::new();
+
+    while let Ok((new_input, trace)) = take_trace(input) {
+        input = new_input;
+        let mut trace_fields = Vec::new();
+
+        while let Ok((new_input, new_result)) = match_parsers(
+            input,
+            &mut [
+                |i| take_resent_date(i).map(|(i, v)| (i, TraceField::Date(v))),
+                |i| take_resent_from(i).map(|(i, v)| (i, TraceField::From(v))),
+                |i| take_resent_sender(i).map(|(i, v)| (i, TraceField::Sender(v))),
+                |i| take_resent_to(i).map(|(i, v)| (i, TraceField::To(v))),
+                |i| take_resent_cc(i).map(|(i, v)| (i, TraceField::Cc(v))),
+                |i| take_resent_bcc(i).map(|(i, v)| (i, TraceField::Bcc(v))),
+                |i| take_resent_message_id(i).map(|(i, v)| (i, TraceField::MessageId(v))),
+            ][..],
+        ) {
+            input = new_input;
+            trace_fields.push(new_result);
+        }
+
+        // TODO optional fields
+
+        fields.push(Field::Trace {
+            return_path: trace.0,
+            received: trace.1,
+            fields: trace_fields,
+        });
+    }
+
+    while let Ok((new_input, field)) = match_parsers(
+        input,
+        &mut [
+            |i| take_date(i).map(|(i, v)| (i, Field::Date(v))),
+            |i| take_from(i).map(|(i, v)| (i, Field::From(v))),
+            |i| take_sender(i).map(|(i, v)| (i, Field::Sender(v))),
+            |i| take_reply_to(i).map(|(i, v)| (i, Field::ReplyTo(v))),
+            |i| take_to(i).map(|(i, v)| (i, Field::To(v))),
+            |i| take_cc(i).map(|(i, v)| (i, Field::Cc(v))),
+            |i| take_bcc(i).map(|(i, v)| (i, Field::Bcc(v))),
+            |i| take_message_id(i).map(|(i, v)| (i, Field::MessageId(v))),
+            |i| take_in_reply_to(i).map(|(i, v)| (i, Field::InReplyTo(v))),
+            |i| take_references(i).map(|(i, v)| (i, Field::References(v))),
+            |i| take_subject(i).map(|(i, v)| (i, Field::Subject(v))),
+            |i| take_comments(i).map(|(i, v)| (i, Field::Comments(v))),
+            |i| take_keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
+            |i| take_unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),
+        ][..],
+    ) {
+        input = new_input;
+        fields.push(field);
+    }
+
+    Ok((input, fields))
+}
+
+pub fn take_date(input: &[u8]) -> Res<DateTime> {
     let (input, ()) = tag_no_case(input, b"Date:", b"dATE:")?;
     let (input, date_time) = take_date_time(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -120,7 +213,7 @@ pub fn take_keywords(input: &[u8]) -> Res<Vec<Vec<String>>> {
     Ok((input, keywords))
 }
 
-pub fn take_resent_date(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
+pub fn take_resent_date(input: &[u8]) -> Res<DateTime> {
     let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
     let (input, date) = take_date(input)?;
 
@@ -162,6 +255,13 @@ pub fn take_resent_bcc(input: &[u8]) -> Res<Vec<Address>> {
     Ok((input, bcc))
 }
 
+pub fn take_resent_message_id(input: &[u8]) -> Res<(String, String)> {
+    let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
+    let (input, id) = take_message_id(input)?;
+
+    Ok((input, id))
+}
+
 pub fn take_return_path(input: &[u8]) -> Res<Option<(String, String)>> {
     fn take_empty_path(input: &[u8]) -> Res<()> {
         let (input, _cfws) = optional(input, take_cfws);
@@ -194,7 +294,7 @@ pub enum ReceivedToken<'a> {
     Domain(String<'a>),
 }
 
-pub fn take_received(input: &[u8]) -> Res<(Vec<ReceivedToken>, (Option<Day>, Date, Time))> {
+pub fn take_received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
     let (input, ()) = tag_no_case(input, b"Received:", b"rECEIVED:")?;
     let (input, received_tokens) = take_many(input, |input| {
         if let Ok((word_input, word)) = take_word(input) {
@@ -225,7 +325,7 @@ pub fn take_trace(
     input: &[u8],
 ) -> Res<(
     Option<Option<(String, String)>>,
-    Vec<(Vec<ReceivedToken>, (Option<Day>, Date, Time))>,
+    Vec<(Vec<ReceivedToken>, DateTime)>,
 )> {
     let (input, return_path) = optional(input, take_return_path);
     let (input, received) = take_many1(input, take_received)?;
@@ -245,6 +345,11 @@ pub fn take_unknown(input: &[u8]) -> Res<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_fields() {
+        assert!(take_fields(b"To: Mubelotix <mubelotix@gmail.com>\r\nFrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().0.is_empty());
+    }
 
     #[test]
     fn test_unknown_field() {

@@ -3,6 +3,7 @@ use crate::prelude::*;
 pub type Zone = (bool, u8, u8);
 pub type Time = ((u8, u8, u8), Zone);
 pub type Date = (usize, Month, usize);
+pub type DateTime = (Option<Day>, Date, Time);
 
 #[derive(Debug, PartialEq)]
 pub enum Day {
@@ -180,7 +181,7 @@ pub fn take_date(input: &[u8]) -> Res<Date> {
     Ok((input, (day, month, year)))
 }
 
-pub fn take_date_time(input: &[u8]) -> Res<(Option<Day>, Date, Time)> {
+pub fn take_date_time(input: &[u8]) -> Res<DateTime> {
     let (input, day) = optional(input, take_day_of_week);
     let (input, date) = take_date(input)?;
     let (input, time) = take_time(input)?;
