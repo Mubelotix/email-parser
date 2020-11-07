@@ -108,7 +108,7 @@ where
 }
 
 #[inline]
-pub fn take_many<'a, T, F>(mut input: &'a [u8], mut parser: F) -> Res<Vec<T>>
+pub fn many<'a, T, F>(mut input: &'a [u8], mut parser: F) -> Res<Vec<T>>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
 {
@@ -123,7 +123,7 @@ where
 }
 
 #[inline]
-pub fn take_many1<'a, T, F>(input: &'a [u8], mut parser: F) -> Res<Vec<T>>
+pub fn many1<'a, T, F>(input: &'a [u8], mut parser: F) -> Res<Vec<T>>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
 {
@@ -155,7 +155,7 @@ where
 }
 
 #[inline]
-pub fn take_pair<'a, T, U, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<(U, T)>
+pub fn pair<'a, T, U, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<(U, T)>
 where
     F: FnMut(&'a [u8]) -> Res<U>,
     G: FnMut(&'a [u8]) -> Res<T>,
@@ -179,7 +179,7 @@ where
 }
 
 #[inline]
-pub fn take_prefixed<'a, 'b, T, F>(
+pub fn prefixed<'a, 'b, T, F>(
     mut input: &'a [u8],
     mut parser: F,
     prefix: &'b str,

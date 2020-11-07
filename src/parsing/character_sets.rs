@@ -27,7 +27,7 @@ pub fn is_digit(c: u8) -> bool {
     c >= 0x30 && c <= 0x39
 }
 
-pub fn take_digit(input: &[u8]) -> Result<(&[u8], u8), Error> {
+pub fn digit(input: &[u8]) -> Result<(&[u8], u8), Error> {
     match input.get(0) {
         Some(b'0') => Ok((&input[1..], 0)),
         Some(b'1') => Ok((&input[1..], 1)),
@@ -43,9 +43,9 @@ pub fn take_digit(input: &[u8]) -> Result<(&[u8], u8), Error> {
     }
 }
 
-pub fn take_two_digits(input: &[u8]) -> Result<(&[u8], u8), Error> {
-    let (input, first) = take_digit(input)?;
-    let (input, second) = take_digit(input)?;
+pub fn two_digits(input: &[u8]) -> Result<(&[u8], u8), Error> {
+    let (input, first) = digit(input)?;
+    let (input, second) = digit(input)?;
 
     Ok((input, first * 10 + second))
 }

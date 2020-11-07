@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 #[inline]
-pub fn take_fws(input: &[u8]) -> Res<String> {
+pub fn fws(input: &[u8]) -> Res<String> {
     let (input, before) = optional(input, |input| {
-        take_pair(
+        pair(
             input,
             |input| take_while(input, is_wsp),
             |input| tag(input, b"\r\n"),
@@ -19,40 +19,40 @@ pub fn take_fws(input: &[u8]) -> Res<String> {
 }
 
 #[inline]
-pub fn take_ccontent(input: &[u8]) -> Res<String> {
+pub fn ccontent(input: &[u8]) -> Res<String> {
     match_parsers(
         input,
         &mut [
             (|i| take_while1(i, is_ctext)) as fn(input: &[u8]) -> Res<String>,
-            take_quoted_pair,
-            take_comment,
+            quoted_pair,
+            comment,
         ][..],
     )
 }
 
 #[inline]
-pub fn take_comment(input: &[u8]) -> Res<String> {
+pub fn comment(input: &[u8]) -> Res<String> {
     let (input, ()) = tag(input, b"(")?;
 
     let (input, _) = ignore_many(input, |input| {
-        take_pair(input, |i| Ok(optional(i, take_fws)), take_ccontent)
+        pair(input, |i| Ok(optional(i, fws)), ccontent)
     })?;
 
-    let (input, _) = optional(input, take_fws);
+    let (input, _) = optional(input, fws);
     let (input, ()) = tag(input, b")")?;
 
     Ok((input, String::new()))
 }
 
 #[inline]
-pub fn take_cfws(input: &[u8]) -> Res<String> {
-    fn take_real_cfws(mut input: &[u8]) -> Res<String> {
+pub fn cfws(input: &[u8]) -> Res<String> {
+    fn real_cfws(mut input: &[u8]) -> Res<String> {
         let mut output = String::new();
 
-        let (new_input, fws) = optional(input, take_fws);
-        if let Ok((new_input, _comment)) = take_comment(new_input) {
+        let (new_input, folding_wsp) = optional(input, fws);
+        if let Ok((new_input, _comment)) = comment(new_input) {
             input = new_input;
-            if let Some(s) = fws {
+            if let Some(s) = folding_wsp {
                 output += s;
             }
         } else {
@@ -60,11 +60,11 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
         }
 
         loop {
-            let (new_input, fws) = optional(input, take_fws);
+            let (new_input, folding_wsp) = optional(input, fws);
 
-            if let Ok((new_input, _comment)) = take_comment(new_input) {
+            if let Ok((new_input, _comment)) = comment(new_input) {
                 input = new_input;
-                if let Some(s) = fws {
+                if let Some(s) = folding_wsp {
                     output += s;
                 }
             } else {
@@ -72,7 +72,7 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
             }
         }
 
-        let (input, fws) = optional(input, take_fws);
+        let (input, fws) = optional(input, fws);
         if let Some(s) = fws {
             output += s;
         }
@@ -80,7 +80,7 @@ pub fn take_cfws(input: &[u8]) -> Res<String> {
         Ok((input, output))
     }
 
-    match_parsers(input, &mut [take_real_cfws, take_fws][..])
+    match_parsers(input, &mut [real_cfws, fws][..])
 }
 
 #[cfg(test)]
@@ -89,51 +89,51 @@ mod test {
 
     #[test]
     fn test_fws() {
-        assert_eq!(take_fws(b"   test").unwrap().1, "   ");
-        assert_eq!(take_fws(b" test").unwrap().1, " ");
-        assert_eq!(take_fws(b"   \r\n  test").unwrap().1, "     ");
+        assert_eq!(fws(b"   test").unwrap().1, "   ");
+        assert_eq!(fws(b" test").unwrap().1, " ");
+        assert_eq!(fws(b"   \r\n  test").unwrap().1, "     ");
 
-        assert!(take_fws(b"  \r\ntest").is_err());
-        assert!(take_fws(b"\r\ntest").is_err());
-        assert!(take_fws(b"test").is_err());
+        assert!(fws(b"  \r\ntest").is_err());
+        assert!(fws(b"\r\ntest").is_err());
+        assert!(fws(b"test").is_err());
     }
 
     #[test]
     fn test_ccontent() {
-        assert_eq!(take_ccontent(b"abcde").unwrap().1, "abcde");
-        assert_eq!(take_ccontent(b"ab)cde").unwrap().1, "ab");
+        assert_eq!(ccontent(b"abcde").unwrap().1, "abcde");
+        assert_eq!(ccontent(b"ab)cde").unwrap().1, "ab");
     }
 
     #[test]
     fn test_comment() {
-        assert_eq!(take_comment(b"(this is a comment)").unwrap().0.len(), 0);
+        assert_eq!(comment(b"(this is a comment)").unwrap().0.len(), 0);
         assert_eq!(
-            take_comment(b"(a comment) and a value").unwrap().0.len(),
+            comment(b"(a comment) and a value").unwrap().0.len(),
             12
         );
         assert_eq!(
-            take_comment(b"(this is a comment (and another comment)) and a value")
+            comment(b"(this is a comment (and another comment)) and a value")
                 .unwrap()
                 .0
                 .len(),
             12
         );
 
-        assert!(take_comment(b"a value").is_err());
-        assert!(take_comment(b"(unclosed comment").is_err());
+        assert!(comment(b"a value").is_err());
+        assert!(comment(b"(unclosed comment").is_err());
     }
 
     #[test]
     fn test_cfws() {
         assert_eq!(
-            take_cfws(b"  (this is a comment)\r\n (this is a second comment)  value")
+            cfws(b"  (this is a comment)\r\n (this is a second comment)  value")
                 .unwrap()
                 .1,
             "     "
         );
 
         assert_eq!(
-            take_cfws(b"  (this is a comment)\r\n (this is a second comment)\r\n  value")
+            cfws(b"  (this is a comment)\r\n (this is a second comment)\r\n  value")
                 .unwrap()
                 .1,
             "     "

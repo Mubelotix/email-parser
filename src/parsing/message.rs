@@ -1,7 +1,7 @@
 use crate::prelude::*;
-use crate::parsing::fields::{Field, take_fields};
+use crate::parsing::fields::{Field, fields};
 
-pub fn take_line(input: &[u8]) -> Res<String> {
+pub fn line(input: &[u8]) -> Res<String> {
     let max_idx = std::cmp::min(input.len(), 998);
 
     // index cannot be out of range so no need to check
@@ -37,7 +37,7 @@ pub fn check_line(input: &[u8]) -> Res<()> {
     }
 }
 
-pub fn take_body_lines(input: &[u8]) -> Result<Vec<String>, Error> {
+pub fn body_lines(input: &[u8]) -> Result<Vec<String>, Error> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -45,7 +45,7 @@ pub fn take_body_lines(input: &[u8]) -> Result<Vec<String>, Error> {
 
     let mut lines = Vec::new();
     loop {
-        let (new_input, new_line) = take_line(input)?;
+        let (new_input, new_line) = line(input)?;
         match tag(new_input, b"\r\n") {
             Ok((new_input, ())) => input = new_input,
             Err(e) => {
@@ -63,7 +63,7 @@ pub fn take_body_lines(input: &[u8]) -> Result<Vec<String>, Error> {
     Ok(lines)
 }
 
-pub fn take_body(input: &[u8]) -> Result<Option<String>, Error> {
+pub fn body(input: &[u8]) -> Result<Option<String>, Error> {
     if input.is_empty() {
         return Ok(None);
     }
@@ -91,8 +91,8 @@ pub fn take_body(input: &[u8]) -> Result<Option<String>, Error> {
 }
 
 pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<String>), Error> {
-    let (input, fields) = take_fields(input)?;
-    let body = take_body(input)?;
+    let (input, fields) = fields(input)?;
+    let body = body(input)?;
     
     Ok((fields, body))
 }
@@ -104,19 +104,19 @@ mod test {
     #[test]
     fn test_body() {
         assert_eq!(
-            take_line(b"This is a line\r\nAnd this is a second line")
+            line(b"This is a line\r\nAnd this is a second line")
                 .unwrap()
                 .1,
             "This is a line"
         );
         assert_eq!(
-            take_body_lines(b"\r\nThis is a line\r\nAnd this is a second line")
+            body_lines(b"\r\nThis is a line\r\nAnd this is a second line")
                 .unwrap()
                 .len(),
             2
         );
         assert_eq!(
-            take_body(b"\r\nThis is a line\r\nAnd this is a second line")
+            body(b"\r\nThis is a line\r\nAnd this is a second line")
                 .unwrap()
                 .unwrap(),
             "This is a line\r\nAnd this is a second line"

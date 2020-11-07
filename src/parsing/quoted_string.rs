@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub fn take_quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
     if input.starts_with(b"\\") {
         if let Some(character) = input.get(1) {
             if is_vchar(*character) || is_wsp(*character) {
@@ -18,8 +18,8 @@ pub fn take_quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
     }
 }
 
-pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
-    let input = if let Ok((input, _cfws)) = take_cfws(input) {
+pub fn quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
+    let input = if let Ok((input, _cfws)) = cfws(input) {
         input
     } else {
         input
@@ -35,7 +35,7 @@ pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
     loop {
         let mut additionnal_output = String::Reference(&[]);
 
-        let new_input = if let Ok((new_input, fws)) = take_fws(input) {
+        let new_input = if let Ok((new_input, fws)) = fws(input) {
             additionnal_output += fws;
             new_input
         } else {
@@ -45,7 +45,7 @@ pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
         let new_input = if let Ok((new_input, str)) = take_while1(new_input, is_qtext) {
             additionnal_output += str;
             new_input
-        } else if let Ok((new_input, str)) = take_quoted_pair(new_input) {
+        } else if let Ok((new_input, str)) = quoted_pair(new_input) {
             additionnal_output += str;
             new_input
         } else {
@@ -56,7 +56,7 @@ pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
         input = new_input;
     }
 
-    let input = if let Ok((input, fws)) = take_fws(input) {
+    let input = if let Ok((input, fws)) = fws(input) {
         output += fws;
         input
     } else {
@@ -69,7 +69,7 @@ pub fn take_quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
         return Err(Error::Known("Quoted string must end with a dquote"));
     };
 
-    let input = if let Ok((input, _cfws)) = take_cfws(input) {
+    let input = if let Ok((input, _cfws)) = cfws(input) {
         input
     } else {
         input
