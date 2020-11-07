@@ -3,11 +3,14 @@ use crate::prelude::*;
 pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
     let (input, ()) = tag(input, b"\\")?;
 
-    if let Some(character) = input.get(1) {
+    if let Some(character) = input.get(0) {
         if is_vchar(*character) || is_wsp(*character) {
             // index are already checked
             unsafe {
-                Ok((input.get_unchecked(2..), String::Reference(input.get_unchecked(1..2))))
+                Ok((
+                    input.get_unchecked(1..),
+                    String::Reference(input.get_unchecked(..1)),
+                ))
             }
         } else {
             Err(Error::Known(
@@ -77,4 +80,47 @@ pub fn quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
     };
 
     Ok((input, output))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_quoted_pair() {
+        assert!(quoted_pair(b"\\rtest").is_ok());
+        assert!(quoted_pair(b"\\ test").is_ok());
+
+        assert_eq!(quoted_pair(b"\\rtest").unwrap().1, "r");
+        assert_eq!(quoted_pair(b"\\ test").unwrap().1, " ");
+
+        assert!(quoted_pair(b"\\").is_err());
+        assert!(quoted_pair(b"\\\0").is_err());
+        assert!(quoted_pair(b"test").is_err());
+    }
+
+    #[test]
+    fn test_quoted_string() {
+        assert_eq!(
+            quoted_string(b" \"This\\ is\\ a\\ test\"").unwrap().1,
+            "This is a test"
+        );
+        assert_eq!(
+            quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ")
+                .unwrap()
+                .1,
+            "This is a test"
+        );
+
+        assert!(matches!(
+            quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ")
+                .unwrap()
+                .1,
+            String::Owned(_)
+        ));
+        assert!(matches!(
+            quoted_string(b"\r\n  \"hey\"  ").unwrap().1,
+            String::Reference(_)
+        ));
+    }
 }
