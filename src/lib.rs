@@ -1,13 +1,13 @@
 #![allow(clippy::type_complexity)]
 
-//! The fastest and lightest mail parsing Rust library.  
-//! This library is extremely lightweight and does not support common things like header unfolding.  
-//! No-panic and zero-copy, written with `nom`.
+//! The fastest and lightest mail parsing Rust library!\
+//! The goal of this library is to fully comply with RFC 5322. However, this library does not support the obsolete syntax because it has been obsolete for 12 years.\
+//! This library has no dependency.
 //!
 //! # Benchmarks
 //!
-//! This chart shows the time took to parse a single mail.  
-//! The other crates are slower, but they offer more features.
+//! This chart shows the time took to parse a single mail.\
+//! This library is still the fastest, but this benchmark is not up to date.
 //!
 //! ![Benchmark](https://cdn.discordapp.com/attachments/689171143046987796/727142729934700626/unknown.png)
 //!

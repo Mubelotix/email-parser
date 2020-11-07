@@ -8,10 +8,7 @@ description = "The fastest and lightest mail parsing Rust library."
 readme = "README.md"
 repository = "https://github.com/Mubelotix/email-parser"
 
-[dependencies]
-nom = "5.1"
-
 [dev-dependencies]
 email = "0.0.21"
-email-format = "0.8.0"
+email-format = "0.8"
 mailparse = "0.13"
