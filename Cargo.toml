@@ -8,6 +8,24 @@ description = "The fastest and lightest mail parsing Rust library."
 readme = "README.md"
 repository = "https://github.com/Mubelotix/email-parser"
 
+[features]
+default = ["fields"]
+fields = ["to", "cc", "bcc", "date", "from", "sender", "reply-to", "message-id", "in-reply-to", "references", "subject", "comments", "keywords", "trace"]
+to = []
+cc = []
+bcc = []
+date = []
+from = []
+sender = []
+reply-to = []
+message-id = []
+in-reply-to = []
+references = []
+subject = []
+comments = []
+keywords = []
+trace = []
+
 [dev-dependencies]
 email = "0.0.21"
 email-format = "0.8"

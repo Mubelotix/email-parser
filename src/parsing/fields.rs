@@ -14,19 +14,33 @@ pub enum TraceField<'a> {
 
 #[derive(Debug)]
 pub enum Field<'a> {
+    #[cfg(feature="date")]
     Date(DateTime),
+    #[cfg(feature="from")]
     From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
+    #[cfg(feature="sender")]
     Sender(Mailbox<'a>),
+    #[cfg(feature="reply-to")]
     ReplyTo(Vec<Address<'a>>),
+    #[cfg(feature="to")]
     To(Vec<Address<'a>>),
+    #[cfg(feature="cc")]
     Cc(Vec<Address<'a>>),
+    #[cfg(feature="bcc")]
     Bcc(Vec<Address<'a>>),
+    #[cfg(feature="message-id")]
     MessageId((String<'a>, String<'a>)),
+    #[cfg(feature="in-reply-to")]
     InReplyTo(Vec<(String<'a>, String<'a>)>),
+    #[cfg(feature="references")]
     References(Vec<(String<'a>, String<'a>)>),
+    #[cfg(feature="subject")]
     Subject(String<'a>),
+    #[cfg(feature="comments")]
     Comments(String<'a>),
+    #[cfg(feature="keywords")]
     Keywords(Vec<Vec<String<'a>>>),
+    #[cfg(feature="trace")]
     Trace {
         return_path: Option<Option<(String<'a>, String<'a>)>>,
         received: Vec<(Vec<ReceivedToken<'a>>, DateTime)>,
@@ -41,6 +55,7 @@ pub enum Field<'a> {
 pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
     let mut fields: Vec<Field> = Vec::new();
 
+    #[cfg(feature="trace")]
     while let Ok((new_input, trace)) = trace(input) {
         input = new_input;
         let mut trace_fields = Vec::new();
@@ -73,18 +88,31 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
     while let Ok((new_input, field)) = match_parsers(
         input,
         &mut [
+            #[cfg(feature="date")]
             |i| date(i).map(|(i, v)| (i, Field::Date(v))),
+            #[cfg(feature="from")]
             |i| from(i).map(|(i, v)| (i, Field::From(v))),
+            #[cfg(feature="sender")]
             |i| sender(i).map(|(i, v)| (i, Field::Sender(v))),
+            #[cfg(feature="reply-to")]
             |i| reply_to(i).map(|(i, v)| (i, Field::ReplyTo(v))),
+            #[cfg(feature="to")]
             |i| to(i).map(|(i, v)| (i, Field::To(v))),
+            #[cfg(feature="cc")]
             |i| cc(i).map(|(i, v)| (i, Field::Cc(v))),
+            #[cfg(feature="bcc")]
             |i| bcc(i).map(|(i, v)| (i, Field::Bcc(v))),
+            #[cfg(feature="message-id")]
             |i| message_id(i).map(|(i, v)| (i, Field::MessageId(v))),
+            #[cfg(feature="in-reply-to")]
             |i| in_reply_to(i).map(|(i, v)| (i, Field::InReplyTo(v))),
+            #[cfg(feature="references")]
             |i| references(i).map(|(i, v)| (i, Field::References(v))),
+            #[cfg(feature="subject")]
             |i| subject(i).map(|(i, v)| (i, Field::Subject(v))),
+            #[cfg(feature="comments")]
             |i| comments(i).map(|(i, v)| (i, Field::Comments(v))),
+            #[cfg(feature="keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
             |i| unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),
         ][..],
