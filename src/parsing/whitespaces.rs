@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[inline]
 pub fn take_fws(input: &[u8]) -> Res<String> {
     let (input, before) = optional(input, |input| {
         take_pair(
@@ -17,6 +18,7 @@ pub fn take_fws(input: &[u8]) -> Res<String> {
     }
 }
 
+#[inline]
 pub fn take_ccontent(input: &[u8]) -> Res<String> {
     match_parsers(
         input,
@@ -28,6 +30,7 @@ pub fn take_ccontent(input: &[u8]) -> Res<String> {
     )
 }
 
+#[inline]
 pub fn take_comment(input: &[u8]) -> Res<String> {
     let (input, ()) = tag(input, b"(")?;
 
@@ -41,6 +44,7 @@ pub fn take_comment(input: &[u8]) -> Res<String> {
     Ok((input, String::new()))
 }
 
+#[inline]
 pub fn take_cfws(input: &[u8]) -> Res<String> {
     fn take_real_cfws(mut input: &[u8]) -> Res<String> {
         let mut output = String::new();

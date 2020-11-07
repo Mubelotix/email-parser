@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[inline]
 pub(crate) fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
     if input.starts_with(expected) {
         Ok((&input[expected.len()..], ()))
@@ -8,6 +9,7 @@ pub(crate) fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
     }
 }
 
+#[inline]
 pub(crate) fn tag_no_case<'a>(
     input: &'a [u8],
     expected: &'static [u8],
@@ -31,6 +33,7 @@ pub(crate) fn tag_no_case<'a>(
     Ok((&input[expected.len()..], ()))
 }
 
+#[inline]
 pub(crate) fn optional<'a, T, F>(input: &'a [u8], mut parser: F) -> (&'a [u8], Option<T>)
 where
     F: FnMut(&'a [u8]) -> Res<T>,
@@ -42,6 +45,7 @@ where
     }
 }
 
+#[inline]
 pub(crate) fn match_parsers<'a, T, F>(input: &'a [u8], parsers: &mut [F]) -> Res<'a, T>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
@@ -55,6 +59,7 @@ where
     Err(Error::Known("No match arm is matching the data"))
 }
 
+#[inline]
 pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<String>
 where
     F: FnMut(u8) -> bool,
@@ -67,6 +72,7 @@ where
     Ok((&[], String::Reference(input)))
 }
 
+#[inline]
 pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<String>
 where
     F: FnMut(u8) -> bool,
@@ -89,6 +95,7 @@ where
     Ok((&[], String::Reference(input)))
 }
 
+#[inline]
 pub fn ignore_many<'a, T, F>(mut input: &'a [u8], mut parser: F) -> Res<()>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
@@ -100,6 +107,7 @@ where
     Ok((input, ()))
 }
 
+#[inline]
 pub fn take_many<'a, T, F>(mut input: &'a [u8], mut parser: F) -> Res<Vec<T>>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
@@ -114,6 +122,7 @@ where
     Ok((input, results))
 }
 
+#[inline]
 pub fn take_many1<'a, T, F>(input: &'a [u8], mut parser: F) -> Res<Vec<T>>
 where
     F: FnMut(&'a [u8]) -> Res<T>,
@@ -130,6 +139,7 @@ where
     Ok((input, results))
 }
 
+#[inline]
 pub fn collect_many<'a, F>(mut input: &'a [u8], mut parser: F) -> Res<String>
 where
     F: FnMut(&'a [u8]) -> Res<String>,
@@ -144,6 +154,7 @@ where
     Ok((input, result))
 }
 
+#[inline]
 pub fn take_pair<'a, T, U, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<(U, T)>
 where
     F: FnMut(&'a [u8]) -> Res<U>,
@@ -155,6 +166,7 @@ where
     Ok((input, (first, second)))
 }
 
+#[inline]
 pub fn collect_pair<'a, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<String>
 where
     F: FnMut(&'a [u8]) -> Res<String>,
@@ -166,6 +178,7 @@ where
     Ok((input, first + second))
 }
 
+#[inline]
 pub fn take_prefixed<'a, 'b, T, F>(
     mut input: &'a [u8],
     mut parser: F,

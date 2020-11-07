@@ -8,11 +8,6 @@ pub enum Address<'a> {
     Group((Vec<String<'a>>, Vec<Mailbox<'a>>)),
 }
 
-#[inline]
-pub fn is_dtext(c: u8) -> bool {
-    (c >= 33 && c <= 90) || (c >= 94 && c <= 126)
-}
-
 pub fn take_message_id(input: &[u8]) -> Res<(String, String)> {
     fn take_no_fold_litteral(input: &[u8]) -> Res<String> {
         let (input, ()) = tag(input, b"[")?;

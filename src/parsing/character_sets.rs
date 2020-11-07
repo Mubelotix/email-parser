@@ -51,6 +51,11 @@ pub fn take_two_digits(input: &[u8]) -> Result<(&[u8], u8), Error> {
 }
 
 #[inline]
+pub fn is_dtext(c: u8) -> bool {
+    (c >= 33 && c <= 90) || (c >= 94 && c <= 126)
+}
+
+#[inline]
 pub fn is_atext(c: u8) -> bool {
     is_alpha(c)
         || is_digit(c)
