@@ -102,6 +102,11 @@ pub fn is_ftext(c: u8) -> bool {
     (c >= 33 && c <= 57) || (c >= 59 && c <= 126)
 }
 
+#[inline]
+pub fn is_text(c: u8) -> bool {
+    c >= 1 && c <= 127 && c != 10 && c != 13
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
