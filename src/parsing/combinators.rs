@@ -98,6 +98,20 @@ where
     Ok((input, ()))
 }
 
+pub fn take_many<'a, T, F>(mut input: &'a [u8], mut parser: F) -> Res<Vec<T>>
+where
+    F: FnMut(&'a [u8]) -> Res<T>,
+{
+    let mut results = Vec::new();
+    
+    while let Ok((new_input, new_result)) = parser(input) {
+        input = new_input;
+        results.push(new_result);
+    }
+
+    Ok((input, results))
+}
+
 pub fn take_many1<'a, T, F>(input: &'a [u8], mut parser: F) -> Res<Vec<T>>
 where
     F: FnMut(&'a [u8]) -> Res<T>,

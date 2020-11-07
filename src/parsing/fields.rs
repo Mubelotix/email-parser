@@ -162,9 +162,87 @@ pub fn take_resent_bcc(input: &[u8]) -> Res<Vec<Address>> {
     Ok((input, bcc))
 }
 
+pub fn take_return_path(input: &[u8]) -> Res<Option<(String, String)>> {
+    fn take_empty_path(input: &[u8]) -> Res<()> {
+        let (input, _cfws) = optional(input, take_cfws);
+        let (input, ()) = tag(input, b"<")?;
+        let (input, _cfws) = optional(input, take_cfws);
+        let (input, ()) = tag(input, b">")?;
+        let (input, _cfws) = optional(input, take_cfws);
+        Ok((input, ()))
+    }
+
+    let (input, ()) = tag_no_case(input, b"Return-Path:", b"rETURN-pATH:")?;
+    let (input, addr) = match_parsers(
+        input,
+        &mut [
+            (|i| take_angle_addr(i).map(|(i, v)| (i, Some(v))))
+                as fn(input: &[u8]) -> Res<Option<(String, String)>>,
+            (|i| take_empty_path(i).map(|(i, _)| (i, None)))
+                as fn(input: &[u8]) -> Res<Option<(String, String)>>,
+        ][..],
+    )?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, addr))
+}
+
+#[derive(Debug)]
+pub enum ReceivedToken<'a> {
+    Word(String<'a>),
+    Addr((String<'a>, String<'a>)),
+    Domain(String<'a>),
+}
+
+pub fn take_received(input: &[u8]) -> Res<(Vec<ReceivedToken>, (Option<Day>, Date, Time))> {
+    let (input, ()) = tag_no_case(input, b"Received:", b"rECEIVED:")?;
+    let (input, received_tokens) = take_many(input, |input| {
+        if let Ok((word_input, word)) = take_word(input) {
+            if let Ok((domain_input, domain)) = take_domain(input) {
+                if domain.len() > word.len() {
+                    return Ok((domain_input, ReceivedToken::Domain(domain)))
+                }
+            }
+            Ok((word_input, ReceivedToken::Word(word)))
+        } else if let Ok((input, addr)) = take_angle_addr(input) {
+            Ok((input, ReceivedToken::Addr(addr)))
+        } else if let Ok((input, addr)) = take_addr_spec(input) {
+            Ok((input, ReceivedToken::Addr(addr)))
+        } else if let Ok((input, domain)) = take_domain(input) {
+            Ok((input, ReceivedToken::Domain(domain)))
+        } else {
+            Err(Error::Known("match error"))
+        }
+    })?;
+    let (input, ()) = tag(input, b";")?;
+    let (input, date_time) = take_date_time(input)?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, (received_tokens, date_time)))
+}
+
+pub fn take_trace(input: &[u8]) -> Res<(Option<Option<(String, String)>>, Vec<(Vec<ReceivedToken>, (Option<Day>, Date, Time))>)> {
+    let (input, return_path) = optional(input, take_return_path);
+    let (input, received) = take_many1(input, take_received)?;
+
+    Ok((input, (return_path, received)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_trace() {
+        assert!(take_return_path(b"Return-Path:<>\r\n").unwrap().1.is_none());
+        assert_eq!(take_return_path(b"Return-Path:<mubelotix@gmail.com>\r\n").unwrap().1.unwrap().0, "mubelotix");
+
+        assert!(matches!(take_received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[0], ReceivedToken::Word(_)));
+        assert!(matches!(take_received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[1], ReceivedToken::Addr(_)));
+        assert!(matches!(take_received(b"Received:mubelotix.dev;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[0], ReceivedToken::Domain(_)));
+
+        assert!(take_trace(b"Return-Path:<>\r\nReceived:akala miam miam;5 May 2003 18:59:03 +0000\r\nReceived:mubelotix.dev;5 May 2003 18:59:03 +0000\r\n").unwrap().0.is_empty());
+    }
 
     #[test]
     fn test_resent() {

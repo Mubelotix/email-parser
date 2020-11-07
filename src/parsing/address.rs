@@ -39,14 +39,20 @@ pub fn take_addr_spec(input: &[u8]) -> Res<(String, String)> {
     Ok((input, (local_part, domain)))
 }
 
-pub fn take_name_addr(input: &[u8]) -> Res<Mailbox> {
-    let (input, display_name) = optional(input, take_phrase);
+pub fn take_angle_addr(input: &[u8]) -> Res<(String, String)> {
     let (input, _cfws) = optional(input, take_cfws);
     let (input, ()) = tag(input, b"<")?;
     let (input, addr_spec) = take_addr_spec(input)?;
     let (input, ()) = tag(input, b">")?;
     let (input, _cfws) = optional(input, take_cfws);
-    Ok((input, (display_name, addr_spec)))
+    Ok((input, addr_spec))
+}
+
+pub fn take_name_addr(input: &[u8]) -> Res<Mailbox> {
+    let (input, display_name) = optional(input, take_phrase);
+    let (input, angle_addr) = take_angle_addr(input)?;
+    
+    Ok((input, (display_name, angle_addr)))
 }
 
 pub fn take_local_part(input: &[u8]) -> Res<String> {
