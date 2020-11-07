@@ -1,6 +1,7 @@
 use crate::parsing::time::*;
 use crate::prelude::*;
 
+#[derive(Debug)]
 pub enum TraceField<'a> {
     Date(DateTime),
     From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
@@ -11,6 +12,7 @@ pub enum TraceField<'a> {
     MessageId((String<'a>, String<'a>)),
 }
 
+#[derive(Debug)]
 pub enum Field<'a> {
     Date(DateTime),
     From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
@@ -349,6 +351,7 @@ mod tests {
     #[test]
     fn test_fields() {
         assert!(take_fields(b"To: Mubelotix <mubelotix@gmail.com>\r\nFrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().0.is_empty());
+        //println!("{:#?}", take_fields(include_bytes!("../../mail.txt")).unwrap().1);
     }
 
     #[test]

@@ -1,4 +1,3 @@
-#[derive(Debug)]
 pub enum String<'a> {
     Reference(&'a [u8]),
     Owned(std::string::String),
@@ -7,6 +6,10 @@ pub enum String<'a> {
 impl<'a> String<'a> {
     pub fn new() -> String<'static> {
         String::Reference(&[])
+    }
+
+    pub fn is_owned(&self) -> bool {
+        matches!(self, String::Owned(_))
     }
 
     pub fn as_str(&self) -> &str {
@@ -41,6 +44,12 @@ impl<'a> String<'a> {
 impl<'a> Default for String<'a> {
     fn default() -> Self {
         String::new()
+    }
+}
+
+impl<'a> std::fmt::Debug for String<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{:?}", if self.is_owned() {""} else {"&"}, self.as_str())
     }
 }
 

@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 pub type Mailbox<'a> = (Option<Vec<String<'a>>>, (String<'a>, String<'a>));
 
+#[derive(Debug)]
 pub enum Address<'a> {
     Mailbox(Mailbox<'a>),
     Group((Vec<String<'a>>, Vec<Mailbox<'a>>)),
