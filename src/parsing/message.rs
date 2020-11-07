@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::parsing::fields::{Field, take_fields};
 
 pub fn take_line(input: &[u8]) -> Res<String> {
     let max_idx = std::cmp::min(input.len(), 998);
@@ -89,12 +90,19 @@ pub fn take_body(input: &[u8]) -> Result<Option<String>, Error> {
     }))
 }
 
+pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<String>), Error> {
+    let (input, fields) = take_fields(input)?;
+    let body = take_body(input)?;
+    
+    Ok((fields, body))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn test_take_line() {
+    fn test_body() {
         assert_eq!(
             take_line(b"This is a line\r\nAnd this is a second line")
                 .unwrap()
@@ -113,5 +121,10 @@ mod test {
                 .unwrap(),
             "This is a line\r\nAnd this is a second line"
         );
+    }
+
+    #[test]
+    fn test_full_message() {
+        println!("{:#?}", parse_message(include_bytes!("../../mail.txt")).unwrap());
     }
 }

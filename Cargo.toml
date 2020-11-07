@@ -14,4 +14,4 @@ nom = "5.1"
 [dev-dependencies]
 email = "0.0.21"
 email-format = "0.8.0"
-mailparse = "0.12.1"
+mailparse = "0.13"

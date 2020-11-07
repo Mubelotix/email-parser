@@ -5,4 +5,5 @@ pub(crate) use crate::parsing::combinators::*;
 pub(crate) use crate::parsing::common::*;
 pub(crate) use crate::parsing::quoted_string::*;
 pub(crate) use crate::parsing::whitespaces::*;
+pub use crate::parsing::message::parse_message;
 pub(crate) use crate::string::*;
