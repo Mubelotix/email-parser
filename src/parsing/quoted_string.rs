@@ -1,20 +1,21 @@
 use crate::prelude::*;
 
 pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
-    if input.starts_with(b"\\") {
-        if let Some(character) = input.get(1) {
-            if is_vchar(*character) || is_wsp(*character) {
-                Ok((&input[2..], String::Reference(&input[1..2])))
-            } else {
-                Err(Error::Known(
-                    "The quoted-pair character is no a vchar or a wsp.",
-                ))
+    let (input, ()) = tag(input, b"\\")?;
+
+    if let Some(character) = input.get(1) {
+        if is_vchar(*character) || is_wsp(*character) {
+            // index are already checked
+            unsafe {
+                Ok((input.get_unchecked(2..), String::Reference(input.get_unchecked(1..2))))
             }
         } else {
-            Err(Error::Known("The quoted-pair has no second character."))
+            Err(Error::Known(
+                "The quoted-pair character is no a vchar or a wsp.",
+            ))
         }
     } else {
-        Err(Error::Known("The quoted-pair does not start with a '\\'."))
+        Err(Error::Known("The quoted-pair has no second character."))
     }
 }
 
