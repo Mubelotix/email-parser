@@ -228,9 +228,24 @@ pub fn take_trace(input: &[u8]) -> Res<(Option<Option<(String, String)>>, Vec<(V
     Ok((input, (return_path, received)))
 }
 
+pub fn take_unknown(input: &[u8]) -> Res<(String, String)> {
+    let (input, name) = take_while1(input, is_ftext)?;
+    let (input, ()) = tag(input, b":")?;
+    let (input, value) = take_unstructured(input)?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, (name, value)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_unknown_field() {
+        assert_eq!(take_unknown(b"hidden-field:hidden message\r\n").unwrap().1.1, "hidden message");
+        assert_eq!(take_unknown(b"hidden-field:hidden message\r\n").unwrap().1.0, "hidden-field");
+    }
 
     #[test]
     fn test_trace() {
