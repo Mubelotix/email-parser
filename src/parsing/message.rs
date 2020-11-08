@@ -125,6 +125,6 @@ mod test {
 
     #[test]
     fn test_full_message() {
-        println!("{:#?}", parse_message(include_bytes!("../../mail.txt")).unwrap());
+        //println!("{:#?}", parse_message(include_bytes!("../../mail.txt")).unwrap());
     }
 }
