@@ -16,7 +16,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
-          use-cache: true:  
+          use-cache: true
 
   test:
     name: Test Suite
@@ -31,7 +31,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          use-cache: true:  
+          use-cache: true
 
   fmt:
     name: Rustfmt
@@ -64,4 +64,4 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-          use-cache: true:  
+          use-cache: true
