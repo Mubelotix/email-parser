@@ -1,9 +1,11 @@
 use crate::prelude::*;
 
 #[inline]
-pub(crate) fn tag<'a>(input: &'a [u8], expected: &[u8]) -> Res<'a, ()> {
+pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
     if input.starts_with(expected) {
-        Ok((&input[expected.len()..], ()))
+        Ok((unsafe {
+            input.get_unchecked(expected.len()..)
+        }, ()))
     } else {
         Err(Error::Known("Tag error, data does not match"))
     }
@@ -25,12 +27,16 @@ pub(crate) fn tag_no_case<'a>(
     }
 
     for idx in 0..expected.len() {
-        if input[idx] != expected[idx] && input[idx] != expected2[idx] {
-            return Err(Error::Known("Tag error, data does not match"));
+        unsafe {
+            if input.get_unchecked(idx) != expected.get_unchecked(idx) && input.get_unchecked(idx) != expected2.get_unchecked(idx) {
+                return Err(Error::Known("Tag error, data does not match"));
+            }
         }
     }
 
-    Ok((&input[expected.len()..], ()))
+    Ok((unsafe {
+        input.get_unchecked(expected.len()..)
+    }, ()))
 }
 
 #[inline]
@@ -65,8 +71,10 @@ where
     F: FnMut(u8) -> bool,
 {
     for i in 0..input.len() {
-        if !condition(input[i]) {
-            return Ok((&input[i..], String::Reference(&input[..i])));
+        unsafe {
+            if !condition(*input.get_unchecked(i)) {
+                return Ok((input.get_unchecked(i..), String::Reference(input.get_unchecked(..i))));
+            }
         }
     }
     Ok((&[], String::Reference(input)))
@@ -88,8 +96,10 @@ where
     }
 
     for i in 1..input.len() {
-        if !condition(input[i]) {
-            return Ok((&input[i..], String::Reference(&input[..i])));
+        unsafe {
+            if !condition(*input.get_unchecked(i)) {
+                return Ok((input.get_unchecked(i..), String::Reference(input.get_unchecked(..i))));
+            }
         }
     }
     Ok((&[], String::Reference(input)))
@@ -144,7 +154,7 @@ pub fn collect_many<'a, F>(mut input: &'a [u8], mut parser: F) -> Res<String>
 where
     F: FnMut(&'a [u8]) -> Res<String>,
 {
-    let mut result = String::Reference(&[]);
+    let mut result = String::new();
 
     while let Ok((new_input, new_result)) = parser(input) {
         input = new_input;
@@ -188,7 +198,9 @@ where
     F: FnMut(&'a [u8]) -> Result<(&'a [u8], T), Error>,
 {
     if input.starts_with(prefix.as_bytes()) {
-        input = &input[prefix.len()..];
+        input = unsafe {
+            input.get_unchecked(prefix.len()..)
+        };
     } else {
         return Err(Error::Known("Expected a prefix"));
     }
@@ -228,6 +240,7 @@ mod tests {
     fn test_tag() {
         assert!(tag(b"abc", b"def").is_err());
         assert!(tag(b"abc", b"ab").is_ok());
+        assert_eq!(tag(b"abc", b"abc").unwrap().0, b"");
         assert!(tag(b"abc", b"Ab").is_err());
         assert!(tag_no_case(b"abc", b"Ab", b"aB").is_ok());
     }
