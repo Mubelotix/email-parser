@@ -36,4 +36,5 @@ pub mod prelude;
 pub mod string;
 
 pub use crate::parsing::fields::Field;
+pub use crate::parsing::time::{Day, Month};
 pub use crate::parsing::message::parse_message;
