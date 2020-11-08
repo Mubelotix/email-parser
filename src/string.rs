@@ -49,7 +49,12 @@ impl<'a> Default for String<'a> {
 
 impl<'a> std::fmt::Debug for String<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{:?}", if self.is_owned() {""} else {"&"}, self.as_str())
+        write!(
+            f,
+            "{}{:?}",
+            if self.is_owned() { "" } else { "&" },
+            self.as_str()
+        )
     }
 }
 

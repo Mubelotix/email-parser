@@ -1,5 +1,5 @@
+use crate::parsing::fields::{fields, Field};
 use crate::prelude::*;
-use crate::parsing::fields::{Field, fields};
 
 pub fn line(input: &[u8]) -> Res<String> {
     let max_idx = std::cmp::min(input.len(), 998);
@@ -93,7 +93,7 @@ pub fn body(input: &[u8]) -> Result<Option<String>, Error> {
 pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<String>), Error> {
     let (input, fields) = fields(input)?;
     let body = body(input)?;
-    
+
     Ok((fields, body))
 }
 

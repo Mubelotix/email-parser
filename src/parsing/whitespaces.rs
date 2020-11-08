@@ -107,10 +107,7 @@ mod test {
     #[test]
     fn test_comment() {
         assert_eq!(comment(b"(this is a comment)").unwrap().0.len(), 0);
-        assert_eq!(
-            comment(b"(a comment) and a value").unwrap().0.len(),
-            12
-        );
+        assert_eq!(comment(b"(a comment) and a value").unwrap().0.len(), 12);
         assert_eq!(
             comment(b"(this is a comment (and another comment)) and a value")
                 .unwrap()

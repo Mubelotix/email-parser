@@ -111,8 +111,5 @@ fn test_atom() {
         dot_atom_text(b"this.is.a.test").unwrap().1,
         "this.is.a.test"
     );
-    assert_eq!(
-        dot_atom(b"  this.is.a.test ").unwrap().1,
-        "this.is.a.test"
-    );
+    assert_eq!(dot_atom(b"  this.is.a.test ").unwrap().1, "this.is.a.test");
 }

@@ -3,9 +3,7 @@ use crate::prelude::*;
 #[inline]
 pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
     if input.starts_with(expected) {
-        Ok((unsafe {
-            input.get_unchecked(expected.len()..)
-        }, ()))
+        Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
         Err(Error::Known("Tag error, data does not match"))
     }
@@ -28,15 +26,15 @@ pub(crate) fn tag_no_case<'a>(
 
     for idx in 0..expected.len() {
         unsafe {
-            if input.get_unchecked(idx) != expected.get_unchecked(idx) && input.get_unchecked(idx) != expected2.get_unchecked(idx) {
+            if input.get_unchecked(idx) != expected.get_unchecked(idx)
+                && input.get_unchecked(idx) != expected2.get_unchecked(idx)
+            {
                 return Err(Error::Known("Tag error, data does not match"));
             }
         }
     }
 
-    Ok((unsafe {
-        input.get_unchecked(expected.len()..)
-    }, ()))
+    Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
 }
 
 #[inline]
@@ -73,7 +71,10 @@ where
     for i in 0..input.len() {
         unsafe {
             if !condition(*input.get_unchecked(i)) {
-                return Ok((input.get_unchecked(i..), String::Reference(input.get_unchecked(..i))));
+                return Ok((
+                    input.get_unchecked(i..),
+                    String::Reference(input.get_unchecked(..i)),
+                ));
             }
         }
     }
@@ -98,7 +99,10 @@ where
     for i in 1..input.len() {
         unsafe {
             if !condition(*input.get_unchecked(i)) {
-                return Ok((input.get_unchecked(i..), String::Reference(input.get_unchecked(..i))));
+                return Ok((
+                    input.get_unchecked(i..),
+                    String::Reference(input.get_unchecked(..i)),
+                ));
             }
         }
     }
@@ -198,9 +202,7 @@ where
     F: FnMut(&'a [u8]) -> Result<(&'a [u8], T), Error>,
 {
     if input.starts_with(prefix.as_bytes()) {
-        input = unsafe {
-            input.get_unchecked(prefix.len()..)
-        };
+        input = unsafe { input.get_unchecked(prefix.len()..) };
     } else {
         return Err(Error::Known("Expected a prefix"));
     }

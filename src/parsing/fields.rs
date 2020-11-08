@@ -14,33 +14,33 @@ pub enum TraceField<'a> {
 
 #[derive(Debug)]
 pub enum Field<'a> {
-    #[cfg(feature="date")]
+    #[cfg(feature = "date")]
     Date(DateTime),
-    #[cfg(feature="from")]
+    #[cfg(feature = "from")]
     From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
-    #[cfg(feature="sender")]
+    #[cfg(feature = "sender")]
     Sender(Mailbox<'a>),
-    #[cfg(feature="reply-to")]
+    #[cfg(feature = "reply-to")]
     ReplyTo(Vec<Address<'a>>),
-    #[cfg(feature="to")]
+    #[cfg(feature = "to")]
     To(Vec<Address<'a>>),
-    #[cfg(feature="cc")]
+    #[cfg(feature = "cc")]
     Cc(Vec<Address<'a>>),
-    #[cfg(feature="bcc")]
+    #[cfg(feature = "bcc")]
     Bcc(Vec<Address<'a>>),
-    #[cfg(feature="message-id")]
+    #[cfg(feature = "message-id")]
     MessageId((String<'a>, String<'a>)),
-    #[cfg(feature="in-reply-to")]
+    #[cfg(feature = "in-reply-to")]
     InReplyTo(Vec<(String<'a>, String<'a>)>),
-    #[cfg(feature="references")]
+    #[cfg(feature = "references")]
     References(Vec<(String<'a>, String<'a>)>),
-    #[cfg(feature="subject")]
+    #[cfg(feature = "subject")]
     Subject(String<'a>),
-    #[cfg(feature="comments")]
+    #[cfg(feature = "comments")]
     Comments(String<'a>),
-    #[cfg(feature="keywords")]
+    #[cfg(feature = "keywords")]
     Keywords(Vec<Vec<String<'a>>>),
-    #[cfg(feature="trace")]
+    #[cfg(feature = "trace")]
     Trace {
         return_path: Option<Option<(String<'a>, String<'a>)>>,
         received: Vec<(Vec<ReceivedToken<'a>>, DateTime)>,
@@ -55,7 +55,7 @@ pub enum Field<'a> {
 pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
     let mut fields: Vec<Field> = Vec::new();
 
-    #[cfg(feature="trace")]
+    #[cfg(feature = "trace")]
     while let Ok((new_input, trace)) = trace(input) {
         input = new_input;
         let mut trace_fields = Vec::new();
@@ -88,31 +88,31 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
     while let Ok((new_input, field)) = match_parsers(
         input,
         &mut [
-            #[cfg(feature="date")]
+            #[cfg(feature = "date")]
             |i| date(i).map(|(i, v)| (i, Field::Date(v))),
-            #[cfg(feature="from")]
+            #[cfg(feature = "from")]
             |i| from(i).map(|(i, v)| (i, Field::From(v))),
-            #[cfg(feature="sender")]
+            #[cfg(feature = "sender")]
             |i| sender(i).map(|(i, v)| (i, Field::Sender(v))),
-            #[cfg(feature="reply-to")]
+            #[cfg(feature = "reply-to")]
             |i| reply_to(i).map(|(i, v)| (i, Field::ReplyTo(v))),
-            #[cfg(feature="to")]
+            #[cfg(feature = "to")]
             |i| to(i).map(|(i, v)| (i, Field::To(v))),
-            #[cfg(feature="cc")]
+            #[cfg(feature = "cc")]
             |i| cc(i).map(|(i, v)| (i, Field::Cc(v))),
-            #[cfg(feature="bcc")]
+            #[cfg(feature = "bcc")]
             |i| bcc(i).map(|(i, v)| (i, Field::Bcc(v))),
-            #[cfg(feature="message-id")]
+            #[cfg(feature = "message-id")]
             |i| message_id(i).map(|(i, v)| (i, Field::MessageId(v))),
-            #[cfg(feature="in-reply-to")]
+            #[cfg(feature = "in-reply-to")]
             |i| in_reply_to(i).map(|(i, v)| (i, Field::InReplyTo(v))),
-            #[cfg(feature="references")]
+            #[cfg(feature = "references")]
             |i| references(i).map(|(i, v)| (i, Field::References(v))),
-            #[cfg(feature="subject")]
+            #[cfg(feature = "subject")]
             |i| subject(i).map(|(i, v)| (i, Field::Subject(v))),
-            #[cfg(feature="comments")]
+            #[cfg(feature = "comments")]
             |i| comments(i).map(|(i, v)| (i, Field::Comments(v))),
-            #[cfg(feature="keywords")]
+            #[cfg(feature = "keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
             |i| unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),
         ][..],
@@ -378,7 +378,12 @@ mod tests {
 
     #[test]
     fn test_fields() {
-        assert!(fields(b"To: Mubelotix <mubelotix@gmail.com>\r\nFrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().0.is_empty());
+        assert!(fields(
+            b"To: Mubelotix <mubelotix@gmail.com>\r\nFrOm: Mubelotix <mubelotix@gmail.com>\r\n"
+        )
+        .unwrap()
+        .0
+        .is_empty());
         //println!("{:#?}", fields(include_bytes!("../../mail.txt")).unwrap().1);
     }
 
@@ -500,9 +505,7 @@ mod tests {
     #[test]
     fn test_informational() {
         assert_eq!(
-            subject(b"Subject:French school is boring\r\n")
-                .unwrap()
-                .1,
+            subject(b"Subject:French school is boring\r\n").unwrap().1,
             "French school is boring"
         );
         assert_eq!(

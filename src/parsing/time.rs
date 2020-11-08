@@ -222,19 +222,14 @@ mod test {
 
     #[test]
     fn test_date() {
-        assert_eq!(
-            date(b"1 nov 2020 ").unwrap().1,
-            (1, Month::November, 2020)
-        );
+        assert_eq!(date(b"1 nov 2020 ").unwrap().1, (1, Month::November, 2020));
         assert_eq!(
             date(b"25 dec 2038 ").unwrap().1,
             (25, Month::December, 2038)
         );
 
         assert_eq!(
-            date_time(b"Mon, 12 Apr 2023 10:25:03 +0000")
-                .unwrap()
-                .1,
+            date_time(b"Mon, 12 Apr 2023 10:25:03 +0000").unwrap().1,
             (
                 Some(Day::Monday),
                 (12, Month::April, 2023),
@@ -256,14 +251,8 @@ mod test {
         assert_eq!(zone(b" +1000 ").unwrap().1, (true, 10, 0));
         assert_eq!(zone(b" -0523 ").unwrap().1, (false, 5, 23));
 
-        assert_eq!(
-            time(b"06:44 +0100").unwrap().1,
-            ((6, 44, 0), (true, 1, 0))
-        );
-        assert_eq!(
-            time(b"23:57 +0000").unwrap().1,
-            ((23, 57, 0), (true, 0, 0))
-        );
+        assert_eq!(time(b"06:44 +0100").unwrap().1, ((6, 44, 0), (true, 1, 0)));
+        assert_eq!(time(b"23:57 +0000").unwrap().1, ((23, 57, 0), (true, 0, 0)));
         assert_eq!(
             time(b"08:23:02 -0500").unwrap().1,
             ((8, 23, 2), (false, 5, 0))

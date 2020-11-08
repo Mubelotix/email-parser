@@ -20,8 +20,7 @@ pub fn message_id(input: &[u8]) -> Res<(String, String)> {
     let (input, ()) = tag(input, b"<")?;
     let (input, id_left) = dot_atom_text(input)?;
     let (input, ()) = tag(input, b"@")?;
-    let (input, id_right) =
-        match_parsers(input, &mut [dot_atom_text, no_fold_litteral][..])?;
+    let (input, id_right) = match_parsers(input, &mut [dot_atom_text, no_fold_litteral][..])?;
     let (input, ()) = tag(input, b">")?;
     let (input, _cfws) = optional(input, cfws);
 
@@ -176,10 +175,7 @@ mod tests {
             "mubelotix.dev"
         );
 
-        assert_eq!(
-            domain(b"[mubelotix\r\n .dev]").unwrap().1,
-            "mubelotix.dev"
-        );
+        assert_eq!(domain(b"[mubelotix\r\n .dev]").unwrap().1, "mubelotix.dev");
         assert_eq!(domain(b"mubelotix.dev").unwrap().1, "mubelotix.dev");
     }
 
@@ -198,8 +194,7 @@ mod tests {
         assert_eq!(username, "mubelotix");
         assert_eq!(domain, "gmail.com");
 
-        let (name, (username, domain)) =
-            name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
+        let (name, (username, domain)) = name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
         assert_eq!(name.unwrap().len(), 2);
         assert_eq!(username, "someone");
         assert_eq!(domain, "gmail.com");
@@ -218,20 +213,17 @@ mod tests {
     #[test]
     fn test_lists() {
         assert_eq!(
-            mailbox_list(
-                b"test@gmail.com,Michel<michel@gmail.com>,<postmaster@mubelotix.dev>"
-            )
-            .unwrap()
-            .1
-            .len(),
+            mailbox_list(b"test@gmail.com,Michel<michel@gmail.com>,<postmaster@mubelotix.dev>")
+                .unwrap()
+                .1
+                .len(),
             3
         );
 
-        let (name, list) = group(
-            b"Developers: Mubelotix <mubelotix@mubelotix.dev>, Someone <guy@gmail.com>;",
-        )
-        .unwrap()
-        .1;
+        let (name, list) =
+            group(b"Developers: Mubelotix <mubelotix@mubelotix.dev>, Someone <guy@gmail.com>;")
+                .unwrap()
+                .1;
         assert_eq!(name[0], "Developers");
         assert_eq!(list[0].0.as_ref().unwrap()[0], "Mubelotix");
         assert_eq!(list[0].1.0, "mubelotix");
