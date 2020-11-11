@@ -1,6 +1,6 @@
 [package]
 name = "email-parser"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Mubelotix <mubelotix@gmail.com>"]
 edition = "2018"
 license = "MIT"
