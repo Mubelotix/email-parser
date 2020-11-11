@@ -416,9 +416,7 @@ mod tests {
 
     #[test]
     fn test_resent() {
-        assert!(
-            resent_date(b"Resent-Date:5 May 2003 18:59:03 +0000\r\n").is_ok()
-        );
+        assert!(resent_date(b"Resent-Date:5 May 2003 18:59:03 +0000\r\n").is_ok());
         assert_eq!(
             resent_from(b"Resent-FrOm: Mubelotix <mubelotix@gmail.com>\r\n")
                 .unwrap()
@@ -457,9 +455,7 @@ mod tests {
 
     #[test]
     fn test_date() {
-        assert!(
-            date(b"Date:5 May 2003 18:59:03 +0000\r\n").is_ok()
-        );
+        assert!(date(b"Date:5 May 2003 18:59:03 +0000\r\n").is_ok());
     }
 
     #[test]

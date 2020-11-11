@@ -29,7 +29,11 @@ pub struct Email<'a> {
     #[cfg(feature = "reply-to")]
     pub reply_to: Option<Vec<Address<'a>>>,
     #[cfg(feature = "trace")]
-    pub trace: Vec<(Option<Option<EmailAddress<'a>>>, Vec<(Vec<crate::parsing::fields::ReceivedToken<'a>>, DateTime)>, Vec<crate::parsing::fields::TraceField<'a>>)>,
+    pub trace: Vec<(
+        Option<Option<EmailAddress<'a>>>,
+        Vec<(Vec<crate::parsing::fields::ReceivedToken<'a>>, DateTime)>,
+        Vec<crate::parsing::fields::TraceField<'a>>,
+    )>,
     pub unknown_fields: Vec<(Cow<'a, str>, Cow<'a, str>)>,
 }
 
@@ -85,7 +89,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple sender fields"));
                     }
-                },
+                }
                 #[cfg(feature = "subject")]
                 Field::Subject(data) => {
                     if subject.is_none() {
@@ -93,7 +97,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple subject fields"));
                     }
-                },
+                }
                 #[cfg(feature = "date")]
                 Field::Date(data) => {
                     if date.is_none() {
@@ -101,7 +105,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple subject fields"));
                     }
-                },
+                }
                 #[cfg(feature = "to")]
                 Field::To(addresses) => {
                     if to.is_none() {
@@ -109,7 +113,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple to fields"));
                     }
-                },
+                }
                 #[cfg(feature = "cc")]
                 Field::Cc(addresses) => {
                     if cc.is_none() {
@@ -117,7 +121,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple cc fields"));
                     }
-                },
+                }
                 #[cfg(feature = "bcc")]
                 Field::Bcc(addresses) => {
                     if bcc.is_none() {
@@ -125,7 +129,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple bcc fields"));
                     }
-                },
+                }
                 #[cfg(feature = "message-id")]
                 Field::MessageId(id) => {
                     if message_id.is_none() {
@@ -133,7 +137,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple message-id fields"));
                     }
-                },
+                }
                 #[cfg(feature = "in-reply-to")]
                 Field::InReplyTo(ids) => {
                     if in_reply_to.is_none() {
@@ -141,7 +145,7 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple in-reply-to fields"));
                     }
-                },
+                }
                 #[cfg(feature = "references")]
                 Field::References(ids) => {
                     if references.is_none() {
@@ -157,22 +161,24 @@ impl<'a> Email<'a> {
                     } else {
                         return Err(Error::Known("Multiple reply-to fields"));
                     }
-                },
+                }
                 #[cfg(feature = "reply-to")]
-                Field::Comments(data) => {
-                    comments.push(data)
-                },
+                Field::Comments(data) => comments.push(data),
                 #[cfg(feature = "keywords")]
                 Field::Keywords(mut data) => {
                     keywords.append(&mut data);
-                },
+                }
                 #[cfg(feature = "trace")]
-                Field::Trace{return_path, received, fields} => {
+                Field::Trace {
+                    return_path,
+                    received,
+                    fields,
+                } => {
                     trace.push((return_path, received, fields));
-                },
-                Field::Unknown {name, value} => {
+                }
+                Field::Unknown { name, value } => {
                     unknown_fields.push((name, value));
-                },
+                }
             }
         }
 
@@ -188,7 +194,7 @@ impl<'a> Email<'a> {
                 if from.len() == 1 {
                     from[0].clone()
                 } else {
-                    return Err(Error::Known("Sender field required but missing"))
+                    return Err(Error::Known("Sender field required but missing"));
                 }
             }
         };

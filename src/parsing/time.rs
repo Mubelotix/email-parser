@@ -107,19 +107,25 @@ pub fn time_of_day(input: &[u8]) -> Res<Time> {
                 // leap second allowed
                 return Err(Error::Known("There is only 60 seconds in a minute"));
             }
-            return Ok((new_input, Time {
-                hour,
-                minute,
-                second
-            }));
+            return Ok((
+                new_input,
+                Time {
+                    hour,
+                    minute,
+                    second,
+                },
+            ));
         }
     }
 
-    Ok((input, Time {
-        hour,
-        minute,
-        second: 0
-    }))
+    Ok((
+        input,
+        Time {
+            hour,
+            minute,
+            second: 0,
+        },
+    ))
 }
 
 pub fn zone(input: &[u8]) -> Res<Zone> {
@@ -140,31 +146,27 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
         return Err(Error::Known("zone minute_offset out of range"));
     }
 
-    Ok((input, Zone {
-        sign,
-        hour_offset,
-        minute_offset
-    }))
+    Ok((
+        input,
+        Zone {
+            sign,
+            hour_offset,
+            minute_offset,
+        },
+    ))
 }
 
 pub fn time(input: &[u8]) -> Res<TimeWithZone> {
     let (input, time) = time_of_day(input)?;
     let (input, zone) = zone(input)?;
-    Ok((input, TimeWithZone {
-        time,
-        zone
-    }))
+    Ok((input, TimeWithZone { time, zone }))
 }
 
 pub fn date(input: &[u8]) -> Res<Date> {
     let (input, day) = day(input)?;
     let (input, month) = month(input)?;
     let (input, year) = year(input)?;
-    Ok((input, Date {
-        day,
-        month,
-        year,
-    }))
+    Ok((input, Date { day, month, year }))
 }
 
 pub fn date_time(input: &[u8]) -> Res<DateTime> {
@@ -172,11 +174,14 @@ pub fn date_time(input: &[u8]) -> Res<DateTime> {
     let (input, date) = date(input)?;
     let (input, time) = time(input)?;
     let (input, _cfws) = optional(input, cfws);
-    Ok((input, DateTime {
-        day_name: day,
-        date,
-        time,
-    }))
+    Ok((
+        input,
+        DateTime {
+            day_name: day,
+            date,
+            time,
+        },
+    ))
 }
 
 #[cfg(test)]
@@ -212,10 +217,21 @@ mod test {
 
     #[test]
     fn test_date() {
-        assert_eq!(date(b"1 nov 2020 ").unwrap().1, Date { day: 1, month: Month::November, year: 2020 });
+        assert_eq!(
+            date(b"1 nov 2020 ").unwrap().1,
+            Date {
+                day: 1,
+                month: Month::November,
+                year: 2020
+            }
+        );
         assert_eq!(
             date(b"25 dec 2038 ").unwrap().1,
-            Date { day: 25,month:  Month::December, year: 2038 }
+            Date {
+                day: 25,
+                month: Month::December,
+                year: 2038
+            }
         );
 
         assert_eq!(
@@ -228,8 +244,16 @@ mod test {
                     year: 2023
                 },
                 time: TimeWithZone {
-                    time: Time { hour: 10, minute: 25, second: 3 },
-                    zone: Zone { sign: true, hour_offset: 0, minute_offset: 0 }
+                    time: Time {
+                        hour: 10,
+                        minute: 25,
+                        second: 3
+                    },
+                    zone: Zone {
+                        sign: true,
+                        hour_offset: 0,
+                        minute_offset: 0
+                    }
                 },
             }
         );
@@ -237,10 +261,22 @@ mod test {
             date_time(b"5 May 2003 18:59:03 +0000").unwrap().1,
             DateTime {
                 day_name: None,
-                date: Date { day: 5, month: Month::May, year: 2003 },
+                date: Date {
+                    day: 5,
+                    month: Month::May,
+                    year: 2003
+                },
                 time: TimeWithZone {
-                    time: Time{ hour: 18, minute: 59, second: 3 },
-                    zone: Zone { sign: true, hour_offset: 0, minute_offset: 0}
+                    time: Time {
+                        hour: 18,
+                        minute: 59,
+                        second: 3
+                    },
+                    zone: Zone {
+                        sign: true,
+                        hour_offset: 0,
+                        minute_offset: 0
+                    }
                 }
             }
         );
@@ -248,18 +284,92 @@ mod test {
 
     #[test]
     fn test_time() {
-        assert_eq!(time_of_day(b"10:40:29").unwrap().1, Time{ hour: 10, minute: 40, second: 29 });
-        assert_eq!(time_of_day(b"10:40 ").unwrap().1, Time{ hour: 10, minute: 40, second: 0 });
-        assert_eq!(time_of_day(b"05:23 ").unwrap().1, Time{ hour: 5, minute: 23, second: 0 });
+        assert_eq!(
+            time_of_day(b"10:40:29").unwrap().1,
+            Time {
+                hour: 10,
+                minute: 40,
+                second: 29
+            }
+        );
+        assert_eq!(
+            time_of_day(b"10:40 ").unwrap().1,
+            Time {
+                hour: 10,
+                minute: 40,
+                second: 0
+            }
+        );
+        assert_eq!(
+            time_of_day(b"05:23 ").unwrap().1,
+            Time {
+                hour: 5,
+                minute: 23,
+                second: 0
+            }
+        );
 
-        assert_eq!(zone(b" +1000 ").unwrap().1, Zone { sign: true, hour_offset: 10, minute_offset: 0});
-        assert_eq!(zone(b" -0523 ").unwrap().1, Zone { sign: false, hour_offset: 5, minute_offset: 23});
+        assert_eq!(
+            zone(b" +1000 ").unwrap().1,
+            Zone {
+                sign: true,
+                hour_offset: 10,
+                minute_offset: 0
+            }
+        );
+        assert_eq!(
+            zone(b" -0523 ").unwrap().1,
+            Zone {
+                sign: false,
+                hour_offset: 5,
+                minute_offset: 23
+            }
+        );
 
-        assert_eq!(time(b"06:44 +0100").unwrap().1, TimeWithZone { time: Time{ hour: 6, minute: 44, second: 0 }, zone: Zone { sign: true, hour_offset: 1, minute_offset: 0}});
-        assert_eq!(time(b"23:57 +0000").unwrap().1, TimeWithZone { time: Time{ hour: 23, minute: 57, second: 0 }, zone: Zone { sign: true, hour_offset: 0, minute_offset: 0}});
+        assert_eq!(
+            time(b"06:44 +0100").unwrap().1,
+            TimeWithZone {
+                time: Time {
+                    hour: 6,
+                    minute: 44,
+                    second: 0
+                },
+                zone: Zone {
+                    sign: true,
+                    hour_offset: 1,
+                    minute_offset: 0
+                }
+            }
+        );
+        assert_eq!(
+            time(b"23:57 +0000").unwrap().1,
+            TimeWithZone {
+                time: Time {
+                    hour: 23,
+                    minute: 57,
+                    second: 0
+                },
+                zone: Zone {
+                    sign: true,
+                    hour_offset: 0,
+                    minute_offset: 0
+                }
+            }
+        );
         assert_eq!(
             time(b"08:23:02 -0500").unwrap().1,
-            TimeWithZone { time: Time{ hour: 8, minute: 23, second: 2 }, zone: Zone { sign: false, hour_offset: 5, minute_offset: 0}}
+            TimeWithZone {
+                time: Time {
+                    hour: 8,
+                    minute: 23,
+                    second: 2
+                },
+                zone: Zone {
+                    sign: false,
+                    hour_offset: 5,
+                    minute_offset: 0
+                }
+            }
         );
     }
 }
