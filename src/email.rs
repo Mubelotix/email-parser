@@ -7,6 +7,14 @@ pub struct Email<'a> {
     pub body: Option<Cow<'a, str>>,
     #[cfg(feature = "from")]
     pub from: Vec<Mailbox<'a>>,
+    #[cfg(feature = "subject")]
+    pub subject: Option<Cow<'a, str>>,
+    #[cfg(feature = "to")]
+    pub to: Option<Vec<Address<'a>>>,
+    #[cfg(feature = "cc")]
+    pub cc: Option<Vec<Address<'a>>>,
+    #[cfg(feature = "bcc")]
+    pub bcc: Option<Vec<Address<'a>>>,
 }
 
 impl<'a> Email<'a> {
@@ -15,6 +23,14 @@ impl<'a> Email<'a> {
 
         #[cfg(feature = "from")]
         let mut from = None;
+        #[cfg(feature = "subject")]
+        let mut subject = None;
+        #[cfg(feature = "to")]
+        let mut to = None;
+        #[cfg(feature = "cc")]
+        let mut cc = None;
+        #[cfg(feature = "bcc")]
+        let mut bcc = None;
 
         for field in fields {
             match field {
@@ -23,9 +39,41 @@ impl<'a> Email<'a> {
                     if from.is_none() {
                         from = Some(mailboxes)
                     } else {
-                        return Err(Error::Known("Two from fields"));
+                        return Err(Error::Known("Multiple from fields"));
                     }
                 }
+                #[cfg(feature = "subject")]
+                Field::Subject(data) => {
+                    if subject.is_none() {
+                        subject = Some(data)
+                    } else {
+                        return Err(Error::Known("Multiple subject fields"));
+                    }
+                },
+                #[cfg(feature = "to")]
+                Field::To(addresses) => {
+                    if to.is_none() {
+                        to = Some(addresses)
+                    } else {
+                        return Err(Error::Known("Multiple to fields"));
+                    }
+                },
+                #[cfg(feature = "cc")]
+                Field::Cc(addresses) => {
+                    if cc.is_none() {
+                        cc = Some(addresses)
+                    } else {
+                        return Err(Error::Known("Multiple cc fields"));
+                    }
+                },
+                #[cfg(feature = "bcc")]
+                Field::Bcc(addresses) => {
+                    if bcc.is_none() {
+                        bcc = Some(addresses)
+                    } else {
+                        return Err(Error::Known("Multiple bcc fields"));
+                    }
+                },
                 _ => (),
             }
         }
@@ -34,6 +82,14 @@ impl<'a> Email<'a> {
             body,
             #[cfg(feature = "from")]
             from: from.ok_or(Error::Known("Expected at least one from field"))?,
+            #[cfg(feature = "subject")]
+            subject,
+            #[cfg(feature = "to")]
+            to,
+            #[cfg(feature = "cc")]
+            cc,
+            #[cfg(feature = "bcc")]
+            bcc,
         })
     }
 }
@@ -52,7 +108,7 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let mail = Email::parse(b"From: mubelotix@mubelotix.dev\r\n\r\nHey!\r\n").unwrap();
+        let mail = Email::parse(b"From: mubelotix@mubelotix.dev\r\nSubject:Testing email\r\n\r\nHey!\r\n").unwrap();
         println!("{:#?}", mail);
     }
 }
