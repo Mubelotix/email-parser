@@ -29,6 +29,7 @@
 //! Tests require a `mail.txt` file containing a raw mail next to the `Cargo.toml`.\
 //! Some libraries suffer from huge performance variations depending on the content of the mail, so this library is not **always** the fastest.
 
+pub mod email;
 pub mod error;
 pub(crate) mod parsing;
 pub mod prelude;

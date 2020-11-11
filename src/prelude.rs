@@ -1,3 +1,4 @@
+pub use crate::email::Email;
 pub(crate) use crate::error::*;
 pub(crate) use crate::parsing::address::*;
 pub(crate) use crate::parsing::character_sets::*;
