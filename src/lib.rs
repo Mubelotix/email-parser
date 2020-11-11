@@ -32,7 +32,7 @@
 pub mod error;
 pub(crate) mod parsing;
 pub mod prelude;
-pub mod string;
+pub(crate) mod string;
 
 pub use crate::parsing::fields::Field;
 pub use crate::parsing::message::parse_message;
