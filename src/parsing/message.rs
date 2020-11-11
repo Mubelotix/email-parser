@@ -11,7 +11,7 @@ pub fn line(input: &[u8]) -> Res<Cow<str>> {
             if !is_text(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    from_slice(input.get_unchecked(..i))
+                    from_slice(input.get_unchecked(..i)),
                 ));
             }
         }

@@ -7,9 +7,7 @@ pub(crate) fn empty_string() -> Cow<'static, str> {
 
 #[inline]
 pub(crate) fn from_slice(slice: &[u8]) -> Cow<str> {
-    unsafe {
-        Cow::Borrowed(std::str::from_utf8_unchecked(slice))
-    }
+    unsafe { Cow::Borrowed(std::str::from_utf8_unchecked(slice)) }
 }
 
 #[inline]
@@ -31,7 +29,7 @@ pub(crate) fn add_string<'a, 'b>(s1: &'b mut Cow<'a, str>, s2: Cow<'a, str>) {
                     if first1 as usize + data1.len() == first2 as usize {
                         // this is what guarantee safety
                         let slice = std::slice::from_raw_parts(
-                            first1, 
+                            first1,
                             first2 as usize + data2.len() - first1 as usize,
                         );
                         *data1 = std::str::from_utf8_unchecked(slice);
