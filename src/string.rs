@@ -1,5 +1,5 @@
 pub enum String<'a> {
-    Reference(&'a [u8]),
+    Str(&'a str),
     Owned(std::string::String),
 }
 
@@ -14,30 +14,35 @@ impl<'a> String<'a> {
 
     pub fn as_str(&self) -> &str {
         match self {
-            String::Reference(string) => unsafe {
-                // the parser is using only safe ASCII characters
-                std::str::from_utf8_unchecked(string)
-            },
+            String::Str(string) => string,
             String::Owned(string) => &string,
         }
     }
 
     pub fn into_owned(self) -> String<'static> {
         match self {
-            String::Reference(_) => String::Owned(self.as_str().to_string()),
+            String::Str(_) => String::Owned(self.as_str().to_string()),
             String::Owned(string) => String::Owned(string),
         }
     }
 
     pub fn len(&self) -> usize {
         match self {
-            Self::Reference(s) => s.len(),
+            Self::Str(s) => s.len(),
             Self::Owned(s) => s.len(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[deprecated(note = "Please use the Str variant instead")]
+    #[inline]
+    pub fn Reference(slice: &[u8]) -> String {
+        String::Str(unsafe {
+            std::str::from_utf8_unchecked(slice)
+        })
     }
 }
 
@@ -76,8 +81,8 @@ impl<'a> std::cmp::PartialEq<&str> for String<'a> {
 impl<'a> std::ops::AddAssign for String<'a> {
     fn add_assign(&mut self, rhs: Self) {
         match self {
-            String::Reference(data1) => {
-                if let String::Reference(data2) = rhs {
+            String::Str(data1) => {
+                if let String::Str(data2) = rhs {
                     if data2.is_empty() {
                         return;
                     }
@@ -87,17 +92,15 @@ impl<'a> std::ops::AddAssign for String<'a> {
                     }
                     // if the two references are consecutive in memory, we create a third reference containing them
                     unsafe {
-                        let first1 = data1.get_unchecked(0) as *const u8;
-                        let last1 = data1.get_unchecked(data1.len() - 1) as *const u8;
-                        let first2 = data2.get_unchecked(0) as *const u8;
-                        let last2 = data2.get_unchecked(data2.len() - 1) as *const u8;
-                        if last1 as usize + std::mem::size_of::<u8>() == first2 as usize {
+                        let first1 = data1.as_ptr();
+                        let first2 = data2.as_ptr();
+                        if first1 as usize + data1.len() == first2 as usize {
                             // this is what guarantee safety
                             let slice = std::slice::from_raw_parts(
-                                first1,
-                                last2 as usize - first1 as usize + 1,
+                                first1, 
+                                first2 as usize + data2.len() - first1 as usize,
                             );
-                            *data1 = slice;
+                            *data1 = std::str::from_utf8_unchecked(slice);
                             return;
                         }
                     }

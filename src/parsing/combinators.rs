@@ -222,7 +222,7 @@ mod tests {
         let data3 = String::Reference(&data[..2]);
         let data4 = String::Reference(&data[3..]);
 
-        assert!(matches!(data1 + data2, String::Reference(_)));
+        assert!(matches!(data1 + data2, String::Str(_)));
         assert!(matches!(data3 + data4, String::Owned(_)));
     }
 

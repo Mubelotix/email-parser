@@ -120,7 +120,7 @@ mod test {
         ));
         assert!(matches!(
             quoted_string(b"\r\n  \"hey\"  ").unwrap().1,
-            String::Reference(_)
+            String::Str(_)
         ));
     }
 }
