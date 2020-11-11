@@ -73,12 +73,12 @@ where
             if !condition(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    String::Reference(input.get_unchecked(..i)),
+                    from_slice(input.get_unchecked(..i)),
                 ));
             }
         }
     }
-    Ok((&[], String::Reference(input)))
+    Ok((&[], from_slice(input)))
 }
 
 #[inline]
@@ -101,12 +101,12 @@ where
             if !condition(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    String::Reference(input.get_unchecked(..i)),
+                    from_slice(input.get_unchecked(..i)),
                 ));
             }
         }
     }
-    Ok((&[], String::Reference(input)))
+    Ok((&[], from_slice(input)))
 }
 
 #[inline]
@@ -158,11 +158,11 @@ pub fn collect_many<'a, F>(mut input: &'a [u8], mut parser: F) -> Res<String>
 where
     F: FnMut(&'a [u8]) -> Res<String>,
 {
-    let mut result = String::new();
+    let mut result = empty_string();
 
     while let Ok((new_input, new_result)) = parser(input) {
         input = new_input;
-        result += new_result;
+        add_string(&mut result, new_result);
     }
 
     Ok((input, result))
@@ -186,10 +186,11 @@ where
     F: FnMut(&'a [u8]) -> Res<String>,
     G: FnMut(&'a [u8]) -> Res<String>,
 {
-    let (input, first) = parser1(input)?;
+    let (input, mut first) = parser1(input)?;
     let (input, second) = parser2(input)?;
+    add_string(&mut first, second);
 
-    Ok((input, first + second))
+    Ok((input, first))
 }
 
 #[inline]
@@ -216,14 +217,16 @@ mod tests {
     #[test]
     fn unsafe_add_test() {
         let data = b"abcdef";
-        let data1 = String::Reference(&data[..3]);
-        let data2 = String::Reference(&data[3..]);
+        let mut data1 = from_slice(&data[..3]);
+        let data2 = from_slice(&data[3..]);
+        add_string(&mut data1, data2);
 
-        let data3 = String::Reference(&data[..2]);
-        let data4 = String::Reference(&data[3..]);
+        let mut data3 = from_slice(&data[..2]);
+        let data4 = from_slice(&data[3..]);
+        add_string(&mut data3, data4);
 
-        assert!(matches!(data1 + data2, String::Str(_)));
-        assert!(matches!(data3 + data4, String::Owned(_)));
+        assert!(matches!(data1, std::borrow::Cow::Borrowed(_)));
+        assert!(matches!(data3, std::borrow::Cow::Owned(_)));
     }
 
     #[test]

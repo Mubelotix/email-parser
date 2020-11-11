@@ -58,16 +58,16 @@ pub fn domain(input: &[u8]) -> Res<String> {
     match_parsers(input, &mut [dot_atom, domain_literal][..])
 }
 
-pub fn domain_literal(input: &[u8]) -> Res<String> {
+pub fn domain_literal<'a>(input: &'a [u8]) -> Res<String<'a>> {
     let (input, _cfws) = optional(input, cfws);
     let (mut input, ()) = tag(input, b"[")?;
-    let mut output = String::Reference(&[]);
+    let mut output = empty_string();
     loop {
         let (new_input, _fws) = optional(input, fws);
         if let Ok((new_input, text)) = take_while1(new_input, is_dtext) {
             input = new_input;
-            //output += fws; should it be added?
-            output += text;
+            //add_string(&mut output, fws); should it be added?
+            add_string(&mut output, text);
         } else {
             break;
         }

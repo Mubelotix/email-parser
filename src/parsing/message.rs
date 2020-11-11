@@ -10,14 +10,14 @@ pub fn line(input: &[u8]) -> Res<String> {
             if !is_text(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    String::Reference(input.get_unchecked(..i)),
+                    from_slice(input.get_unchecked(..i))
                 ));
             }
         }
 
         Ok((
             input.get_unchecked(max_idx..),
-            String::Reference(input.get_unchecked(..max_idx)),
+            from_slice(input.get_unchecked(..max_idx)),
         ))
     }
 }
@@ -86,7 +86,7 @@ pub fn body(input: &[u8]) -> Result<Option<String>, Error> {
 
     Ok(Some(unsafe {
         // there is a least 2 characters
-        String::Reference(input.get_unchecked(2..))
+        from_slice(input.get_unchecked(2..))
     }))
 }
 

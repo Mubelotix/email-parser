@@ -11,8 +11,9 @@ pub fn fws(input: &[u8]) -> Res<String> {
     });
     let (input, after) = take_while1(input, is_wsp)?;
 
-    if let Some((before, _crlf)) = before {
-        Ok((input, before + after))
+    if let Some((mut before, _crlf)) = before {
+        add_string(&mut before, after);
+        Ok((input, before))
     } else {
         Ok((input, after))
     }
@@ -41,19 +42,19 @@ pub fn comment(input: &[u8]) -> Res<String> {
     let (input, _) = optional(input, fws);
     let (input, ()) = tag(input, b")")?;
 
-    Ok((input, String::new()))
+    Ok((input, empty_string()))
 }
 
 #[inline]
 pub fn cfws(input: &[u8]) -> Res<String> {
     fn real_cfws(mut input: &[u8]) -> Res<String> {
-        let mut output = String::new();
+        let mut output = empty_string();
 
         let (new_input, folding_wsp) = optional(input, fws);
         if let Ok((new_input, _comment)) = comment(new_input) {
             input = new_input;
             if let Some(s) = folding_wsp {
-                output += s;
+                add_string(&mut output, s);
             }
         } else {
             return Err(Error::Known("Expected at least one comment"));
@@ -65,7 +66,7 @@ pub fn cfws(input: &[u8]) -> Res<String> {
             if let Ok((new_input, _comment)) = comment(new_input) {
                 input = new_input;
                 if let Some(s) = folding_wsp {
-                    output += s;
+                    add_string(&mut output, s);
                 }
             } else {
                 break;
@@ -74,7 +75,7 @@ pub fn cfws(input: &[u8]) -> Res<String> {
 
         let (input, fws) = optional(input, fws);
         if let Some(s) = fws {
-            output += s;
+            add_string(&mut output, s);
         }
 
         Ok((input, output))

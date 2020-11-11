@@ -18,9 +18,9 @@ pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], String), Error> {
     loop {
         if input.starts_with(b".") {
             if let Ok((new_input, atom)) = take_while1(&input[1..], is_atext) {
-                output += String::Reference(&input[..1]);
+                add_string(&mut output, from_slice(&input[..1]));
                 input = new_input;
-                output += atom;
+                add_string(&mut output, atom);
             } else {
                 break;
             }
@@ -72,7 +72,7 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], String), Error> {
     let (mut input, output) = collect_many(input, |i| {
         collect_pair(
             i,
-            |i| Ok(fws(i).unwrap_or((i, String::Reference(&[])))),
+            |i| Ok(fws(i).unwrap_or((i, empty_string()))),
             |i| take_while1(i, is_vchar),
         )
     })?;

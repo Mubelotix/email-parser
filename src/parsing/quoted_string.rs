@@ -9,7 +9,7 @@ pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
             unsafe {
                 Ok((
                     input.get_unchecked(1..),
-                    String::Reference(input.get_unchecked(..1)),
+                    from_slice(input.get_unchecked(..1)),
                 ))
             }
         } else {
@@ -34,34 +34,34 @@ pub fn quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
     } else {
         return Err(Error::Known("Quoted string must begin with a dquote"));
     };
-    let mut output = String::Reference(&[]);
+    let mut output = empty_string();
 
     loop {
-        let mut additionnal_output = String::Reference(&[]);
+        let mut additionnal_output = empty_string();
 
         let new_input = if let Ok((new_input, fws)) = fws(input) {
-            additionnal_output += fws;
+            add_string(&mut additionnal_output, fws);
             new_input
         } else {
             input
         };
 
         let new_input = if let Ok((new_input, str)) = take_while1(new_input, is_qtext) {
-            additionnal_output += str;
+            add_string(&mut additionnal_output, str);
             new_input
         } else if let Ok((new_input, str)) = quoted_pair(new_input) {
-            additionnal_output += str;
+            add_string(&mut additionnal_output, str);
             new_input
         } else {
             break;
         };
 
-        output += additionnal_output;
+        add_string(&mut output, additionnal_output);
         input = new_input;
     }
 
     let input = if let Ok((input, fws)) = fws(input) {
-        output += fws;
+        add_string(&mut output, fws);
         input
     } else {
         input
@@ -120,7 +120,7 @@ mod test {
         ));
         assert!(matches!(
             quoted_string(b"\r\n  \"hey\"  ").unwrap().1,
-            String::Str(_)
+            String::Borrowed(_)
         ));
     }
 }
