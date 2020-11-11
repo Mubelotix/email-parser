@@ -15,6 +15,12 @@ pub struct Email<'a> {
     pub cc: Option<Vec<Address<'a>>>,
     #[cfg(feature = "bcc")]
     pub bcc: Option<Vec<Address<'a>>>,
+    #[cfg(feature = "message-id")]
+    pub message_id: Option<(Cow<'a, str>, Cow<'a, str>)>,
+    #[cfg(feature = "in-reply-to")]
+    pub in_reply_to: Option<Vec<(Cow<'a, str>, Cow<'a, str>)>>,
+    #[cfg(feature = "references")]
+    pub references: Option<Vec<(Cow<'a, str>, Cow<'a, str>)>>,
 }
 
 impl<'a> Email<'a> {
@@ -31,6 +37,12 @@ impl<'a> Email<'a> {
         let mut cc = None;
         #[cfg(feature = "bcc")]
         let mut bcc = None;
+        #[cfg(feature = "message-id")]
+        let mut message_id = None;
+        #[cfg(feature = "in-reply-to")]
+        let mut in_reply_to = None;
+        #[cfg(feature = "references")]
+        let mut references = None;
 
         for field in fields {
             match field {
@@ -74,6 +86,30 @@ impl<'a> Email<'a> {
                         return Err(Error::Known("Multiple bcc fields"));
                     }
                 },
+                #[cfg(feature = "message-id")]
+                Field::MessageId(id) => {
+                    if message_id.is_none() {
+                        message_id = Some(id)
+                    } else {
+                        return Err(Error::Known("Multiple message-id fields"));
+                    }
+                },
+                #[cfg(feature = "in-reply-to")]
+                Field::InReplyTo(ids) => {
+                    if in_reply_to.is_none() {
+                        in_reply_to = Some(ids)
+                    } else {
+                        return Err(Error::Known("Multiple in-reply-to fields"));
+                    }
+                },
+                #[cfg(feature = "references")]
+                Field::References(ids) => {
+                    if references.is_none() {
+                        references = Some(ids)
+                    } else {
+                        return Err(Error::Known("Multiple references fields"));
+                    }
+                }
                 _ => (),
             }
         }
@@ -90,6 +126,12 @@ impl<'a> Email<'a> {
             cc,
             #[cfg(feature = "bcc")]
             bcc,
+            #[cfg(feature = "message-id")]
+            message_id,
+            #[cfg(feature = "in-reply-to")]
+            in_reply_to,
+            #[cfg(feature = "references")]
+            references,
         })
     }
 }
@@ -108,7 +150,7 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let mail = Email::parse(b"From: mubelotix@mubelotix.dev\r\nSubject:Testing email\r\n\r\nHey!\r\n").unwrap();
+        let mail = Email::parse(b"From: mubelotix@mubelotix.dev\r\nSubject:Testing email\r\nTo: Germanon <germanon@gmail.com>\r\nMessage-id: <6546518945@mubelotix.dev>\r\n\r\nHey!\r\n").unwrap();
         println!("{:#?}", mail);
     }
 }
