@@ -1,15 +1,16 @@
 use crate::parsing::time::*;
 use crate::prelude::*;
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub enum TraceField<'a> {
     Date(DateTime),
-    From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
+    From(Vec<(Option<Vec<Cow<'a, str>>>, (Cow<'a, str>, Cow<'a, str>))>),
     Sender(Mailbox<'a>),
     To(Vec<Address<'a>>),
     Cc(Vec<Address<'a>>),
     Bcc(Vec<Address<'a>>),
-    MessageId((String<'a>, String<'a>)),
+    MessageId((Cow<'a, str>, Cow<'a, str>)),
 }
 
 #[derive(Debug)]
@@ -17,7 +18,7 @@ pub enum Field<'a> {
     #[cfg(feature = "date")]
     Date(DateTime),
     #[cfg(feature = "from")]
-    From(Vec<(Option<Vec<String<'a>>>, (String<'a>, String<'a>))>),
+    From(Vec<(Option<Vec<Cow<'a, str>>>, (Cow<'a, str>, Cow<'a, str>))>),
     #[cfg(feature = "sender")]
     Sender(Mailbox<'a>),
     #[cfg(feature = "reply-to")]
@@ -29,26 +30,26 @@ pub enum Field<'a> {
     #[cfg(feature = "bcc")]
     Bcc(Vec<Address<'a>>),
     #[cfg(feature = "message-id")]
-    MessageId((String<'a>, String<'a>)),
+    MessageId((Cow<'a, str>, Cow<'a, str>)),
     #[cfg(feature = "in-reply-to")]
-    InReplyTo(Vec<(String<'a>, String<'a>)>),
+    InReplyTo(Vec<(Cow<'a, str>, Cow<'a, str>)>),
     #[cfg(feature = "references")]
-    References(Vec<(String<'a>, String<'a>)>),
+    References(Vec<(Cow<'a, str>, Cow<'a, str>)>),
     #[cfg(feature = "subject")]
-    Subject(String<'a>),
+    Subject(Cow<'a, str>),
     #[cfg(feature = "comments")]
-    Comments(String<'a>),
+    Comments(Cow<'a, str>),
     #[cfg(feature = "keywords")]
-    Keywords(Vec<Vec<String<'a>>>),
+    Keywords(Vec<Vec<Cow<'a, str>>>),
     #[cfg(feature = "trace")]
     Trace {
-        return_path: Option<Option<(String<'a>, String<'a>)>>,
+        return_path: Option<Option<(Cow<'a, str>, Cow<'a, str>)>>,
         received: Vec<(Vec<ReceivedToken<'a>>, DateTime)>,
         fields: Vec<TraceField<'a>>,
     },
     Unknown {
-        name: String<'a>,
-        value: String<'a>,
+        name: Cow<'a, str>,
+        value: Cow<'a, str>,
     },
 }
 
@@ -132,7 +133,7 @@ pub fn date(input: &[u8]) -> Res<DateTime> {
     Ok((input, date_time))
 }
 
-pub fn from(input: &[u8]) -> Res<Vec<(Option<Vec<String>>, (String, String))>> {
+pub fn from(input: &[u8]) -> Res<Vec<(Option<Vec<Cow<str>>>, (Cow<str>, Cow<str>))>> {
     let (input, ()) = tag_no_case(input, b"From:", b"fROM:")?;
     let (input, mailbox_list) = mailbox_list(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -186,7 +187,7 @@ pub fn bcc(input: &[u8]) -> Res<Vec<Address>> {
     Ok((input, mailbox))
 }
 
-pub fn message_id(input: &[u8]) -> Res<(String, String)> {
+pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, ()) = tag_no_case(input, b"Message-ID:", b"mESSAGE-id:")?;
     let (input, id) = crate::parsing::address::message_id(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -194,7 +195,7 @@ pub fn message_id(input: &[u8]) -> Res<(String, String)> {
     Ok((input, id))
 }
 
-pub fn in_reply_to(input: &[u8]) -> Res<Vec<(String, String)>> {
+pub fn in_reply_to(input: &[u8]) -> Res<Vec<(Cow<str>, Cow<str>)>> {
     let (input, ()) = tag_no_case(input, b"In-Reply-To:", b"iN-rEPLY-tO:")?;
     let (input, ids) = many1(input, crate::parsing::address::message_id)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -202,7 +203,7 @@ pub fn in_reply_to(input: &[u8]) -> Res<Vec<(String, String)>> {
     Ok((input, ids))
 }
 
-pub fn references(input: &[u8]) -> Res<Vec<(String, String)>> {
+pub fn references(input: &[u8]) -> Res<Vec<(Cow<str>, Cow<str>)>> {
     let (input, ()) = tag_no_case(input, b"References:", b"rEFERENCES:")?;
     let (input, ids) = many1(input, crate::parsing::address::message_id)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -210,7 +211,7 @@ pub fn references(input: &[u8]) -> Res<Vec<(String, String)>> {
     Ok((input, ids))
 }
 
-pub fn subject(input: &[u8]) -> Res<String> {
+pub fn subject(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Subject:", b"sUBJECT:")?;
     let (input, subject) = unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -218,7 +219,7 @@ pub fn subject(input: &[u8]) -> Res<String> {
     Ok((input, subject))
 }
 
-pub fn comments(input: &[u8]) -> Res<String> {
+pub fn comments(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Comments:", b"cOMMENTS:")?;
     let (input, comments) = unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -226,7 +227,7 @@ pub fn comments(input: &[u8]) -> Res<String> {
     Ok((input, comments))
 }
 
-pub fn keywords(input: &[u8]) -> Res<Vec<Vec<String>>> {
+pub fn keywords(input: &[u8]) -> Res<Vec<Vec<Cow<str>>>> {
     let (input, ()) = tag_no_case(input, b"Keywords:", b"kEYWORDS:")?;
 
     let mut keywords = Vec::new();
@@ -250,7 +251,7 @@ pub fn resent_date(input: &[u8]) -> Res<DateTime> {
     Ok((input, date))
 }
 
-pub fn resent_from(input: &[u8]) -> Res<Vec<(Option<Vec<String>>, (String, String))>> {
+pub fn resent_from(input: &[u8]) -> Res<Vec<(Option<Vec<Cow<str>>>, (Cow<str>, Cow<str>))>> {
     let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
     let (input, from) = from(input)?;
 
@@ -285,14 +286,14 @@ pub fn resent_bcc(input: &[u8]) -> Res<Vec<Address>> {
     Ok((input, bcc))
 }
 
-pub fn resent_message_id(input: &[u8]) -> Res<(String, String)> {
+pub fn resent_message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
     let (input, id) = message_id(input)?;
 
     Ok((input, id))
 }
 
-pub fn return_path(input: &[u8]) -> Res<Option<(String, String)>> {
+pub fn return_path(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>> {
     fn empty_path(input: &[u8]) -> Res<()> {
         let (input, _cfws) = optional(input, cfws);
         let (input, ()) = tag(input, b"<")?;
@@ -307,9 +308,9 @@ pub fn return_path(input: &[u8]) -> Res<Option<(String, String)>> {
         input,
         &mut [
             (|i| angle_addr(i).map(|(i, v)| (i, Some(v))))
-                as fn(input: &[u8]) -> Res<Option<(String, String)>>,
+                as fn(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>>,
             (|i| empty_path(i).map(|(i, _)| (i, None)))
-                as fn(input: &[u8]) -> Res<Option<(String, String)>>,
+                as fn(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>>,
         ][..],
     )?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -319,9 +320,9 @@ pub fn return_path(input: &[u8]) -> Res<Option<(String, String)>> {
 
 #[derive(Debug)]
 pub enum ReceivedToken<'a> {
-    Word(String<'a>),
-    Addr((String<'a>, String<'a>)),
-    Domain(String<'a>),
+    Word(Cow<'a, str>),
+    Addr((Cow<'a, str>, Cow<'a, str>)),
+    Domain(Cow<'a, str>),
 }
 
 pub fn received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
@@ -354,7 +355,7 @@ pub fn received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
 pub fn trace(
     input: &[u8],
 ) -> Res<(
-    Option<Option<(String, String)>>,
+    Option<Option<(Cow<str>, Cow<str>)>>,
     Vec<(Vec<ReceivedToken>, DateTime)>,
 )> {
     let (input, return_path) = optional(input, return_path);
@@ -363,7 +364,7 @@ pub fn trace(
     Ok((input, (return_path, received)))
 }
 
-pub fn unknown(input: &[u8]) -> Res<(String, String)> {
+pub fn unknown(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, name) = take_while1(input, is_ftext)?;
     let (input, ()) = tag(input, b":")?;
     let (input, value) = unstructured(input)?;

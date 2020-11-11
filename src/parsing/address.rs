@@ -1,15 +1,16 @@
 use crate::prelude::*;
+use std::borrow::Cow;
 
-pub type Mailbox<'a> = (Option<Vec<String<'a>>>, (String<'a>, String<'a>));
+pub type Mailbox<'a> = (Option<Vec<Cow<'a, str>>>, (Cow<'a, str>, Cow<'a, str>));
 
 #[derive(Debug)]
 pub enum Address<'a> {
     Mailbox(Mailbox<'a>),
-    Group((Vec<String<'a>>, Vec<Mailbox<'a>>)),
+    Group((Vec<Cow<'a, str>>, Vec<Mailbox<'a>>)),
 }
 
-pub fn message_id(input: &[u8]) -> Res<(String, String)> {
-    fn no_fold_litteral(input: &[u8]) -> Res<String> {
+pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+    fn no_fold_litteral(input: &[u8]) -> Res<Cow<str>> {
         let (input, ()) = tag(input, b"[")?;
         let (input, domain) = take_while(input, is_dtext)?;
         let (input, ()) = tag(input, b"]")?;
@@ -27,14 +28,14 @@ pub fn message_id(input: &[u8]) -> Res<(String, String)> {
     Ok((input, (id_left, id_right)))
 }
 
-pub fn addr_spec(input: &[u8]) -> Res<(String, String)> {
+pub fn addr_spec(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, local_part) = local_part(input)?;
     let (input, ()) = tag(input, b"@")?;
     let (input, domain) = domain(input)?;
     Ok((input, (local_part, domain)))
 }
 
-pub fn angle_addr(input: &[u8]) -> Res<(String, String)> {
+pub fn angle_addr(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, _cfws) = optional(input, cfws);
     let (input, ()) = tag(input, b"<")?;
     let (input, addr_spec) = addr_spec(input)?;
@@ -50,15 +51,15 @@ pub fn name_addr(input: &[u8]) -> Res<Mailbox> {
     Ok((input, (display_name, angle_addr)))
 }
 
-pub fn local_part(input: &[u8]) -> Res<String> {
+pub fn local_part(input: &[u8]) -> Res<Cow<str>> {
     match_parsers(input, &mut [dot_atom, quoted_string][..])
 }
 
-pub fn domain(input: &[u8]) -> Res<String> {
+pub fn domain(input: &[u8]) -> Res<Cow<str>> {
     match_parsers(input, &mut [dot_atom, domain_literal][..])
 }
 
-pub fn domain_literal<'a>(input: &'a [u8]) -> Res<String<'a>> {
+pub fn domain_literal<'a>(input: &'a [u8]) -> Res<Cow<'a, str>> {
     let (input, _cfws) = optional(input, cfws);
     let (mut input, ()) = tag(input, b"[")?;
     let mut output = empty_string();
@@ -102,7 +103,7 @@ pub fn mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
     Ok((input, mailboxes))
 }
 
-pub fn group(input: &[u8]) -> Res<(Vec<String>, Vec<Mailbox>)> {
+pub fn group(input: &[u8]) -> Res<(Vec<Cow<str>>, Vec<Mailbox>)> {
     let (input, display_name) = phrase(input)?;
     let (mut input, ()) = tag(input, b":")?;
 

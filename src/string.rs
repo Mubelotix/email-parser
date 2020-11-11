@@ -1,29 +1,19 @@
 use std::borrow::Cow;
 
-pub type String<'a> = std::borrow::Cow<'a, str>;
-
 #[inline]
-pub(crate) fn empty_string() -> String<'static> {
+pub(crate) fn empty_string() -> Cow<'static, str> {
     Cow::Borrowed("")
 }
 
 #[inline]
-pub(crate) fn as_str<'a>(s: &'a String<'a>) -> &'a str {
-    match s {
-        Cow::Borrowed(s) => s,
-        Cow::Owned(s) => s.as_str(),
-    }
-}
-
-#[inline]
-pub(crate) fn from_slice(slice: &[u8]) -> String {
+pub(crate) fn from_slice(slice: &[u8]) -> Cow<str> {
     unsafe {
         Cow::Borrowed(std::str::from_utf8_unchecked(slice))
     }
 }
 
 #[inline]
-pub(crate) fn add_string<'a, 'b>(s1: &'b mut String<'a>, s2: String<'a>) {
+pub(crate) fn add_string<'a, 'b>(s1: &'b mut Cow<'a, str>, s2: Cow<'a, str>) {
     match s1 {
         Cow::Borrowed(data1) => {
             if let Cow::Borrowed(data2) = s2 {
@@ -49,11 +39,10 @@ pub(crate) fn add_string<'a, 'b>(s1: &'b mut String<'a>, s2: String<'a>) {
                     }
                 }
             }
-            let string = as_str(&s1).to_string();
-            *s1 = Cow::Owned(string + as_str(&s2));
+            *s1 = Cow::Owned(s1.to_string() + &s2);
         }
         Cow::Owned(ref mut string) => {
-            string.push_str(as_str(&s2));
+            string.push_str(&s2);
         }
     }
 }

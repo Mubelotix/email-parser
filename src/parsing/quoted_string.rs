@@ -1,6 +1,7 @@
 use crate::prelude::*;
+use std::borrow::Cow;
 
-pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     let (input, ()) = tag(input, b"\\")?;
 
     if let Some(character) = input.get(0) {
@@ -22,7 +23,7 @@ pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], String), Error> {
     }
 }
 
-pub fn quoted_string(input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn quoted_string(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     let input = if let Ok((input, _cfws)) = cfws(input) {
         input
     } else {
@@ -116,11 +117,11 @@ mod test {
             quoted_string(b"\r\n  \"This\\ is\\ a\\ test\"  ")
                 .unwrap()
                 .1,
-            String::Owned(_)
+            Cow::Owned(_)
         ));
         assert!(matches!(
             quoted_string(b"\r\n  \"hey\"  ").unwrap().1,
-            String::Borrowed(_)
+            Cow::Borrowed(_)
         ));
     }
 }

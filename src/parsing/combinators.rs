@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::borrow::Cow;
 
 #[inline]
 pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
@@ -64,7 +65,7 @@ where
 }
 
 #[inline]
-pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<String>
+pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<Cow<str>>
 where
     F: FnMut(u8) -> bool,
 {
@@ -82,7 +83,7 @@ where
 }
 
 #[inline]
-pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<String>
+pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<Cow<str>>
 where
     F: FnMut(u8) -> bool,
 {
@@ -154,9 +155,9 @@ where
 }
 
 #[inline]
-pub fn collect_many<'a, F>(mut input: &'a [u8], mut parser: F) -> Res<String>
+pub fn collect_many<'a, F>(mut input: &'a [u8], mut parser: F) -> Res<Cow<str>>
 where
-    F: FnMut(&'a [u8]) -> Res<String>,
+    F: FnMut(&'a [u8]) -> Res<Cow<str>>,
 {
     let mut result = empty_string();
 
@@ -181,10 +182,10 @@ where
 }
 
 #[inline]
-pub fn collect_pair<'a, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<String>
+pub fn collect_pair<'a, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<Cow<str>>
 where
-    F: FnMut(&'a [u8]) -> Res<String>,
-    G: FnMut(&'a [u8]) -> Res<String>,
+    F: FnMut(&'a [u8]) -> Res<Cow<str>>,
+    G: FnMut(&'a [u8]) -> Res<Cow<str>>,
 {
     let (input, mut first) = parser1(input)?;
     let (input, second) = parser2(input)?;

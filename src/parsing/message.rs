@@ -1,7 +1,8 @@
 use crate::parsing::fields::{fields, Field};
 use crate::prelude::*;
+use std::borrow::Cow;
 
-pub fn line(input: &[u8]) -> Res<String> {
+pub fn line(input: &[u8]) -> Res<Cow<str>> {
     let max_idx = std::cmp::min(input.len(), 998);
 
     // index cannot be out of range so no need to check
@@ -37,7 +38,7 @@ pub fn check_line(input: &[u8]) -> Res<()> {
     }
 }
 
-pub fn body_lines(input: &[u8]) -> Result<Vec<String>, Error> {
+pub fn body_lines(input: &[u8]) -> Result<Vec<Cow<str>>, Error> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -63,7 +64,7 @@ pub fn body_lines(input: &[u8]) -> Result<Vec<String>, Error> {
     Ok(lines)
 }
 
-pub fn body(input: &[u8]) -> Result<Option<String>, Error> {
+pub fn body(input: &[u8]) -> Result<Option<Cow<str>>, Error> {
     if input.is_empty() {
         return Ok(None);
     }
@@ -90,7 +91,7 @@ pub fn body(input: &[u8]) -> Result<Option<String>, Error> {
     }))
 }
 
-pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<String>), Error> {
+pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<Cow<str>>), Error> {
     let (input, fields) = fields(input)?;
     let body = body(input)?;
 

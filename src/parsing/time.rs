@@ -92,7 +92,7 @@ pub fn year(input: &[u8]) -> Res<usize> {
     if year.len() < 4 {
         return Err(Error::Known("year is expected to have 4 digits or more"));
     }
-    let year: usize = as_str(&year)
+    let year: usize = year
         .parse()
         .map_err(|_e| Error::Known("Failed to parse year"))?;
 

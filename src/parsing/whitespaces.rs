@@ -1,7 +1,8 @@
 use crate::prelude::*;
+use std::borrow::Cow;
 
 #[inline]
-pub fn fws(input: &[u8]) -> Res<String> {
+pub fn fws(input: &[u8]) -> Res<Cow<str>> {
     let (input, before) = optional(input, |input| {
         pair(
             input,
@@ -20,11 +21,11 @@ pub fn fws(input: &[u8]) -> Res<String> {
 }
 
 #[inline]
-pub fn ccontent(input: &[u8]) -> Res<String> {
+pub fn ccontent(input: &[u8]) -> Res<Cow<str>> {
     match_parsers(
         input,
         &mut [
-            (|i| take_while1(i, is_ctext)) as fn(input: &[u8]) -> Res<String>,
+            (|i| take_while1(i, is_ctext)) as fn(input: &[u8]) -> Res<Cow<str>>,
             quoted_pair,
             comment,
         ][..],
@@ -32,7 +33,7 @@ pub fn ccontent(input: &[u8]) -> Res<String> {
 }
 
 #[inline]
-pub fn comment(input: &[u8]) -> Res<String> {
+pub fn comment(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag(input, b"(")?;
 
     let (input, _) = ignore_many(input, |input| {
@@ -46,8 +47,8 @@ pub fn comment(input: &[u8]) -> Res<String> {
 }
 
 #[inline]
-pub fn cfws(input: &[u8]) -> Res<String> {
-    fn real_cfws(mut input: &[u8]) -> Res<String> {
+pub fn cfws(input: &[u8]) -> Res<Cow<str>> {
+    fn real_cfws(mut input: &[u8]) -> Res<Cow<str>> {
         let mut output = empty_string();
 
         let (new_input, folding_wsp) = optional(input, fws);

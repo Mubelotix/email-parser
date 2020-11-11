@@ -1,6 +1,7 @@
 use crate::prelude::*;
+use std::borrow::Cow;
 
-pub fn atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn atom(mut input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     if let Ok((new_input, _)) = cfws(input) {
         input = new_input
     }
@@ -12,7 +13,7 @@ pub fn atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     Ok((input, atom))
 }
 
-pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     let (mut input, mut output) = take_while1(input, is_atext)?;
 
     loop {
@@ -32,7 +33,7 @@ pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], String), Error> {
     Ok((input, output))
 }
 
-pub fn dot_atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn dot_atom(mut input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     if let Ok((new_input, _)) = cfws(input) {
         input = new_input
     }
@@ -43,7 +44,7 @@ pub fn dot_atom(mut input: &[u8]) -> Result<(&[u8], String), Error> {
     Ok((input, dot_atom))
 }
 
-pub fn word(input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn word(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     if let Ok((input, word)) = atom(input) {
         Ok((input, word))
     } else if let Ok((input, word)) = quoted_string(input) {
@@ -55,7 +56,7 @@ pub fn word(input: &[u8]) -> Result<(&[u8], String), Error> {
     }
 }
 
-pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<String>), Error> {
+pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
     let mut words = Vec::new();
     let (mut input, first_word) = word(input)?;
     words.push(first_word);
@@ -68,7 +69,7 @@ pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<String>), Error> {
     Ok((input, words))
 }
 
-pub fn unstructured(input: &[u8]) -> Result<(&[u8], String), Error> {
+pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     let (mut input, output) = collect_many(input, |i| {
         collect_pair(
             i,
