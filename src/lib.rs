@@ -30,6 +30,7 @@
 //! Some libraries suffer from huge performance variations depending on the content of the mail, so this library is not **always** the fastest.
 
 pub mod address;
+pub mod time;
 pub mod email;
 pub mod error;
 pub(crate) mod parsing;
@@ -38,4 +39,3 @@ pub(crate) mod string;
 
 pub use crate::parsing::fields::Field;
 pub use crate::parsing::message::parse_message;
-pub use crate::parsing::time::{Day, Month};
