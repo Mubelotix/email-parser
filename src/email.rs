@@ -1,7 +1,6 @@
 use crate::address::*;
 use crate::prelude::*;
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Email<'a> {
