@@ -243,36 +243,44 @@ mod test {
 
     #[test]
     fn test_field_number() {
-        assert!(Email::parse( // missing date
+        assert!(Email::parse(
+            // missing date
             b"\
             From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
             \r\n\
             Hey!\r\n",
-        ).is_err());
+        )
+        .is_err());
 
-        assert!(Email::parse( // 2 date fields
+        assert!(Email::parse(
+            // 2 date fields
             b"\
             From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
             Date: 5 May 2003 18:58:34 +0000\r\n\
             Date: 6 May 2003 18:58:34 +0000\r\n\
             \r\n\
             Hey!\r\n",
-        ).is_err());
+        )
+        .is_err());
 
-        assert!(Email::parse( // missing from
+        assert!(Email::parse(
+            // missing from
             b"\
             Date: 5 May 2003 18:58:34 +0000\r\n\
             \r\n\
             Hey!\r\n",
-        ).is_err());
+        )
+        .is_err());
 
-        assert!(Email::parse( // 2 from fields
+        assert!(Email::parse(
+            // 2 from fields
             b"\
             From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
             From: Someone <jack@gmail.com>\r\n\
             Date: 5 May 2003 18:58:34 +0000\r\n\
             \r\n\
             Hey!\r\n",
-        ).is_err());
+        )
+        .is_err());
     }
 }

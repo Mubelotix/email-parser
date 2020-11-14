@@ -23,7 +23,7 @@
 //!     Hey!\r\n",
 //! )
 //! .unwrap();
-//! 
+//!
 //! assert_eq!(email.subject.unwrap(), "Example Email");
 //! assert_eq!(email.sender.name.unwrap(), vec!["Mubelotix"]);
 //! assert_eq!(email.sender.address.local_part, "mubelotix");
