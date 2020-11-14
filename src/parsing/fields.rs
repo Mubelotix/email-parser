@@ -1,3 +1,4 @@
+use crate::address::*;
 use crate::parsing::time::*;
 use crate::prelude::*;
 use std::borrow::Cow;
@@ -5,7 +6,7 @@ use std::borrow::Cow;
 #[derive(Debug)]
 pub enum TraceField<'a> {
     Date(DateTime),
-    From(Vec<(Option<Vec<Cow<'a, str>>>, (Cow<'a, str>, Cow<'a, str>))>),
+    From(Vec<Mailbox<'a>>),
     Sender(Mailbox<'a>),
     To(Vec<Address<'a>>),
     Cc(Vec<Address<'a>>),
@@ -18,7 +19,7 @@ pub enum Field<'a> {
     #[cfg(feature = "date")]
     Date(DateTime),
     #[cfg(feature = "from")]
-    From(Vec<(Option<Vec<Cow<'a, str>>>, (Cow<'a, str>, Cow<'a, str>))>),
+    From(Vec<Mailbox<'a>>),
     #[cfg(feature = "sender")]
     Sender(Mailbox<'a>),
     #[cfg(feature = "reply-to")]
@@ -43,7 +44,7 @@ pub enum Field<'a> {
     Keywords(Vec<Vec<Cow<'a, str>>>),
     #[cfg(feature = "trace")]
     Trace {
-        return_path: Option<Option<(Cow<'a, str>, Cow<'a, str>)>>,
+        return_path: Option<Option<EmailAddress<'a>>>,
         received: Vec<(Vec<ReceivedToken<'a>>, DateTime)>,
         fields: Vec<TraceField<'a>>,
     },
@@ -133,7 +134,7 @@ pub fn date(input: &[u8]) -> Res<DateTime> {
     Ok((input, date_time))
 }
 
-pub fn from(input: &[u8]) -> Res<Vec<(Option<Vec<Cow<str>>>, (Cow<str>, Cow<str>))>> {
+pub fn from(input: &[u8]) -> Res<Vec<Mailbox>> {
     let (input, ()) = tag_no_case(input, b"From:", b"fROM:")?;
     let (input, mailbox_list) = mailbox_list(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -251,7 +252,7 @@ pub fn resent_date(input: &[u8]) -> Res<DateTime> {
     Ok((input, date))
 }
 
-pub fn resent_from(input: &[u8]) -> Res<Vec<(Option<Vec<Cow<str>>>, (Cow<str>, Cow<str>))>> {
+pub fn resent_from(input: &[u8]) -> Res<Vec<Mailbox>> {
     let (input, ()) = tag_no_case(input, b"Resent-", b"rESENT-")?;
     let (input, from) = from(input)?;
 
@@ -293,7 +294,7 @@ pub fn resent_message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     Ok((input, id))
 }
 
-pub fn return_path(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>> {
+pub fn return_path(input: &[u8]) -> Res<Option<EmailAddress>> {
     fn empty_path(input: &[u8]) -> Res<()> {
         let (input, _cfws) = optional(input, cfws);
         let (input, ()) = tag(input, b"<")?;
@@ -308,9 +309,9 @@ pub fn return_path(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>> {
         input,
         &mut [
             (|i| angle_addr(i).map(|(i, v)| (i, Some(v))))
-                as fn(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>>,
+                as fn(input: &[u8]) -> Res<Option<EmailAddress>>,
             (|i| empty_path(i).map(|(i, _)| (i, None)))
-                as fn(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>>,
+                as fn(input: &[u8]) -> Res<Option<EmailAddress>>,
         ][..],
     )?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -321,7 +322,7 @@ pub fn return_path(input: &[u8]) -> Res<Option<(Cow<str>, Cow<str>)>> {
 #[derive(Debug)]
 pub enum ReceivedToken<'a> {
     Word(Cow<'a, str>),
-    Addr((Cow<'a, str>, Cow<'a, str>)),
+    Addr(EmailAddress<'a>),
     Domain(Cow<'a, str>),
 }
 
@@ -355,7 +356,7 @@ pub fn received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
 pub fn trace(
     input: &[u8],
 ) -> Res<(
-    Option<Option<(Cow<str>, Cow<str>)>>,
+    Option<Option<EmailAddress>>,
     Vec<(Vec<ReceivedToken>, DateTime)>,
 )> {
     let (input, return_path) = optional(input, return_path);
@@ -402,7 +403,7 @@ mod tests {
                 .unwrap()
                 .1
                 .unwrap()
-                .0,
+                .local_part,
             "mubelotix"
         );
 
@@ -415,14 +416,23 @@ mod tests {
 
     #[test]
     fn test_resent() {
+        assert!(resent_date(b"Resent-Date:5 May 2003 18:59:03 +0000\r\n").is_ok());
         assert_eq!(
-            resent_date(b"Resent-Date:5 May 2003 18:59:03 +0000\r\n")
+            resent_from(b"Resent-FrOm: Mubelotix <mubelotix@gmail.com>\r\n")
                 .unwrap()
-                .1,
-            (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0)))
+                .1[0]
+                .address
+                .local_part,
+            "mubelotix"
         );
-        assert_eq!(resent_from(b"Resent-FrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1[0].1.0, "mubelotix");
-        assert_eq!(resent_sender(b"Resent-sender: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.1.1, "gmail.com");
+        assert_eq!(
+            resent_sender(b"Resent-sender: Mubelotix <mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1
+                .address
+                .domain,
+            "gmail.com"
+        );
         assert!(
             !resent_to(b"Resent-To: Mubelotix <mubelotix@gmail.com>\r\n")
                 .unwrap()
@@ -445,16 +455,27 @@ mod tests {
 
     #[test]
     fn test_date() {
-        assert_eq!(
-            date(b"Date:5 May 2003 18:59:03 +0000\r\n").unwrap().1,
-            (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0)))
-        );
+        assert!(date(b"Date:5 May 2003 18:59:03 +0000\r\n").is_ok());
     }
 
     #[test]
     fn test_originators() {
-        assert_eq!(from(b"FrOm: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1[0].1.0, "mubelotix");
-        assert_eq!(sender(b"sender: Mubelotix <mubelotix@gmail.com>\r\n").unwrap().1.1.1, "gmail.com");
+        assert_eq!(
+            from(b"FrOm: Mubelotix <mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1[0]
+                .address
+                .local_part,
+            "mubelotix"
+        );
+        assert_eq!(
+            sender(b"sender: Mubelotix <mubelotix@gmail.com>\r\n")
+                .unwrap()
+                .1
+                .address
+                .domain,
+            "gmail.com"
+        );
         assert_eq!(
             reply_to(b"Reply-to: Mubelotix <mubelotix@gmail.com>\r\n")
                 .unwrap()

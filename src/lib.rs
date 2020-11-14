@@ -8,6 +8,28 @@
 //! The goal of this library is to be fully compliant with RFC 5322. However, this library does not intend to support the obsolete syntax because it has been obsolete for 12 years, and it would slow down everything.\
 //! I plan to add optional support to the Multipurpose Internet Mail Extensions and for PGP.
 //!
+//! # Example
+//!
+//! ```
+//! # use email_parser::prelude::*;
+//! let email = Email::parse(
+//!     b"\
+//!     From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
+//!     Subject:Example Email\r\n\
+//!     To: Someone <example@example.com>\r\n\
+//!     Message-id: <6546518945@mubelotix.dev>\r\n\
+//!     Date: 5 May 2003 18:58:34 +0000\r\n\
+//!     \r\n\
+//!     Hey!\r\n",
+//! )
+//! .unwrap();
+//!
+//! assert_eq!(email.subject.unwrap(), "Example Email");
+//! assert_eq!(email.sender.name.unwrap(), vec!["Mubelotix"]);
+//! assert_eq!(email.sender.address.local_part, "mubelotix");
+//! assert_eq!(email.sender.address.domain, "mubelotix.dev");
+//! ```
+//!
 //! # Pay for what you use
 //!
 //! Mails can be elaborated. No matter what you are building, you are certainly not using all of its features.\
@@ -29,11 +51,13 @@
 //! Tests require a `mail.txt` file containing a raw mail next to the `Cargo.toml`.\
 //! Some libraries suffer from huge performance variations depending on the content of the mail, so this library is not **always** the fastest.
 
+pub mod address;
+pub mod email;
 pub mod error;
 pub(crate) mod parsing;
 pub mod prelude;
 pub(crate) mod string;
+pub mod time;
 
 pub use crate::parsing::fields::Field;
 pub use crate::parsing::message::parse_message;
-pub use crate::parsing::time::{Day, Month};

@@ -1,37 +1,5 @@
 use crate::prelude::*;
 
-pub type Zone = (bool, u8, u8);
-pub type Time = ((u8, u8, u8), Zone);
-pub type Date = (usize, Month, usize);
-pub type DateTime = (Option<Day>, Date, Time);
-
-#[derive(Debug, PartialEq)]
-pub enum Day {
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Month {
-    January,
-    February,
-    March,
-    April,
-    May,
-    June,
-    July,
-    August,
-    September,
-    October,
-    November,
-    December,
-}
-
 pub fn day_name(input: &[u8]) -> Res<Day> {
     if let (Some(input), Some(letters)) = (input.get(3..), input.get(..3)) {
         let letters = letters.to_ascii_lowercase();
@@ -105,7 +73,7 @@ pub fn year(input: &[u8]) -> Res<usize> {
     Ok((input, year))
 }
 
-pub fn day(input: &[u8]) -> Res<usize> {
+pub fn day(input: &[u8]) -> Res<u8> {
     let (input, _fws) = optional(input, fws);
     let (mut input, mut day) = digit(input)?;
     if let Ok((new_input, digit)) = digit(input) {
@@ -117,33 +85,47 @@ pub fn day(input: &[u8]) -> Res<usize> {
         return Err(Error::Known("day must be less than 31"));
     }
     let (input, _) = fws(input)?;
-    Ok((input, day as usize))
+    Ok((input, day))
 }
 
-pub fn time_of_day(input: &[u8]) -> Res<(u8, u8, u8)> {
+pub fn time_of_day(input: &[u8]) -> Res<Time> {
     let (input, hour) = two_digits(input)?;
     if hour > 23 {
         return Err(Error::Known("There is only 24 hours in a day"));
     }
     let (input, ()) = tag(input, b":")?;
 
-    let (input, minutes) = two_digits(input)?;
-    if minutes > 59 {
+    let (input, minute) = two_digits(input)?;
+    if minute > 59 {
         return Err(Error::Known("There is only 60 minutes per hour"));
     }
 
     if input.starts_with(b":") {
         let new_input = &input[1..];
-        if let Ok((new_input, seconds)) = two_digits(new_input) {
-            if seconds > 60 {
+        if let Ok((new_input, second)) = two_digits(new_input) {
+            if second > 60 {
                 // leap second allowed
                 return Err(Error::Known("There is only 60 seconds in a minute"));
             }
-            return Ok((new_input, (hour, minutes, seconds)));
+            return Ok((
+                new_input,
+                Time {
+                    hour,
+                    minute,
+                    second,
+                },
+            ));
         }
     }
 
-    Ok((input, (hour, minutes, 0)))
+    Ok((
+        input,
+        Time {
+            hour,
+            minute,
+            second: 0,
+        },
+    ))
 }
 
 pub fn zone(input: &[u8]) -> Res<Zone> {
@@ -157,27 +139,34 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
     };
     input = &input[1..];
 
-    let (input, hours) = two_digits(input)?;
-    let (input, minutes) = two_digits(input)?;
+    let (input, hour_offset) = two_digits(input)?;
+    let (input, minute_offset) = two_digits(input)?;
 
-    if minutes > 59 {
-        return Err(Error::Known("zone minutes out of range"));
+    if minute_offset > 59 {
+        return Err(Error::Known("zone minute_offset out of range"));
     }
 
-    Ok((input, (sign, hours, minutes)))
+    Ok((
+        input,
+        Zone {
+            sign,
+            hour_offset,
+            minute_offset,
+        },
+    ))
 }
 
-pub fn time(input: &[u8]) -> Res<Time> {
-    let (input, time_of_day) = time_of_day(input)?;
+pub fn time(input: &[u8]) -> Res<TimeWithZone> {
+    let (input, time) = time_of_day(input)?;
     let (input, zone) = zone(input)?;
-    Ok((input, (time_of_day, zone)))
+    Ok((input, TimeWithZone { time, zone }))
 }
 
 pub fn date(input: &[u8]) -> Res<Date> {
     let (input, day) = day(input)?;
     let (input, month) = month(input)?;
     let (input, year) = year(input)?;
-    Ok((input, (day, month, year)))
+    Ok((input, Date { day, month, year }))
 }
 
 pub fn date_time(input: &[u8]) -> Res<DateTime> {
@@ -185,7 +174,14 @@ pub fn date_time(input: &[u8]) -> Res<DateTime> {
     let (input, date) = date(input)?;
     let (input, time) = time(input)?;
     let (input, _cfws) = optional(input, cfws);
-    Ok((input, (day, date, time)))
+    Ok((
+        input,
+        DateTime {
+            day_name: day,
+            date,
+            time,
+        },
+    ))
 }
 
 #[cfg(test)]
@@ -221,40 +217,159 @@ mod test {
 
     #[test]
     fn test_date() {
-        assert_eq!(date(b"1 nov 2020 ").unwrap().1, (1, Month::November, 2020));
+        assert_eq!(
+            date(b"1 nov 2020 ").unwrap().1,
+            Date {
+                day: 1,
+                month: Month::November,
+                year: 2020
+            }
+        );
         assert_eq!(
             date(b"25 dec 2038 ").unwrap().1,
-            (25, Month::December, 2038)
+            Date {
+                day: 25,
+                month: Month::December,
+                year: 2038
+            }
         );
 
         assert_eq!(
             date_time(b"Mon, 12 Apr 2023 10:25:03 +0000").unwrap().1,
-            (
-                Some(Day::Monday),
-                (12, Month::April, 2023),
-                ((10, 25, 3), (true, 0, 0))
-            )
+            DateTime {
+                day_name: Some(Day::Monday),
+                date: Date {
+                    day: 12,
+                    month: Month::April,
+                    year: 2023
+                },
+                time: TimeWithZone {
+                    time: Time {
+                        hour: 10,
+                        minute: 25,
+                        second: 3
+                    },
+                    zone: Zone {
+                        sign: true,
+                        hour_offset: 0,
+                        minute_offset: 0
+                    }
+                },
+            }
         );
         assert_eq!(
             date_time(b"5 May 2003 18:59:03 +0000").unwrap().1,
-            (None, (5, Month::May, 2003), ((18, 59, 3), (true, 0, 0)))
+            DateTime {
+                day_name: None,
+                date: Date {
+                    day: 5,
+                    month: Month::May,
+                    year: 2003
+                },
+                time: TimeWithZone {
+                    time: Time {
+                        hour: 18,
+                        minute: 59,
+                        second: 3
+                    },
+                    zone: Zone {
+                        sign: true,
+                        hour_offset: 0,
+                        minute_offset: 0
+                    }
+                }
+            }
         );
     }
 
     #[test]
     fn test_time() {
-        assert_eq!(time_of_day(b"10:40:29").unwrap().1, (10, 40, 29));
-        assert_eq!(time_of_day(b"10:40 ").unwrap().1, (10, 40, 0));
-        assert_eq!(time_of_day(b"05:23 ").unwrap().1, (5, 23, 0));
+        assert_eq!(
+            time_of_day(b"10:40:29").unwrap().1,
+            Time {
+                hour: 10,
+                minute: 40,
+                second: 29
+            }
+        );
+        assert_eq!(
+            time_of_day(b"10:40 ").unwrap().1,
+            Time {
+                hour: 10,
+                minute: 40,
+                second: 0
+            }
+        );
+        assert_eq!(
+            time_of_day(b"05:23 ").unwrap().1,
+            Time {
+                hour: 5,
+                minute: 23,
+                second: 0
+            }
+        );
 
-        assert_eq!(zone(b" +1000 ").unwrap().1, (true, 10, 0));
-        assert_eq!(zone(b" -0523 ").unwrap().1, (false, 5, 23));
+        assert_eq!(
+            zone(b" +1000 ").unwrap().1,
+            Zone {
+                sign: true,
+                hour_offset: 10,
+                minute_offset: 0
+            }
+        );
+        assert_eq!(
+            zone(b" -0523 ").unwrap().1,
+            Zone {
+                sign: false,
+                hour_offset: 5,
+                minute_offset: 23
+            }
+        );
 
-        assert_eq!(time(b"06:44 +0100").unwrap().1, ((6, 44, 0), (true, 1, 0)));
-        assert_eq!(time(b"23:57 +0000").unwrap().1, ((23, 57, 0), (true, 0, 0)));
+        assert_eq!(
+            time(b"06:44 +0100").unwrap().1,
+            TimeWithZone {
+                time: Time {
+                    hour: 6,
+                    minute: 44,
+                    second: 0
+                },
+                zone: Zone {
+                    sign: true,
+                    hour_offset: 1,
+                    minute_offset: 0
+                }
+            }
+        );
+        assert_eq!(
+            time(b"23:57 +0000").unwrap().1,
+            TimeWithZone {
+                time: Time {
+                    hour: 23,
+                    minute: 57,
+                    second: 0
+                },
+                zone: Zone {
+                    sign: true,
+                    hour_offset: 0,
+                    minute_offset: 0
+                }
+            }
+        );
         assert_eq!(
             time(b"08:23:02 -0500").unwrap().1,
-            ((8, 23, 2), (false, 5, 0))
+            TimeWithZone {
+                time: Time {
+                    hour: 8,
+                    minute: 23,
+                    second: 2
+                },
+                zone: Zone {
+                    sign: false,
+                    hour_offset: 5,
+                    minute_offset: 0
+                }
+            }
         );
     }
 }

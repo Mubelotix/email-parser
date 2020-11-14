@@ -1,13 +1,6 @@
+use crate::address::*;
 use crate::prelude::*;
 use std::borrow::Cow;
-
-pub type Mailbox<'a> = (Option<Vec<Cow<'a, str>>>, (Cow<'a, str>, Cow<'a, str>));
-
-#[derive(Debug)]
-pub enum Address<'a> {
-    Mailbox(Mailbox<'a>),
-    Group((Vec<Cow<'a, str>>, Vec<Mailbox<'a>>)),
-}
 
 pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     fn no_fold_litteral(input: &[u8]) -> Res<Cow<str>> {
@@ -28,14 +21,14 @@ pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     Ok((input, (id_left, id_right)))
 }
 
-pub fn addr_spec(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+pub fn addr_spec(input: &[u8]) -> Res<EmailAddress> {
     let (input, local_part) = local_part(input)?;
     let (input, ()) = tag(input, b"@")?;
     let (input, domain) = domain(input)?;
-    Ok((input, (local_part, domain)))
+    Ok((input, EmailAddress { local_part, domain }))
 }
 
-pub fn angle_addr(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+pub fn angle_addr(input: &[u8]) -> Res<EmailAddress> {
     let (input, _cfws) = optional(input, cfws);
     let (input, ()) = tag(input, b"<")?;
     let (input, addr_spec) = addr_spec(input)?;
@@ -48,7 +41,13 @@ pub fn name_addr(input: &[u8]) -> Res<Mailbox> {
     let (input, display_name) = optional(input, phrase);
     let (input, angle_addr) = angle_addr(input)?;
 
-    Ok((input, (display_name, angle_addr)))
+    Ok((
+        input,
+        Mailbox {
+            name: display_name,
+            address: angle_addr,
+        },
+    ))
 }
 
 pub fn local_part(input: &[u8]) -> Res<Cow<str>> {
@@ -84,8 +83,17 @@ pub fn mailbox(input: &[u8]) -> Res<Mailbox> {
         input,
         &mut [
             name_addr,
-            (|input| addr_spec(input).map(|(i, m)| (i, (None, m))))
-                as fn(input: &[u8]) -> Res<Mailbox>,
+            (|input| {
+                addr_spec(input).map(|(i, m)| {
+                    (
+                        i,
+                        Mailbox {
+                            name: None,
+                            address: m,
+                        },
+                    )
+                })
+            }) as fn(input: &[u8]) -> Res<Mailbox>,
         ][..],
     )
 }
@@ -182,33 +190,33 @@ mod tests {
 
     #[test]
     fn test_addr() {
-        let (username, domain) = addr_spec(b"mubelotix@mubelotix.dev").unwrap().1;
-        assert_eq!(username, "mubelotix");
-        assert_eq!(domain, "mubelotix.dev");
+        let address = addr_spec(b"mubelotix@mubelotix.dev").unwrap().1;
+        assert_eq!(address.local_part, "mubelotix");
+        assert_eq!(address.domain, "mubelotix.dev");
 
-        let (username, domain) = addr_spec(b"\"special\\ person\"@gmail.com").unwrap().1;
-        assert_eq!(username, "special person");
-        assert_eq!(domain, "gmail.com");
+        let address = addr_spec(b"\"special\\ person\"@gmail.com").unwrap().1;
+        assert_eq!(address.local_part, "special person");
+        assert_eq!(address.domain, "gmail.com");
 
-        let (name, (username, domain)) = name_addr(b"<mubelotix@gmail.com>").unwrap().1;
-        assert!(name.is_none());
-        assert_eq!(username, "mubelotix");
-        assert_eq!(domain, "gmail.com");
+        let mlbx = name_addr(b"<mubelotix@gmail.com>").unwrap().1;
+        assert!(mlbx.name.is_none());
+        assert_eq!(mlbx.address.local_part, "mubelotix");
+        assert_eq!(mlbx.address.domain, "gmail.com");
 
-        let (name, (username, domain)) = name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
-        assert_eq!(name.unwrap().len(), 2);
-        assert_eq!(username, "someone");
-        assert_eq!(domain, "gmail.com");
+        let mlbx = name_addr(b"Random Guy <someone@gmail.com>").unwrap().1;
+        assert_eq!(mlbx.name.unwrap().len(), 2);
+        assert_eq!(mlbx.address.local_part, "someone");
+        assert_eq!(mlbx.address.domain, "gmail.com");
 
-        let (name, (username, domain)) = mailbox(b"mubelotix@mubelotix.dev").unwrap().1;
-        assert!(name.is_none());
-        assert_eq!(username, "mubelotix");
-        assert_eq!(domain, "mubelotix.dev");
+        let mlbx = mailbox(b"mubelotix@mubelotix.dev").unwrap().1;
+        assert!(mlbx.name.is_none());
+        assert_eq!(mlbx.address.local_part, "mubelotix");
+        assert_eq!(mlbx.address.domain, "mubelotix.dev");
 
-        let (name, (username, domain)) = mailbox(b"Random Guy <someone@gmail.com>").unwrap().1;
-        assert_eq!(name.unwrap().len(), 2);
-        assert_eq!(username, "someone");
-        assert_eq!(domain, "gmail.com");
+        let mlbx = mailbox(b"Random Guy <someone@gmail.com>").unwrap().1;
+        assert_eq!(mlbx.name.unwrap(), vec!["Random", "Guy"]);
+        assert_eq!(mlbx.address.local_part, "someone");
+        assert_eq!(mlbx.address.domain, "gmail.com");
     }
 
     #[test]
@@ -226,9 +234,9 @@ mod tests {
                 .unwrap()
                 .1;
         assert_eq!(name[0], "Developers");
-        assert_eq!(list[0].0.as_ref().unwrap()[0], "Mubelotix");
-        assert_eq!(list[0].1.0, "mubelotix");
-        assert_eq!(list[0].1.1, "mubelotix.dev");
+        assert_eq!(list[0].name.as_ref().unwrap(), &vec!["Mubelotix"]);
+        assert_eq!(list[0].address.local_part, "mubelotix");
+        assert_eq!(list[0].address.domain, "mubelotix.dev");
 
         assert_eq!(
             address_list(
