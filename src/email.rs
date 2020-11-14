@@ -3,7 +3,7 @@ use crate::prelude::*;
 use std::borrow::Cow;
 
 /// A struct representing a valid RFC 5322 message.
-/// 
+///
 /// # Example
 ///
 /// ```
@@ -71,6 +71,12 @@ pub struct Email<'a> {
     #[cfg(feature = "reply-to")]
     pub reply_to: Option<Vec<Address<'a>>>,
 
+    #[cfg(feature = "comments")]
+    pub comments: Vec<Cow<'a, str>>,
+
+    #[cfg(feature = "keywords")]
+    pub keywords: Vec<Vec<Cow<'a, str>>>,
+
     #[cfg(feature = "trace")]
     pub trace: Vec<(
         Option<Option<EmailAddress<'a>>>,
@@ -84,6 +90,7 @@ pub struct Email<'a> {
 }
 
 impl<'a> Email<'a> {
+    /// Parse an email.
     pub fn parse(data: &'a [u8]) -> Result<Email<'a>, Error> {
         let (fields, body) = crate::parse_message(data)?;
 
@@ -149,7 +156,7 @@ impl<'a> Email<'a> {
                     if date.is_none() {
                         date = Some(data)
                     } else {
-                        return Err(Error::Known("Multiple subject fields"));
+                        return Err(Error::Known("Multiple date fields"));
                     }
                 }
                 #[cfg(feature = "to")]
@@ -208,7 +215,7 @@ impl<'a> Email<'a> {
                         return Err(Error::Known("Multiple reply-to fields"));
                     }
                 }
-                #[cfg(feature = "reply-to")]
+                #[cfg(feature = "comments")]
                 Field::Comments(data) => comments.push(data),
                 #[cfg(feature = "keywords")]
                 Field::Keywords(mut data) => {
@@ -271,6 +278,10 @@ impl<'a> Email<'a> {
             reply_to,
             #[cfg(feature = "trace")]
             trace,
+            #[cfg(feature = "comments")]
+            comments,
+            #[cfg(feature = "keywords")]
+            keywords,
             unknown_fields,
         })
     }
