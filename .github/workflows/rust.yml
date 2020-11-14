@@ -17,6 +17,7 @@ jobs:
         with:
           command: check
           use-cache: true
+          args: --all-features
 
   test:
     name: Test Suite
@@ -32,6 +33,7 @@ jobs:
         with:
           command: test
           use-cache: true
+          args: --all-features
 
   fmt:
     name: Rustfmt

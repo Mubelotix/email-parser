@@ -84,6 +84,9 @@ pub struct Email<'a> {
         Vec<crate::parsing::fields::TraceField<'a>>,
     )>,
 
+    #[cfg(feature = "mime")]
+    pub mime_version: Option<(u8, u8)>,
+
     /// The list of unrecognized fields.\
     /// Each field is stored as a `(name, value)` tuple.
     pub unknown_fields: Vec<(Cow<'a, str>, Cow<'a, str>)>,
@@ -122,6 +125,8 @@ impl<'a> Email<'a> {
         let mut keywords = Vec::new();
         #[cfg(feature = "trace")]
         let mut trace = Vec::new();
+        #[cfg(feature = "mime")]
+        let mut mime_version = None;
 
         let mut unknown_fields = Vec::new();
 
@@ -229,6 +234,14 @@ impl<'a> Email<'a> {
                 } => {
                     trace.push((return_path, received, fields));
                 }
+                #[cfg(feature = "mime")]
+                Field::MimeVersion(major, minor) => {
+                    if mime_version.is_none() {
+                        mime_version = Some((major, minor))
+                    } else {
+                        return Err(Error::Known("Multiple mime_version fields"));
+                    }
+                }
                 Field::Unknown { name, value } => {
                     unknown_fields.push((name, value));
                 }
@@ -282,6 +295,8 @@ impl<'a> Email<'a> {
             comments,
             #[cfg(feature = "keywords")]
             keywords,
+            #[cfg(feature = "mime")]
+            mime_version,
             unknown_fields,
         })
     }

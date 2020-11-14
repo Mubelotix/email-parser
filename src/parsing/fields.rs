@@ -3,6 +3,9 @@ use crate::parsing::time::*;
 use crate::prelude::*;
 use std::borrow::Cow;
 
+#[cfg(feature = "mime")]
+use super::mime_fields::*;
+
 #[derive(Debug)]
 pub enum TraceField<'a> {
     Date(DateTime),
@@ -42,6 +45,8 @@ pub enum Field<'a> {
     Comments(Cow<'a, str>),
     #[cfg(feature = "keywords")]
     Keywords(Vec<Vec<Cow<'a, str>>>),
+    #[cfg(feature = "mime")]
+    MimeVersion(u8, u8),
     #[cfg(feature = "trace")]
     Trace {
         return_path: Option<Option<EmailAddress<'a>>>,
@@ -114,6 +119,8 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
             |i| subject(i).map(|(i, v)| (i, Field::Subject(v))),
             #[cfg(feature = "comments")]
             |i| comments(i).map(|(i, v)| (i, Field::Comments(v))),
+            #[cfg(feature = "mime")]
+            |i| mime_version(i).map(|(i, (mj, mn))| (i, Field::MimeVersion(mj, mn))),
             #[cfg(feature = "keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
             |i| unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),

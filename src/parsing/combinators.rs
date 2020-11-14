@@ -182,6 +182,25 @@ where
 }
 
 #[inline]
+pub fn triplet<'a, T, U, V, F, G, H>(
+    input: &'a [u8],
+    mut parser1: F,
+    mut parser2: G,
+    mut parser3: H,
+) -> Res<(U, T, V)>
+where
+    F: FnMut(&'a [u8]) -> Res<U>,
+    G: FnMut(&'a [u8]) -> Res<T>,
+    H: FnMut(&'a [u8]) -> Res<V>,
+{
+    let (input, first) = parser1(input)?;
+    let (input, second) = parser2(input)?;
+    let (input, third) = parser3(input)?;
+
+    Ok((input, (first, second, third)))
+}
+
+#[inline]
 pub fn collect_pair<'a, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<Cow<str>>
 where
     F: FnMut(&'a [u8]) -> Res<Cow<str>>,
