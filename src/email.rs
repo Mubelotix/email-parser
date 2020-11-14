@@ -2,37 +2,84 @@ use crate::address::*;
 use crate::prelude::*;
 use std::borrow::Cow;
 
+/// A struct representing a valid RFC 5322 message.
+/// 
+/// # Example
+///
+/// ```
+/// # use email_parser::prelude::*;
+/// let email = Email::parse(
+///     b"\
+///     From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
+///     Subject:Example Email\r\n\
+///     To: Someone <example@example.com>\r\n\
+///     Message-id: <6546518945@mubelotix.dev>\r\n\
+///     Date: 5 May 2003 18:58:34 +0000\r\n\
+///     \r\n\
+///     Hey!\r\n",
+/// )
+/// .unwrap();
+///
+/// assert_eq!(email.subject.unwrap(), "Example Email");
+/// assert_eq!(email.sender.name.unwrap(), vec!["Mubelotix"]);
+/// assert_eq!(email.sender.address.local_part, "mubelotix");
+/// assert_eq!(email.sender.address.domain, "mubelotix.dev");
+/// ```
 #[derive(Debug)]
 pub struct Email<'a> {
+    /// The ASCII text of the body.
     pub body: Option<Cow<'a, str>>,
+
     #[cfg(feature = "from")]
+    /// The list of authors of the message.\
+    /// It's **not** the identity of the sender. See the [sender field](#structfield.sender).
     pub from: Vec<Mailbox<'a>>,
+
     #[cfg(feature = "sender")]
+    /// The mailbox of the agent responsible for the actual transmission of the message.\
+    /// Do not mix up with the [from field](#structfield.from) that contains the list of authors.\
+    /// When there is only one author, this field can be omitted, and its value is inferred. Otherwise, an explicit value is required.
     pub sender: Mailbox<'a>,
+
     #[cfg(feature = "subject")]
+    /// A short optional string identifying the topic of the message.
     pub subject: Option<Cow<'a, str>>,
+
     #[cfg(feature = "date")]
+    /// The date and time at which the [sender](#structfield.sender) of the message indicated that the message was complete and ready to enter the mail delivery system.
+    /// For instance, this might be the time that a user pushes the "send" or "submit" button in an application program.
     pub date: DateTime,
+
     #[cfg(feature = "to")]
     pub to: Option<Vec<Address<'a>>>,
+
     #[cfg(feature = "cc")]
     pub cc: Option<Vec<Address<'a>>>,
+
     #[cfg(feature = "bcc")]
     pub bcc: Option<Vec<Address<'a>>>,
+
     #[cfg(feature = "message-id")]
     pub message_id: Option<(Cow<'a, str>, Cow<'a, str>)>,
+
     #[cfg(feature = "in-reply-to")]
     pub in_reply_to: Option<Vec<(Cow<'a, str>, Cow<'a, str>)>>,
+
     #[cfg(feature = "references")]
     pub references: Option<Vec<(Cow<'a, str>, Cow<'a, str>)>>,
+
     #[cfg(feature = "reply-to")]
     pub reply_to: Option<Vec<Address<'a>>>,
+
     #[cfg(feature = "trace")]
     pub trace: Vec<(
         Option<Option<EmailAddress<'a>>>,
         Vec<(Vec<crate::parsing::fields::ReceivedToken<'a>>, DateTime)>,
         Vec<crate::parsing::fields::TraceField<'a>>,
     )>,
+
+    /// The list of unrecognized fields.\
+    /// Each field is stored as a `(name, value)` tuple.
     pub unknown_fields: Vec<(Cow<'a, str>, Cow<'a, str>)>,
 }
 
