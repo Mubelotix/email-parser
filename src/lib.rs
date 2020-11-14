@@ -11,6 +11,7 @@
 //! # Example
 //!
 //! ```
+//! # use email_parser::email::Email;
 //! let email = Email::parse(
 //!     b"\
 //!     From: Mubelotix <mubelotix@mubelotix.dev>\r\n\

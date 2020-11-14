@@ -37,7 +37,7 @@ pub struct Email<'a> {
 }
 
 impl<'a> Email<'a> {
-    fn parse(data: &'a [u8]) -> Result<Email<'a>, Error> {
+    pub fn parse(data: &'a [u8]) -> Result<Email<'a>, Error> {
         let (fields, body) = crate::parse_message(data)?;
 
         #[cfg(feature = "from")]
@@ -242,22 +242,37 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_parse() {
-        let mail = Email::parse(
+    fn test_field_number() {
+        assert!(Email::parse( // missing date
             b"\
             From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
-            Subject:Example Email\r\n\
-            To: Someone <example@example.com>\r\n\
-            Message-id: <6546518945@mubelotix.dev>\r\n\
+            \r\n\
+            Hey!\r\n",
+        ).is_err());
+
+        assert!(Email::parse( // 2 date fields
+            b"\
+            From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
+            Date: 5 May 2003 18:58:34 +0000\r\n\
+            Date: 6 May 2003 18:58:34 +0000\r\n\
+            \r\n\
+            Hey!\r\n",
+        ).is_err());
+
+        assert!(Email::parse( // missing from
+            b"\
             Date: 5 May 2003 18:58:34 +0000\r\n\
             \r\n\
             Hey!\r\n",
-        )
-        .unwrap();
+        ).is_err());
 
-        assert_eq!(mail.subject.unwrap(), "Example Email");
-        assert_eq!(mail.sender.name.unwrap(), vec!["Mubelotix"]);
-        assert_eq!(mail.sender.address.local_part, "mubelotix");
-        assert_eq!(mail.sender.address.domain, "mubelotix.dev");
+        assert!(Email::parse( // 2 from fields
+            b"\
+            From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
+            From: Someone <jack@gmail.com>\r\n\
+            Date: 5 May 2003 18:58:34 +0000\r\n\
+            \r\n\
+            Hey!\r\n",
+        ).is_err());
     }
 }
