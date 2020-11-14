@@ -243,7 +243,21 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let mail = Email::parse(b"From: mubelotix@mubelotix.dev\r\nSubject:Testing email\r\nTo: Germanon <germanon@gmail.com>\r\nMessage-id: <6546518945@mubelotix.dev>\r\nDate: 5 May 2003 18:59:03 +0000\r\n\r\nHey!\r\n").unwrap();
-        println!("{:#?}", mail);
+        let mail = Email::parse(
+            b"\
+            From: Mubelotix <mubelotix@mubelotix.dev>\r\n\
+            Subject:Example Email\r\n\
+            To: Someone <example@example.com>\r\n\
+            Message-id: <6546518945@mubelotix.dev>\r\n\
+            Date: 5 May 2003 18:58:34 +0000\r\n\
+            \r\n\
+            Hey!\r\n",
+        )
+        .unwrap();
+
+        assert_eq!(mail.subject.unwrap(), "Example Email");
+        assert_eq!(mail.sender.name.unwrap(), vec!["Mubelotix"]);
+        assert_eq!(mail.sender.address.local_part, "mubelotix");
+        assert_eq!(mail.sender.address.domain, "mubelotix.dev");
     }
 }
