@@ -25,6 +25,7 @@ subject = []
 comments = []
 keywords = []
 trace = []
+mime = []
 
 [dev-dependencies]
 email = "0.0.21"
