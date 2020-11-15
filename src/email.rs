@@ -279,7 +279,15 @@ impl<'a> Email<'a> {
             }
         };
 
-        // TODO use content_type
+        #[cfg(feature = "mime")]
+        let content_type = match content_type {
+            Some(content_type) => content_type,
+            None => (
+                MimeType::Text,
+                Cow::Borrowed("plain"),
+                vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))],
+            ),
+        };
 
         Ok(Email {
             body,

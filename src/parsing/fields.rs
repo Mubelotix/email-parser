@@ -3,11 +3,6 @@ use crate::parsing::time::*;
 use crate::prelude::*;
 use std::borrow::Cow;
 
-#[cfg(feature = "mime")]
-use super::mime_fields::*;
-#[cfg(feature = "mime")]
-use crate::mime::*;
-
 #[derive(Debug)]
 pub enum TraceField<'a> {
     Date(DateTime),
