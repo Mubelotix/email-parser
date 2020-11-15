@@ -127,6 +127,8 @@ impl<'a> Email<'a> {
         let mut trace = Vec::new();
         #[cfg(feature = "mime")]
         let mut mime_version = None;
+        #[cfg(feature = "mime")]
+        let mut content_type = None;
 
         let mut unknown_fields = Vec::new();
 
@@ -242,6 +244,18 @@ impl<'a> Email<'a> {
                         return Err(Error::Known("Multiple mime_version fields"));
                     }
                 }
+                #[cfg(feature = "mime")]
+                Field::ContentType {
+                    mime_type,
+                    sub_type,
+                    parameters,
+                } => {
+                    if content_type.is_none() {
+                        content_type = Some((mime_type, sub_type, parameters))
+                    } else {
+                        return Err(Error::Known("Multiple content_type fields"));
+                    }
+                }
                 Field::Unknown { name, value } => {
                     unknown_fields.push((name, value));
                 }
@@ -264,6 +278,8 @@ impl<'a> Email<'a> {
                 }
             }
         };
+
+        // TODO use content_type
 
         Ok(Email {
             body,

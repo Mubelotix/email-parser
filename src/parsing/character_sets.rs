@@ -98,6 +98,25 @@ pub fn special(c: u8) -> bool {
 }
 
 #[inline]
+pub fn tspecial(c: u8) -> bool {
+    c == b'('
+        || c == b')'
+        || c == b'<'
+        || c == b'>'
+        || c == b'['
+        || c == b']'
+        || c == b':'
+        || c == b';'
+        || c == b'@'
+        || c == b'\\'
+        || c == b','
+        || c == b'/'
+        || c == b'?'
+        || c == b'='
+        || c == b'"'
+}
+
+#[inline]
 pub fn is_qtext(c: u8) -> bool {
     (c >= 35 && c <= 126 && c != 92) || c == 33
 }

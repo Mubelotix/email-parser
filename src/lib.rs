@@ -54,6 +54,8 @@
 pub mod address;
 pub mod email;
 pub mod error;
+#[cfg(feature = "mime")]
+pub mod mime;
 pub(crate) mod parsing;
 pub mod prelude;
 pub(crate) mod string;

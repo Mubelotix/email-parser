@@ -5,6 +5,8 @@ use std::borrow::Cow;
 
 #[cfg(feature = "mime")]
 use super::mime_fields::*;
+#[cfg(feature = "mime")]
+use crate::mime::*;
 
 #[derive(Debug)]
 pub enum TraceField<'a> {
@@ -47,6 +49,12 @@ pub enum Field<'a> {
     Keywords(Vec<Vec<Cow<'a, str>>>),
     #[cfg(feature = "mime")]
     MimeVersion(u8, u8),
+    #[cfg(feature = "mime")]
+    ContentType {
+        mime_type: MimeType<'a>,
+        sub_type: Cow<'a, str>,
+        parameters: Vec<(Cow<'a, str>, Cow<'a, str>)>,
+    },
     #[cfg(feature = "trace")]
     Trace {
         return_path: Option<Option<EmailAddress<'a>>>,
