@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-// TODO case insensitive partialEq
 #[derive(Debug, PartialEq)]
 pub enum MimeType<'a> {
     Text,
@@ -26,4 +25,14 @@ impl<'a> MimeType<'a> {
             MimeType::Other(_) => false,
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ContentTransferEncoding<'a> {
+    SevenBit,
+    HeightBit,
+    Binary,
+    QuotedPrintable,
+    Base64,
+    Other(Cow<'a, str>),
 }

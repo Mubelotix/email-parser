@@ -47,9 +47,11 @@ pub enum Field<'a> {
     #[cfg(feature = "mime")]
     ContentType {
         mime_type: MimeType<'a>,
-        sub_type: Cow<'a, str>,
+        subtype: Cow<'a, str>,
         parameters: Vec<(Cow<'a, str>, Cow<'a, str>)>,
     },
+    #[cfg(feature="mime")]
+    ContentTransferEncoding(ContentTransferEncoding<'a>),
     #[cfg(feature = "trace")]
     Trace {
         return_path: Option<Option<EmailAddress<'a>>>,
@@ -124,6 +126,14 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
             |i| comments(i).map(|(i, v)| (i, Field::Comments(v))),
             #[cfg(feature = "mime")]
             |i| mime_version(i).map(|(i, (mj, mn))| (i, Field::MimeVersion(mj, mn))),
+            #[cfg(feature = "mime")]
+            |i| content_type(i).map(|(i, (t, st, p))| (i, Field::ContentType {
+                mime_type: t,
+                subtype: st,
+                parameters: p,
+            })),
+            #[cfg(feature = "mime")]
+            |i| content_transfer_encoding(i).map(|(i, e)| (i, Field::ContentTransferEncoding(e))),
             #[cfg(feature = "keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
             |i| unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),

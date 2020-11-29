@@ -124,6 +124,62 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, Vec<(Cow<str>, Cow
     Ok((input, (mime_type, sub_type, parameters)))
 }
 
+pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
+    let (input, ()) = tag_no_case(
+        input,
+        b"Content-Transfer-Encoding:",
+        b"cONTENT-tRANSFER-eNCODING:",
+    )?;
+    let (input, _) = optional(input, cfws);
+
+    let (input, encoding) = match_parsers(
+        input,
+        &mut [
+            |input| {
+                tag_no_case(input, b"7bit", b"7BIT")
+                    .map(|(i, ())| (i, ContentTransferEncoding::SevenBit))
+            },
+            |input| {
+                tag_no_case(input, b"quoted-printable", b"QUOTED-PRINTABLE")
+                    .map(|(i, ())| (i, ContentTransferEncoding::QuotedPrintable))
+            },
+            |input| {
+                tag_no_case(input, b"base64", b"BASE64")
+                    .map(|(i, ())| (i, ContentTransferEncoding::Base64))
+            },
+            |input| {
+                tag_no_case(input, b"8bit", b"8BIT")
+                    .map(|(i, ())| (i, ContentTransferEncoding::HeightBit))
+            },
+            |input| {
+                tag_no_case(input, b"binary", b"BINARY")
+                    .map(|(i, ())| (i, ContentTransferEncoding::Binary))
+            },
+            |input| {
+                let (input, mut encoding) = token(input)?;
+
+                // convert to lowercase
+                let mut change_needed = false;
+                for c in encoding.chars() {
+                    if c.is_uppercase() {
+                        change_needed = true;
+                    }
+                }
+                if change_needed {
+                    encoding = Cow::Owned(encoding.to_ascii_lowercase());
+                }
+
+                Ok((input, ContentTransferEncoding::Other(encoding)))
+            },
+        ][..],
+    )?;
+
+    let (input, _cwfs) = ignore_inline_cfws(input)?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, encoding))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -156,5 +212,12 @@ mod test {
         assert_eq!(content_type(b"Content-type: text/plain; charset=us-ascii (Plain text)\r\n").unwrap().1.2[0].1, "us-ascii");
         assert_eq!(content_type(b"Content-type: text/plain; charset=\"us-ascii\"\r\n").unwrap().1.2[0].1, "us-ascii");
         assert_eq!(content_type(b"Content-Type: multipart/alternative; \r\n\tboundary=\"_000_DB6P193MB0021E64E5870F10170A32CB8EB920DB6P193MB0021EURP_\"\r\n").unwrap().1.2[0].0, "boundary");
+    }
+
+    #[test]
+    fn test_content_transfer_encoding() {
+        assert_eq!(content_transfer_encoding(b"Content-Transfer-Encoding: 7bit\r\n").unwrap().1, ContentTransferEncoding::SevenBit);
+        assert_eq!(content_transfer_encoding(b"Content-Transfer-Encoding: binary (invalid) \r\n").unwrap().1, ContentTransferEncoding::Binary);
+        assert_eq!(content_transfer_encoding(b"Content-Transfer-Encoding: (not readable) base64 \r\n").unwrap().1, ContentTransferEncoding::Base64);
     }
 }

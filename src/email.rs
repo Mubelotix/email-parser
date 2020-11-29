@@ -129,6 +129,8 @@ impl<'a> Email<'a> {
         let mut mime_version = None;
         #[cfg(feature = "mime")]
         let mut content_type = None;
+        #[cfg(feature = "mime")]
+        let mut content_transfer_encoding = None;
 
         let mut unknown_fields = Vec::new();
 
@@ -247,13 +249,21 @@ impl<'a> Email<'a> {
                 #[cfg(feature = "mime")]
                 Field::ContentType {
                     mime_type,
-                    sub_type,
+                    subtype,
                     parameters,
                 } => {
                     if content_type.is_none() {
-                        content_type = Some((mime_type, sub_type, parameters))
+                        content_type = Some((mime_type, subtype, parameters))
                     } else {
                         return Err(Error::Known("Multiple content_type fields"));
+                    }
+                }
+                #[cfg(feature = "mime")]
+                Field::ContentTransferEncoding(encoding) => {
+                    if content_transfer_encoding.is_none() {
+                        content_transfer_encoding = Some(encoding)
+                    } else {
+                        return Err(Error::Known("Multiple content_transfer_encoding fields"));
                     }
                 }
                 Field::Unknown { name, value } => {
@@ -288,6 +298,18 @@ impl<'a> Email<'a> {
                 vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))],
             ),
         };
+        #[cfg(feature = "mime")]
+        let mut content_transfer_encoding = match content_transfer_encoding {
+            Some(content_transfer_encoding) => content_transfer_encoding,
+            None => ContentTransferEncoding::SevenBit,
+        };
+        #[cfg(feature="mime")]
+        if content_type.0.is_composite_type()
+            && content_transfer_encoding != ContentTransferEncoding::SevenBit
+            && content_transfer_encoding != ContentTransferEncoding::HeightBit
+            && content_transfer_encoding != ContentTransferEncoding::Binary {
+            content_transfer_encoding = ContentTransferEncoding::SevenBit;
+        }
 
         Ok(Email {
             body,
