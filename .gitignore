@@ -2,3 +2,4 @@
 Cargo.lock
 benches/alternatives.html
 mail.txt
+.vscode/settings.json

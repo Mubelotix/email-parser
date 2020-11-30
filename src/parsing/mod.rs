@@ -8,6 +8,8 @@ pub(crate) mod fields;
 pub(crate) mod message;
 #[cfg(feature = "mime")]
 pub(crate) mod mime_fields;
+#[cfg(feature = "mime")]
+pub(crate) mod quoted_printables;
 pub(crate) mod quoted_string;
 pub(crate) mod time;
 pub(crate) mod whitespaces;
