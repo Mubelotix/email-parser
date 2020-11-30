@@ -45,6 +45,82 @@ pub fn encode_base64(data: Vec<u8>) -> Vec<u8> {
     encoded_data
 }
 
+fn get_value_encoded(c: u8) -> Option<u8> {
+    match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(26 + (c - b'a')),
+        b'0'..=b'9' => Some(26 * 2 + (c - b'0')),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    }
+}
+
+pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+    let mut bytes = data.iter();
+    let mut decoded_data = Vec::new();
+
+    'main: loop {
+        let b1 = 'inner1: loop {
+            match bytes.next() {
+                Some(b) => {
+                    if let Some(b) = get_value_encoded(*b) {
+                        break 'inner1 b;
+                    }
+                }
+                None => break 'main,
+            }
+        };
+
+        let b2 = 'inner2: loop {
+            match bytes.next() {
+                Some(b) => {
+                    if let Some(b) = get_value_encoded(*b) {
+                        break 'inner2 b;
+                    }
+                }
+                None => return Err("Missing at least 3 bytes"),
+            }
+        };
+
+        let b3 = 'inner3: loop {
+            match bytes.next() {
+                Some(b) if *b == b'=' => break 'inner3 None,
+                Some(b) => {
+                    if let Some(b) = get_value_encoded(*b) {
+                        break 'inner3 Some(b);
+                    }
+                }
+                None => return Err("Missing at least 2 bytes"),
+            }
+        };
+
+        let b4 = 'inner4: loop {
+            match bytes.next() {
+                Some(b) if *b == b'=' => break 'inner4 None,
+                Some(_) if b3.is_none() => return Err("Data after end of data"),
+                Some(b) => {
+                    if let Some(b) = get_value_encoded(*b) {
+                        break 'inner4 Some(b);
+                    }
+                }
+                None => return Err("Missing at least 1 byte"),
+            }
+        };
+
+        decoded_data.push((b1 << 2) + ((b2 & 0b00110000) >> 4));
+        if let Some(b3) = b3 {
+            decoded_data.push(((b2 & 0b00001111) << 4) + ((b3 & 0b00111100) >> 2));
+
+            if let Some(b4) = b4 {
+                decoded_data.push(((b3 & 0b00000011) << 6) + b4);
+            };
+        };
+    }
+
+    Ok(decoded_data)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -78,6 +154,28 @@ mod tests {
         assert_eq!(
             "YWJjZGVmZ2hpamts",
             String::from_utf8(encode_base64(b"abcdefghijkl".to_vec())).unwrap()
+        );
+    }
+
+    #[test]
+    fn decode() {
+        assert_eq!(get_value_encoded(BASE64_MAP[5]).unwrap(), 5);
+        assert_eq!(get_value_encoded(BASE64_MAP[15]).unwrap(), 15);
+        assert_eq!(get_value_encoded(BASE64_MAP[25]).unwrap(), 25);
+        assert_eq!(get_value_encoded(BASE64_MAP[53]).unwrap(), 53);
+        assert_eq!(get_value_encoded(BASE64_MAP[62]).unwrap(), 62);
+        assert_eq!(get_value_encoded(BASE64_MAP[63]).unwrap(), 63);
+        assert_eq!(
+            "abcdefghijkl",
+            String::from_utf8(decode_base64(b"YWJjZGVmZ2hpamts".to_vec()).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "<div dir=\"ltr\">Hey émoji 😍</div>\r\n",
+            String::from_utf8(
+                decode_base64(b"PGRpdiBkaXI9Imx0ciI+SGV5IMOpbW9qaSDwn5iNPC9kaXY+DQo=".to_vec())
+                    .unwrap()
+            )
+            .unwrap()
         );
     }
 }
