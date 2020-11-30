@@ -1,5 +1,3 @@
-use std::time::SystemTimeError;
-
 // Second rule of the encoding
 fn litteral_repr_possible(c: u8) -> bool {
     (c >= 33 && c <= 60) || (c >= 62 && c <= 126)
