@@ -216,8 +216,23 @@ mod test {
 
     #[test]
     fn test_content_transfer_encoding() {
-        assert_eq!(content_transfer_encoding(b"Content-Transfer-Encoding: 7bit\r\n").unwrap().1, ContentTransferEncoding::SevenBit);
-        assert_eq!(content_transfer_encoding(b"Content-Transfer-Encoding: binary (invalid) \r\n").unwrap().1, ContentTransferEncoding::Binary);
-        assert_eq!(content_transfer_encoding(b"Content-Transfer-Encoding: (not readable) base64 \r\n").unwrap().1, ContentTransferEncoding::Base64);
+        assert_eq!(
+            content_transfer_encoding(b"Content-Transfer-Encoding: 7bit\r\n")
+                .unwrap()
+                .1,
+            ContentTransferEncoding::SevenBit
+        );
+        assert_eq!(
+            content_transfer_encoding(b"Content-Transfer-Encoding: binary (invalid) \r\n")
+                .unwrap()
+                .1,
+            ContentTransferEncoding::Binary
+        );
+        assert_eq!(
+            content_transfer_encoding(b"Content-Transfer-Encoding: (not readable) base64 \r\n")
+                .unwrap()
+                .1,
+            ContentTransferEncoding::Base64
+        );
     }
 }

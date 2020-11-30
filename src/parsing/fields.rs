@@ -50,7 +50,7 @@ pub enum Field<'a> {
         subtype: Cow<'a, str>,
         parameters: Vec<(Cow<'a, str>, Cow<'a, str>)>,
     },
-    #[cfg(feature="mime")]
+    #[cfg(feature = "mime")]
     ContentTransferEncoding(ContentTransferEncoding<'a>),
     #[cfg(feature = "trace")]
     Trace {
@@ -127,11 +127,18 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
             #[cfg(feature = "mime")]
             |i| mime_version(i).map(|(i, (mj, mn))| (i, Field::MimeVersion(mj, mn))),
             #[cfg(feature = "mime")]
-            |i| content_type(i).map(|(i, (t, st, p))| (i, Field::ContentType {
-                mime_type: t,
-                subtype: st,
-                parameters: p,
-            })),
+            |i| {
+                content_type(i).map(|(i, (t, st, p))| {
+                    (
+                        i,
+                        Field::ContentType {
+                            mime_type: t,
+                            subtype: st,
+                            parameters: p,
+                        },
+                    )
+                })
+            },
             #[cfg(feature = "mime")]
             |i| content_transfer_encoding(i).map(|(i, e)| (i, Field::ContentTransferEncoding(e))),
             #[cfg(feature = "keywords")]

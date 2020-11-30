@@ -303,11 +303,12 @@ impl<'a> Email<'a> {
             Some(content_transfer_encoding) => content_transfer_encoding,
             None => ContentTransferEncoding::SevenBit,
         };
-        #[cfg(feature="mime")]
+        #[cfg(feature = "mime")]
         if content_type.0.is_composite_type()
             && content_transfer_encoding != ContentTransferEncoding::SevenBit
             && content_transfer_encoding != ContentTransferEncoding::HeightBit
-            && content_transfer_encoding != ContentTransferEncoding::Binary {
+            && content_transfer_encoding != ContentTransferEncoding::Binary
+        {
             content_transfer_encoding = ContentTransferEncoding::SevenBit;
         }
 

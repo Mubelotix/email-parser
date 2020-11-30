@@ -11,7 +11,8 @@ pub fn encode_base64(data: Vec<u8>) -> Vec<u8> {
     let mut line_lenght = 0;
 
     while let Some(byte1) = bytes.next() {
-        if line_lenght >= 72 { // 76 - 4 = 72
+        if line_lenght >= 72 {
+            // 76 - 4 = 72
             encoded_data.push(b'\r');
             encoded_data.push(b'\n');
             line_lenght = 0;

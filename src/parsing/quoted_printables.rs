@@ -4,7 +4,8 @@ fn litteral_repr_possible(c: u8) -> bool {
 }
 
 #[allow(clippy::if_same_then_else)]
-pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> { // Fixme: Make it usable by binary formats
+pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> {
+    // Fixme: Make it usable by binary formats
     let mut line_lenght = 0;
     let mut idx = 0;
 
@@ -141,6 +142,9 @@ mod tests {
             )
         );
         assert_eq!("Now's the time for all folk to come to the aid of their country. Wtf this sentence is not long enough to test line-lenght limit.".to_string(), decode_qp("Now\'s the time for all folk to come to the aid of their country. Wtf thi=\r\ns sentence is not long enough to test line-lenght limit.".to_string().into_bytes()));
-        assert_eq!("Invalid bytes�Q�\u{1a}�".to_string(), decode_qp("Invalid bytes=95=51=FF=1A=FA".to_string().into_bytes()));
+        assert_eq!(
+            "Invalid bytes�Q�\u{1a}�".to_string(),
+            decode_qp("Invalid bytes=95=51=FF=1A=FA".to_string().into_bytes())
+        );
     }
 }
