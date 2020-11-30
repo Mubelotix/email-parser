@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 pub(crate) mod address;
+pub(crate) mod base64;
 pub(crate) mod character_sets;
 pub(crate) mod combinators;
 pub(crate) mod common;

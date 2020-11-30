@@ -4,7 +4,7 @@ fn litteral_repr_possible(c: u8) -> bool {
 }
 
 #[allow(clippy::if_same_then_else)]
-pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> {
+pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> { // Fixme: Make it usable by binary formats
     let mut line_lenght = 0;
     let mut idx = 0;
 
