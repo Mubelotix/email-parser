@@ -8,8 +8,14 @@ const BASE64_MAP: [u8; 64] = [
 pub fn encode_base64(data: Vec<u8>) -> Vec<u8> {
     let mut encoded_data = Vec::new();
     let mut bytes = data.iter();
+    let mut line_lenght = 0;
 
     while let Some(byte1) = bytes.next() {
+        if line_lenght >= 72 { // 76 - 4 = 72
+            encoded_data.push(b'\r');
+            encoded_data.push(b'\n');
+            line_lenght = 0;
+        }
         match (bytes.next(), bytes.next()) {
             (Some(byte2), Some(byte3)) => {
                 let output_byte1 = (0b11111100 & byte1) >> 2;
@@ -40,6 +46,7 @@ pub fn encode_base64(data: Vec<u8>) -> Vec<u8> {
             }
             _ => unreachable!(),
         }
+        line_lenght += 4;
     }
 
     encoded_data
