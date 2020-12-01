@@ -9,7 +9,7 @@ pub(crate) use crate::parsing::common::*;
 pub use crate::parsing::fields::Field;
 pub use crate::parsing::message::parse_message;
 #[cfg(feature = "mime")]
-pub(crate) use crate::parsing::mime_fields::*;
+pub(crate) use crate::parsing::mime::mime_fields::*;
 pub(crate) use crate::parsing::quoted_string::*;
 pub(crate) use crate::parsing::whitespaces::*;
 pub(crate) use crate::string::*;
