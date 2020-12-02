@@ -209,13 +209,57 @@ mod test {
 
     #[test]
     fn test_content_type() {
-        assert_eq!(content_type(b"Content-type: tExt/plain\r\n").unwrap().1.0, MimeType::Text);
-        assert_eq!(content_type(b"Content-type: text/plain\r\n").unwrap().1.1, "plain");
-        assert_eq!(content_type(b"Content-type: multIpart/unknown\r\n").unwrap().1.0, MimeType::Multipart);
-        assert_eq!(content_type(b"Content-Type: text/plain; chaRSet=\"iso-8859-1\"\r\n").unwrap().1.2.get("charset").unwrap(), "iso-8859-1");
-        assert_eq!(content_type(b"Content-Type: text/plain; charset=\"iso-8859-1\"\r\n").unwrap().1.2.get("charset").unwrap(), "iso-8859-1");
-        assert_eq!(content_type(b"Content-type: text/plain; charset=us-ascii (Plain text)\r\n").unwrap().1.2.get("charset").unwrap(), "us-ascii");
-        assert_eq!(content_type(b"Content-type: text/plain; charset=\"us-ascii\"\r\n").unwrap().1.2.get("charset").unwrap(), "us-ascii");
+        assert_eq!(
+            content_type(b"Content-type: tExt/plain\r\n").unwrap().1 .0,
+            MimeType::Text
+        );
+        assert_eq!(
+            content_type(b"Content-type: text/plain\r\n").unwrap().1 .1,
+            "plain"
+        );
+        assert_eq!(
+            content_type(b"Content-type: multIpart/unknown\r\n")
+                .unwrap()
+                .1
+                 .0,
+            MimeType::Multipart
+        );
+        assert_eq!(
+            content_type(b"Content-Type: text/plain; chaRSet=\"iso-8859-1\"\r\n")
+                .unwrap()
+                .1
+                 .2
+                .get("charset")
+                .unwrap(),
+            "iso-8859-1"
+        );
+        assert_eq!(
+            content_type(b"Content-Type: text/plain; charset=\"iso-8859-1\"\r\n")
+                .unwrap()
+                .1
+                 .2
+                .get("charset")
+                .unwrap(),
+            "iso-8859-1"
+        );
+        assert_eq!(
+            content_type(b"Content-type: text/plain; charset=us-ascii (Plain text)\r\n")
+                .unwrap()
+                .1
+                 .2
+                .get("charset")
+                .unwrap(),
+            "us-ascii"
+        );
+        assert_eq!(
+            content_type(b"Content-type: text/plain; charset=\"us-ascii\"\r\n")
+                .unwrap()
+                .1
+                 .2
+                .get("charset")
+                .unwrap(),
+            "us-ascii"
+        );
         assert_eq!(content_type(b"Content-Type: multipart/alternative; \r\n\tboundary=\"_000_DB6P193MB0021E64E5870F10170A32CB8EB920DB6P193MB0021EURP_\"\r\n").unwrap().1.2.get("boundary").unwrap(), "_000_DB6P193MB0021E64E5870F10170A32CB8EB920DB6P193MB0021EURP_");
     }
 

@@ -168,9 +168,9 @@ mod tests {
 
     #[test]
     fn test_message_id() {
-        assert_eq!(message_id(b"<idleft@idright>").unwrap().1.0, "idleft");
-        assert_eq!(message_id(b"<idleft@idright>").unwrap().1.1, "idright");
-        assert_eq!(message_id(b"<idleft@[idright]>").unwrap().1.1, "idright");
+        assert_eq!(message_id(b"<idleft@idright>").unwrap().1 .0, "idleft");
+        assert_eq!(message_id(b"<idleft@idright>").unwrap().1 .1, "idright");
+        assert_eq!(message_id(b"<idleft@[idright]>").unwrap().1 .1, "idright");
     }
 
     #[test]
