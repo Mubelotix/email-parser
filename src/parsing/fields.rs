@@ -2,6 +2,7 @@ use crate::address::*;
 use crate::parsing::time::*;
 use crate::prelude::*;
 use std::borrow::Cow;
+#[cfg(feature = "mime")]
 use std::collections::HashMap;
 
 #[derive(Debug)]
