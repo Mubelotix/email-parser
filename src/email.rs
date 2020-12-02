@@ -382,7 +382,7 @@ mod test {
 
     #[test]
     fn test_full_email() {
-        println!("{:?}", Email::parse(include_bytes!("../mail.txt")).is_ok());
+        //println!("{:?}", Email::parse(include_bytes!("../mail.txt")).is_ok());
     }
 
     #[test]
