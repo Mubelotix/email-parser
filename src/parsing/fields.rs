@@ -1,8 +1,8 @@
 use crate::address::*;
 use crate::parsing::time::*;
 use crate::prelude::*;
-use std::collections::HashMap;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum TraceField<'a> {

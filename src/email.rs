@@ -300,7 +300,9 @@ impl<'a> Email<'a> {
             None => (
                 MimeType::Text,
                 Cow::Borrowed("plain"),
-                vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))].into_iter().collect(),
+                vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
+                    .into_iter()
+                    .collect(),
             ),
         };
         #[cfg(feature = "mime")]
@@ -318,7 +320,14 @@ impl<'a> Email<'a> {
         }
         #[cfg(feature = "mime")]
         if let Some(body) = body {
-            let entities = crate::parsing::mime::entity::body_part(Cow::Borrowed(body), content_transfer_encoding, content_type.0, content_type.1, content_type.2).unwrap();
+            let entities = crate::parsing::mime::entity::body_part(
+                Cow::Borrowed(body),
+                content_transfer_encoding,
+                content_type.0,
+                content_type.1,
+                content_type.2,
+            )
+            .unwrap();
             println!("{:?}", entities);
         }
 

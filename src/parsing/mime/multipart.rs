@@ -11,10 +11,7 @@ fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [
             && input.get_unchecked(2..2 + boundary.len()) == boundary
             && input.get_unchecked(2 + boundary.len()..full_boundary_len - 2) == b"\r\n"
         {
-            return Ok((
-                input.get_unchecked(full_boundary_len - 2..),
-                b"",
-            ));
+            return Ok((input.get_unchecked(full_boundary_len - 2..), b""));
         }
     }
 
@@ -57,13 +54,17 @@ fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'
     Err(Error::Known("closing boundary not found"))
 }
 
-pub fn parse_multipart<'a>(input: &'a [u8], parameters: HashMap<Cow<str>, Cow<str>>) -> Result<Vec<Entity<'a>>, Error> {
-    let boundary = parameters.get("boundary").ok_or(Error::Known("Missing boundary parameter"))?;
+pub fn parse_multipart<'a>(
+    input: &'a [u8],
+    parameters: HashMap<Cow<str>, Cow<str>>,
+) -> Result<Vec<Entity<'a>>, Error> {
+    let boundary = parameters
+        .get("boundary")
+        .ok_or(Error::Known("Missing boundary parameter"))?;
     let (input, mut parts) = many(&input, |i| before_boundary(i, boundary.as_bytes()))?;
     let (_epilogue, last_part) = before_closing_boundary(input, boundary.as_bytes())?;
     parts.push(last_part);
     parts.remove(0); // the prelude
-
 
     let mut entities = Vec::new();
     for part in parts {

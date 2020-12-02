@@ -91,7 +91,7 @@ pub fn body(input: &[u8]) -> Result<Option<Cow<str>>, Error> {
     }))
 }
 
-#[cfg(not(feature="mime"))]
+#[cfg(not(feature = "mime"))]
 pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<Cow<str>>), Error> {
     let (input, fields) = fields(input)?;
     let body = body(input)?;
@@ -99,7 +99,7 @@ pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<Cow<str>>), Err
     Ok((fields, body))
 }
 
-#[cfg(feature="mime")]
+#[cfg(feature = "mime")]
 pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<&[u8]>), Error> {
     let (input, fields) = fields(input)?;
 

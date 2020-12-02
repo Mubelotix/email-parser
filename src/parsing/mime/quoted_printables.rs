@@ -128,7 +128,8 @@ mod tests {
     #[test]
     fn decode() {
         assert_eq!(
-            b"This was a triumph. Il \xC3\xA9tait une fois...\r\nAnd voil\xC3\xA0 ! \r\nSimon".to_vec(),
+            b"This was a triumph. Il \xC3\xA9tait une fois...\r\nAnd voil\xC3\xA0 ! \r\nSimon"
+                .to_vec(),
             decode_qp(
                 "This was a triumph. Il =C3=A9tait une fois...\r\nAnd voil=C3=A0 !=20\r\nSimon"
                     .to_string()

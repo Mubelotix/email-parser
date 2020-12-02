@@ -3,12 +3,11 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 pub fn entity(mut input: Cow<[u8]>) -> Result<Entity, Error> {
-    let (new_input, (encoding, mime_type, subtype, parameters)) = header_part(unsafe {
-        std::mem::transmute::<&[u8], &'static [u8]>(&input)
-    })?;
+    let (new_input, (encoding, mime_type, subtype, parameters)) =
+        header_part(unsafe { std::mem::transmute::<&[u8], &'static [u8]>(&input) })?;
     input = match input {
         Cow::Borrowed(input) => Cow::Borrowed(&input[input.len() - new_input.len()..]),
-        Cow::Owned(input) => Cow::Owned(input[input.len() - new_input.len()..].to_owned())
+        Cow::Owned(input) => Cow::Owned(input[input.len() - new_input.len()..].to_owned()),
     };
     let entity = body_part(input, encoding, mime_type, subtype, parameters)?;
 
@@ -49,22 +48,12 @@ pub fn header_part(
     ));
 
     if input.is_empty() {
-        return Ok((input, (
-            encoding,
-            mime_type,
-            subtype,
-            parameters,
-        )));
+        return Ok((input, (encoding, mime_type, subtype, parameters)));
     }
 
     let (input, _) = tag(&input, b"\r\n")?;
 
-    Ok((input, (
-        encoding,
-        mime_type,
-        subtype,
-        parameters,
-    )))
+    Ok((input, (encoding, mime_type, subtype, parameters)))
 }
 
 pub fn body_part<'a>(
@@ -109,8 +98,22 @@ pub fn body_part<'a>(
     if mime_type == MimeType::Text {
         // Fixme: handle charset
         match value {
-            Cow::Borrowed(value) => return Ok(Entity::Text{subtype, value: Cow::Borrowed(std::str::from_utf8(value).map_err(|_| Error::Known("Not utf8"))?)}),
-            Cow::Owned(value) => return Ok(Entity::Text{subtype, value: Cow::Owned(String::from_utf8(value).map_err(|_| Error::Known("Not utf8"))?)}),
+            Cow::Borrowed(value) => {
+                return Ok(Entity::Text {
+                    subtype,
+                    value: Cow::Borrowed(
+                        std::str::from_utf8(value).map_err(|_| Error::Known("Not utf8"))?,
+                    ),
+                })
+            }
+            Cow::Owned(value) => {
+                return Ok(Entity::Text {
+                    subtype,
+                    value: Cow::Owned(
+                        String::from_utf8(value).map_err(|_| Error::Known("Not utf8"))?,
+                    ),
+                })
+            }
         }
     }
 
@@ -129,7 +132,13 @@ mod tests {
     fn entity_test() {
         println!("{:?}", entity(Cow::Borrowed(b"\r\nText")).unwrap());
         println!("{:?}", entity(Cow::Owned(b"\r\nText".to_vec())).unwrap());
-        println!("{:?}", entity(Cow::Owned(b"Content-type: text/html; charset=utf8\r\n\r\n<p>Text</p>".to_vec())).unwrap());
+        println!(
+            "{:?}",
+            entity(Cow::Owned(
+                b"Content-type: text/html; charset=utf8\r\n\r\n<p>Text</p>".to_vec()
+            ))
+            .unwrap()
+        );
         println!("{:?}", entity(Cow::Owned(b"Content-type: text/html; charset=utf8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Test=C3=A9</p>".to_vec())).unwrap());
         println!("{:?}", entity(Cow::Borrowed(b"Content-type: multipart/alternative; boundary=\"simple boundary\"\r\n\r\nThis is the preamble.  It is to be ignored, though it\r\nis a handy place for composition agents to include an\r\nexplanatory note to non-MIME conformant readers.\r\n\r\n--simple boundary\r\n\r\nThis is implicitly typed plain US-ASCII text.\r\nIt does NOT end with a linebreak.\r\n--simple boundary\r\nContent-type: text/plain; charset=us-ascii\r\n\r\nThis is explicitly typed plain US-ASCII text.\r\nIt DOES end with a linebreak.\r\n\r\n--simple boundary--\r\n\r\nThis is the epilogue.  It is also to be ignored.")).unwrap());
     }
