@@ -1,10 +1,10 @@
-use crate::{mime, parsing::fields::unknown, prelude::*};
+use crate::{parsing::fields::unknown, prelude::*};
 use std::borrow::Cow;
 use std::collections::HashMap;
 
 pub fn entity(mut input: Cow<[u8]>) -> Result<Entity, Error> {
     let (new_input, (encoding, mime_type, subtype, parameters)) =
-        header_part(unsafe { std::mem::transmute::<&[u8], &'static [u8]>(&input) })?;
+        header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
     input = match input {
         Cow::Borrowed(input) => Cow::Borrowed(&input[input.len() - new_input.len()..]),
         Cow::Owned(input) => Cow::Owned(input[input.len() - new_input.len()..].to_owned()),
