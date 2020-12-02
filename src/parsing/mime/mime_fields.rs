@@ -185,9 +185,23 @@ pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
     Ok((input, encoding))
 }
 
+pub fn content_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+    let (input, ()) = tag_no_case(input, b"Content-ID:", b"cONTENT-id:")?;
+    let (input, id) = crate::parsing::address::message_id(input)?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, id))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_content_id() {
+        assert_eq!(content_id(b"Content-ID: <123456@mubelotix.dev>\r\n").unwrap().1.0, "123456");
+        assert_eq!(content_id(b"cOntent-id: <qpfpsqfh@gmail.com>\r\n").unwrap().1.1, "gmail.com");
+    }
 
     #[test]
     fn test_mime_version() {

@@ -53,6 +53,8 @@ pub enum Field<'a> {
     },
     #[cfg(feature = "mime")]
     ContentTransferEncoding(ContentTransferEncoding<'a>),
+    #[cfg(feature = "mime")]
+    ContentId((Cow<'a, str>, Cow<'a, str>)),
     #[cfg(feature = "trace")]
     Trace {
         return_path: Option<Option<EmailAddress<'a>>>,
@@ -142,6 +144,8 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
             },
             #[cfg(feature = "mime")]
             |i| content_transfer_encoding(i).map(|(i, e)| (i, Field::ContentTransferEncoding(e))),
+            #[cfg(feature = "mime")]
+            |i| content_id(i).map(|(i, v)| (i, Field::ContentId(v))),
             #[cfg(feature = "keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
             |i| unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),

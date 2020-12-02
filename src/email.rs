@@ -92,6 +92,9 @@ pub struct Email<'a> {
     #[cfg(feature = "mime")]
     pub mime_version: Option<(u8, u8)>,
 
+    #[cfg(feature = "mime")]
+    pub content_id: Option<(Cow<'a, str>, Cow<'a, str>)>,
+
     /// The list of unrecognized fields.\
     /// Each field is stored as a `(name, value)` tuple.
     pub unknown_fields: Vec<(Cow<'a, str>, Cow<'a, str>)>,
@@ -136,6 +139,8 @@ impl<'a> Email<'a> {
         let mut content_type = None;
         #[cfg(feature = "mime")]
         let mut content_transfer_encoding = None;
+        #[cfg(feature = "mime")]
+        let mut content_id = None;
 
         let mut unknown_fields = Vec::new();
 
@@ -271,6 +276,14 @@ impl<'a> Email<'a> {
                         return Err(Error::Known("Multiple content_transfer_encoding fields"));
                     }
                 }
+                #[cfg(feature = "mime")]
+                Field::ContentId(id) => {
+                    if content_id.is_none() {
+                        content_id = Some(id)
+                    } else {
+                        return Err(Error::Known("Multiple content_id fields"));
+                    }
+                }
                 Field::Unknown { name, value } => {
                     unknown_fields.push((name, value));
                 }
@@ -363,6 +376,8 @@ impl<'a> Email<'a> {
             keywords,
             #[cfg(feature = "mime")]
             mime_version,
+            #[cfg(feature = "mime")]
+            content_id,
             unknown_fields,
         })
     }
