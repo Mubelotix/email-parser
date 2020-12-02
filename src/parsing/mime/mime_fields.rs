@@ -1,6 +1,7 @@
 use crate::mime::*;
 use crate::prelude::*;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 #[inline]
 fn ignore_inline_cfws(input: &[u8]) -> Res<()> {
@@ -50,7 +51,7 @@ pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
     Ok((input, (d1, d2)))
 }
 
-pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, Vec<(Cow<str>, Cow<str>)>)> {
+pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, Cow<str>>)> {
     let (input, ()) = tag_no_case(input, b"Content-Type:", b"cONTENT-tYPE:")?;
     let (input, _) = optional(input, cfws);
 
@@ -116,7 +117,11 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, Vec<(Cow<str>, Cow
         Ok((input, (attribute, value)))
     }
 
-    let (input, parameters) = many(input, parameter)?;
+    let (input, parameters_vec) = many(input, parameter)?;
+    let mut parameters: HashMap<_, _> = HashMap::new();
+    for (name, value) in parameters_vec {
+        parameters.insert(name, value);
+    }
 
     let (input, ()) = ignore_inline_cfws(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -207,11 +212,11 @@ mod test {
         assert_eq!(content_type(b"Content-type: tExt/plain\r\n").unwrap().1.0, MimeType::Text);
         assert_eq!(content_type(b"Content-type: text/plain\r\n").unwrap().1.1, "plain");
         assert_eq!(content_type(b"Content-type: multIpart/unknown\r\n").unwrap().1.0, MimeType::Multipart);
-        assert_eq!(content_type(b"Content-Type: text/plain; chaRSet=\"iso-8859-1\"\r\n").unwrap().1.2[0].0, "charset");
-        assert_eq!(content_type(b"Content-Type: text/plain; charset=\"iso-8859-1\"\r\n").unwrap().1.2[0].1, "iso-8859-1");
-        assert_eq!(content_type(b"Content-type: text/plain; charset=us-ascii (Plain text)\r\n").unwrap().1.2[0].1, "us-ascii");
-        assert_eq!(content_type(b"Content-type: text/plain; charset=\"us-ascii\"\r\n").unwrap().1.2[0].1, "us-ascii");
-        assert_eq!(content_type(b"Content-Type: multipart/alternative; \r\n\tboundary=\"_000_DB6P193MB0021E64E5870F10170A32CB8EB920DB6P193MB0021EURP_\"\r\n").unwrap().1.2[0].0, "boundary");
+        assert_eq!(content_type(b"Content-Type: text/plain; chaRSet=\"iso-8859-1\"\r\n").unwrap().1.2.get("charset").unwrap(), "iso-8859-1");
+        assert_eq!(content_type(b"Content-Type: text/plain; charset=\"iso-8859-1\"\r\n").unwrap().1.2.get("charset").unwrap(), "iso-8859-1");
+        assert_eq!(content_type(b"Content-type: text/plain; charset=us-ascii (Plain text)\r\n").unwrap().1.2.get("charset").unwrap(), "us-ascii");
+        assert_eq!(content_type(b"Content-type: text/plain; charset=\"us-ascii\"\r\n").unwrap().1.2.get("charset").unwrap(), "us-ascii");
+        assert_eq!(content_type(b"Content-Type: multipart/alternative; \r\n\tboundary=\"_000_DB6P193MB0021E64E5870F10170A32CB8EB920DB6P193MB0021EURP_\"\r\n").unwrap().1.2.get("boundary").unwrap(), "_000_DB6P193MB0021E64E5870F10170A32CB8EB920DB6P193MB0021EURP_");
     }
 
     #[test]

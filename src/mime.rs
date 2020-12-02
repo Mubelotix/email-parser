@@ -1,6 +1,13 @@
 use std::borrow::Cow;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+pub enum Entity<'a> {
+    Multipart(Vec<Entity<'a>>),
+    Text {subtype: Cow<'a, str>, value: Cow<'a, str>},
+    Unknown{mime_type: MimeType<'a>, subtype: Cow<'a, str>, value: Cow<'a, [u8]>}
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum MimeType<'a> {
     Text,
     Image,
@@ -27,7 +34,7 @@ impl<'a> MimeType<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ContentTransferEncoding<'a> {
     SevenBit,
     HeightBit,

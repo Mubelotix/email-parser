@@ -28,7 +28,12 @@ use std::borrow::Cow;
 #[derive(Debug)]
 pub struct Email<'a> {
     /// The ASCII text of the body.
+    #[cfg(not(feature = "mime"))]
     pub body: Option<Cow<'a, str>>,
+
+    /// The MIME-encoded data of the body.
+    #[cfg(feature = "mime")]
+    pub body: Option<&'a [u8]>,
 
     #[cfg(feature = "from")]
     /// The list of authors of the message.\
@@ -295,7 +300,7 @@ impl<'a> Email<'a> {
             None => (
                 MimeType::Text,
                 Cow::Borrowed("plain"),
-                vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))],
+                vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))].into_iter().collect(),
             ),
         };
         #[cfg(feature = "mime")]
@@ -310,6 +315,11 @@ impl<'a> Email<'a> {
             && content_transfer_encoding != ContentTransferEncoding::Binary
         {
             content_transfer_encoding = ContentTransferEncoding::SevenBit;
+        }
+        #[cfg(feature = "mime")]
+        if let Some(body) = body {
+            let entities = crate::parsing::mime::entity::body_part(Cow::Borrowed(body), content_transfer_encoding, content_type.0, content_type.1, content_type.2).unwrap();
+            println!("{:?}", entities);
         }
 
         Ok(Email {
@@ -360,6 +370,11 @@ impl<'a> std::convert::TryFrom<&'a [u8]> for Email<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_full_email() {
+        println!("{:?}", Email::parse(include_bytes!("../mail.txt")).is_ok());
+    }
 
     #[test]
     fn test_field_number() {

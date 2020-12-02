@@ -58,7 +58,7 @@ pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> {
     data
 }
 
-pub fn decode_qp(mut data: Vec<u8>) -> String {
+pub fn decode_qp(mut data: Vec<u8>) -> Vec<u8> {
     let mut idx = 0;
 
     while let Some(byte) = data.get(idx).copied() {
@@ -104,13 +104,7 @@ pub fn decode_qp(mut data: Vec<u8>) -> String {
         }
     }
 
-    match String::from_utf8(data) {
-        Ok(s) => s,
-        Err(e) => {
-            let s = String::from_utf8_lossy(e.as_bytes());
-            s.into()
-        }
-    }
+    data
 }
 
 #[cfg(test)]
@@ -134,17 +128,13 @@ mod tests {
     #[test]
     fn decode() {
         assert_eq!(
-            "This was a triumph. Il était une fois...\r\nAnd voilà ! \r\nSimon".to_string(),
+            b"This was a triumph. Il \xC3\xA9tait une fois...\r\nAnd voil\xC3\xA0 ! \r\nSimon".to_vec(),
             decode_qp(
                 "This was a triumph. Il =C3=A9tait une fois...\r\nAnd voil=C3=A0 !=20\r\nSimon"
                     .to_string()
                     .into_bytes()
             )
         );
-        assert_eq!("Now's the time for all folk to come to the aid of their country. Wtf this sentence is not long enough to test line-lenght limit.".to_string(), decode_qp("Now\'s the time for all folk to come to the aid of their country. Wtf thi=\r\ns sentence is not long enough to test line-lenght limit.".to_string().into_bytes()));
-        assert_eq!(
-            "Invalid bytes�Q�\u{1a}�".to_string(),
-            decode_qp("Invalid bytes=95=51=FF=1A=FA".to_string().into_bytes())
-        );
+        assert_eq!(b"Now's the time for all folk to come to the aid of their country. Wtf this sentence is not long enough to test line-lenght limit.".to_vec(), decode_qp("Now\'s the time for all folk to come to the aid of their country. Wtf thi=\r\ns sentence is not long enough to test line-lenght limit.".to_string().into_bytes()));
     }
 }

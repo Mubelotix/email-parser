@@ -1,3 +1,5 @@
+use crate::prelude::*;
+
 const BASE64_MAP: [u8; 64] = [
     b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J', b'K', b'L', b'M', b'N', b'O', b'P',
     b'Q', b'R', b'S', b'T', b'U', b'V', b'W', b'X', b'Y', b'Z', b'a', b'b', b'c', b'd', b'e', b'f',
@@ -64,7 +66,7 @@ fn get_value_encoded(c: u8) -> Option<u8> {
     }
 }
 
-pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, Error> {
     let mut bytes = data.iter();
     let mut decoded_data = Vec::new();
 
@@ -87,7 +89,7 @@ pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, &'static str> {
                         break 'inner2 b;
                     }
                 }
-                None => return Err("Missing at least 3 bytes"),
+                None => return Err(Error::Known("Missing at least 3 bytes")),
             }
         };
 
@@ -99,20 +101,20 @@ pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, &'static str> {
                         break 'inner3 Some(b);
                     }
                 }
-                None => return Err("Missing at least 2 bytes"),
+                None => return Err(Error::Known("Missing at least 2 bytes")),
             }
         };
 
         let b4 = 'inner4: loop {
             match bytes.next() {
                 Some(b) if *b == b'=' => break 'inner4 None,
-                Some(_) if b3.is_none() => return Err("Data after end of data"),
+                Some(_) if b3.is_none() => return Err(Error::Known("Data after end of data")),
                 Some(b) => {
                     if let Some(b) = get_value_encoded(*b) {
                         break 'inner4 Some(b);
                     }
                 }
-                None => return Err("Missing at least 1 byte"),
+                None => return Err(Error::Known("Missing at least 1 byte")),
             }
         };
 

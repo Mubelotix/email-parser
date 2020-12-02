@@ -1,6 +1,7 @@
 use crate::address::*;
 use crate::parsing::time::*;
 use crate::prelude::*;
+use std::collections::HashMap;
 use std::borrow::Cow;
 
 #[derive(Debug)]
@@ -48,7 +49,7 @@ pub enum Field<'a> {
     ContentType {
         mime_type: MimeType<'a>,
         subtype: Cow<'a, str>,
-        parameters: Vec<(Cow<'a, str>, Cow<'a, str>)>,
+        parameters: HashMap<Cow<'a, str>, Cow<'a, str>>,
     },
     #[cfg(feature = "mime")]
     ContentTransferEncoding(ContentTransferEncoding<'a>),
