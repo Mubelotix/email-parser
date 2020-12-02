@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 pub fn entity(mut input: Cow<[u8]>) -> Result<Entity, Error> {
-    let (new_input, (encoding, mime_type, subtype, parameters, _id)) =
+    let (new_input, (encoding, mime_type, subtype, parameters, _id, _desc)) =
         header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
     input = match input {
         Cow::Borrowed(input) => Cow::Borrowed(&input[input.len() - new_input.len()..]),
@@ -22,10 +22,12 @@ pub fn header_part(
     Cow<str>,
     HashMap<Cow<str>, Cow<str>>,
     Option<(Cow<str>, Cow<str>)>,
+    Option<Cow<str>>,
 )> {
     let mut encoding = None;
     let mut mime_type = None;
     let mut id = None;
+    let mut description = None;
 
     loop {
         // FIXME: Should we trigger errors on duplicated fields?
@@ -38,6 +40,9 @@ pub fn header_part(
         } else if let Ok((new_input, cid)) = content_id(input) {
             input = new_input;
             id = Some(cid);
+        } else if let Ok((new_input, cdescription)) = content_description(input) {
+            input = new_input;
+            description = Some(cdescription);
         } else if let Ok((new_input, _unknown)) = unknown(input) {
             input = new_input;
         } else {
@@ -55,12 +60,18 @@ pub fn header_part(
     ));
 
     if input.is_empty() {
-        return Ok((input, (encoding, mime_type, subtype, parameters, id)));
+        return Ok((
+            input,
+            (encoding, mime_type, subtype, parameters, id, description),
+        ));
     }
 
     let (input, _) = tag(&input, b"\r\n")?;
 
-    Ok((input, (encoding, mime_type, subtype, parameters, id)))
+    Ok((
+        input,
+        (encoding, mime_type, subtype, parameters, id, description),
+    ))
 }
 
 pub fn body_part<'a>(

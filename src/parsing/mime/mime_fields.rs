@@ -193,14 +193,52 @@ pub fn content_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     Ok((input, id))
 }
 
+pub fn content_description(input: &[u8]) -> Res<Cow<str>> {
+    let (input, ()) = tag_no_case(input, b"Content-Description:", b"cONTENT-dESCRIPTION:")?;
+    let (input, description) = unstructured(input)?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, description))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_content_id() {
-        assert_eq!(content_id(b"Content-ID: <123456@mubelotix.dev>\r\n").unwrap().1.0, "123456");
-        assert_eq!(content_id(b"cOntent-id: <qpfpsqfh@gmail.com>\r\n").unwrap().1.1, "gmail.com");
+        assert_eq!(
+            content_id(b"Content-ID: <123456@mubelotix.dev>\r\n")
+                .unwrap()
+                .1
+                 .0,
+            "123456"
+        );
+        assert_eq!(
+            content_id(b"cOntent-id: <qpfpsqfh@gmail.com>\r\n")
+                .unwrap()
+                .1
+                 .1,
+            "gmail.com"
+        );
+    }
+
+    #[test]
+    fn test_content_description() {
+        assert_eq!(
+            content_description(
+                b"Content-Description:a picture of the Space Shuttle Endeavor.\r\n"
+            )
+            .unwrap()
+            .1,
+            "a picture of the Space Shuttle Endeavor."
+        );
+        assert_eq!(
+            content_description(b"Content-DeScription:Ferris the crab\r\n")
+                .unwrap()
+                .1,
+            "Ferris the crab"
+        );
     }
 
     #[test]
