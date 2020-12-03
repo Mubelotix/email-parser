@@ -338,7 +338,7 @@ impl<'a> Email<'a> {
         let body = if let Some(body) = body {
             Some(crate::parsing::mime::entity::decode_value(
                 Cow::Borrowed(body),
-                content_transfer_encoding
+                content_transfer_encoding,
             )?)
         } else {
             None
@@ -382,7 +382,7 @@ impl<'a> Email<'a> {
                 description: content_description,
                 id: content_id,
                 parameters: content_type.2,
-                value: body.unwrap_or(Cow::Borrowed(b""))
+                value: body.unwrap_or(Cow::Borrowed(b"")),
             },
             unknown_fields,
         })

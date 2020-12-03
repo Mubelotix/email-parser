@@ -34,7 +34,10 @@ fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [
     let (before, len) = before_boundary_idx(input, boundary)?;
 
     unsafe {
-        Ok((input.get_unchecked(before + len..), input.get_unchecked(..before)))
+        Ok((
+            input.get_unchecked(before + len..),
+            input.get_unchecked(..before),
+        ))
     }
 }
 
@@ -48,10 +51,7 @@ fn before_closing_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, 
                 && input.get_unchecked(idx + 4 + boundary.len()..idx + full_boundary_len)
                     == b"--\r\n"
             {
-                return Ok((
-                    idx,
-                    full_boundary_len
-                ));
+                return Ok((idx, full_boundary_len));
             }
         }
     }
@@ -63,11 +63,17 @@ fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'
     let (before, len) = before_closing_boundary_idx(input, boundary)?;
 
     unsafe {
-        Ok((input.get_unchecked(before + len..), input.get_unchecked(..before)))
+        Ok((
+            input.get_unchecked(before + len..),
+            input.get_unchecked(..before),
+        ))
     }
 }
 
-fn before_closing_boundary_owned(mut input: Vec<u8>, boundary: &[u8]) -> Result<(Vec<u8>, Vec<u8>), Error> {
+fn before_closing_boundary_owned(
+    mut input: Vec<u8>,
+    boundary: &[u8],
+) -> Result<(Vec<u8>, Vec<u8>), Error> {
     let (before, len) = before_closing_boundary_idx(&input, boundary)?;
 
     let before: Vec<u8> = input.drain(..before).collect();
@@ -110,7 +116,7 @@ pub fn parse_multipart_owned<'a>(
         let part: Vec<u8> = input.drain(..before).collect();
         let _boundary = input.drain(..len);
         parts.push(part);
-    };
+    }
 
     let (_epilogue, last_part) = before_closing_boundary_owned(input, boundary.as_bytes())?;
     parts.push(last_part);

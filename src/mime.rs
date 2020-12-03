@@ -1,6 +1,6 @@
+use crate::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use crate::prelude::*;
 
 #[derive(Debug)]
 pub struct RawEntity<'a> {

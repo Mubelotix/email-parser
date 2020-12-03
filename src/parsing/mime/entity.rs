@@ -34,10 +34,12 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
                     content: multipart::parse_multipart(value, raw_entity.parameters)?,
                 })
             }
-            Cow::Owned(value) => return Ok(Entity::Multipart {
-                subtype: raw_entity.subtype,
-                content: multipart::parse_multipart_owned(value, raw_entity.parameters)?,
-            }),
+            Cow::Owned(value) => {
+                return Ok(Entity::Multipart {
+                    subtype: raw_entity.subtype,
+                    content: multipart::parse_multipart_owned(value, raw_entity.parameters)?,
+                })
+            }
         }
     }
 
