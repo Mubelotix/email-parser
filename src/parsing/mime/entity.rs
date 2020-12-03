@@ -49,10 +49,9 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
         let charset = raw_entity
             .parameters
             .get("charset")
-            .unwrap_or(&Cow::Borrowed("us-ascii"))
-            .to_lowercase();
+            .unwrap_or(&Cow::Borrowed("us-ascii"));
 
-        let value: Cow<str> = match charset.as_str() {
+        let value: Cow<str> = match charset.as_ref() {
             "utf-8" | "us-ascii" => match raw_entity.value {
                 Cow::Borrowed(value) => Cow::Borrowed(
                     std::str::from_utf8(value)
