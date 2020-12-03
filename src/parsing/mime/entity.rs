@@ -5,14 +5,15 @@ use std::collections::HashMap;
 use super::multipart;
 
 pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
-    let (
-        new_input,
-        (encoding, mime_type, subtype, parameters, additional_headers, id, description),
-    ) = header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
+    let (len, encoding, mime_type, subtype, parameters, additional_headers, id, description) =
+        header_part(unsafe {
+            // The header_part function returns only owned data, so we are not borrowing input
+            &*(input.as_ref() as *const [u8])
+        })?;
     match input {
-        Cow::Borrowed(ref mut input) => *input = &input[input.len() - new_input.len()..],
+        Cow::Borrowed(ref mut input) => *input = &input[input.len() - len..],
         Cow::Owned(ref mut input) => {
-            input.drain(..input.len() - new_input.len());
+            input.drain(..input.len() - len);
         }
     };
     let value = decode_value(input, encoding)?;
@@ -96,15 +97,19 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
 
 pub fn header_part(
     mut input: &[u8],
-) -> Res<(
-    ContentTransferEncoding,
-    MimeType,
-    Cow<str>,
-    HashMap<Cow<str>, Cow<str>>,
-    Vec<(Cow<str>, Cow<str>)>,
-    Option<(Cow<str>, Cow<str>)>,
-    Option<Cow<str>>,
-)> {
+) -> Result<
+    (
+        usize,
+        ContentTransferEncoding,
+        MimeType,
+        Cow<str>,
+        HashMap<Cow<str>, Cow<str>>,
+        Vec<(Cow<str>, Cow<str>)>,
+        Option<(Cow<str>, Cow<str>)>,
+        Option<Cow<str>>,
+    ),
+    Error,
+> {
     let mut encoding = None;
     let mut mime_type = None;
     let mut id = None;
@@ -115,19 +120,19 @@ pub fn header_part(
         // FIXME: Should we trigger errors on duplicated fields?
         if let Ok((new_input, content_transfer_encoding)) = content_transfer_encoding(input) {
             input = new_input;
-            encoding = Some(content_transfer_encoding);
+            encoding = Some(content_transfer_encoding.to_owned());
         } else if let Ok((new_input, content_type)) = content_type(input) {
             input = new_input;
-            mime_type = Some(content_type);
+            mime_type = Some(content_type.to_owned());
         } else if let Ok((new_input, cid)) = content_id(input) {
             input = new_input;
-            id = Some(cid);
+            id = Some(cid.to_owned());
         } else if let Ok((new_input, cdescription)) = content_description(input) {
             input = new_input;
-            description = Some(cdescription);
+            description = Some(cdescription.to_owned());
         } else if let Ok((new_input, header)) = unknown(input) {
             input = new_input;
-            additional_headers.push(header);
+            additional_headers.push(header.to_owned());
         } else {
             break;
         }
@@ -144,24 +149,7 @@ pub fn header_part(
 
     if input.is_empty() {
         return Ok((
-            input,
-            (
-                encoding,
-                mime_type,
-                subtype,
-                parameters,
-                additional_headers,
-                id,
-                description,
-            ),
-        ));
-    }
-
-    let (input, _) = tag(&input, b"\r\n")?;
-
-    Ok((
-        input,
-        (
+            input.len(),
             encoding,
             mime_type,
             subtype,
@@ -169,7 +157,20 @@ pub fn header_part(
             additional_headers,
             id,
             description,
-        ),
+        ));
+    }
+
+    let (input, _) = tag(&input, b"\r\n")?;
+
+    Ok((
+        input.len(),
+        encoding,
+        mime_type,
+        subtype,
+        parameters,
+        additional_headers,
+        id,
+        description,
     ))
 }
 
