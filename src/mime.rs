@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// A generic MIME Entity.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct RawEntity<'a> {
     pub mime_type: MimeType<'a>,
     /// The subtype (in lowercase).
@@ -29,7 +29,7 @@ impl<'a> RawEntity<'a> {
 
 /// A higher-level reprentation of entities.\
 /// Can be obtained with [RawEntity::parse].
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Entity<'a> {
     /// A multipart entity is an array of entities.\
     /// See the subtype for information about their relation.

@@ -200,19 +200,61 @@ mod tests {
 
     #[test]
     fn raw_entity_test() {
-        println!("{:?}", raw_entity(Cow::Borrowed(b"\r\nText")).unwrap());
-        println!(
-            "{:?}",
+        assert_eq!(
+            RawEntity {
+                mime_type: MimeType::Text,
+                subtype: "plain".into(),
+                description: None,
+                id: None,
+                parameters: vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
+                    .into_iter()
+                    .collect(),
+                value: Cow::Borrowed(&[84, 101, 120, 116]),
+                additional_headers: vec![]
+            },
+            raw_entity(Cow::Borrowed(b"\r\nText")).unwrap()
+        );
+        assert_eq!(
+            RawEntity {
+                mime_type: MimeType::Text,
+                subtype: "plain".into(),
+                description: None,
+                id: None,
+                parameters: vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
+                    .into_iter()
+                    .collect(),
+                value: Cow::Borrowed(&[84, 101, 120, 116]),
+                additional_headers: vec![]
+            },
             raw_entity(Cow::Owned(b"\r\nText".to_vec())).unwrap()
         );
-        println!(
-            "{:?}",
+        assert_eq!(
+            RawEntity {
+                mime_type: MimeType::Text,
+                subtype: "html".into(),
+                description: None,
+                id: None,
+                parameters: vec![(Cow::Borrowed("charset"), Cow::Borrowed("utf-8"))]
+                    .into_iter()
+                    .collect(),
+                value: Cow::Borrowed(&[60, 112, 62, 84, 101, 120, 116, 60, 47, 112, 62]),
+                additional_headers: vec![("Unknown".into(), " Test".into())]
+            },
             raw_entity(Cow::Owned(
-                b"Content-type: text/html; charset=utf8\r\n\r\n<p>Text</p>".to_vec()
+                b"Content-type: text/html; charset=utf-8\r\nUnknown: Test\r\n\r\n<p>Text</p>"
+                    .to_vec()
             ))
             .unwrap()
         );
-        println!("{:?}", raw_entity(Cow::Owned(b"Content-type: text/html; charset=utf8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Test=C3=A9</p>".to_vec())).unwrap());
+
         println!("{:?}", raw_entity(Cow::Borrowed(b"Content-type: multipart/alternative; boundary=\"simple boundary\"\r\n\r\nThis is the preamble.  It is to be ignored, though it\r\nis a handy place for composition agents to include an\r\nexplanatory note to non-MIME conformant readers.\r\n\r\n--simple boundary\r\n\r\nThis is implicitly typed plain US-ASCII text.\r\nIt does NOT end with a linebreak.\r\n--simple boundary\r\nContent-type: text/plain; charset=us-ascii\r\n\r\nThis is explicitly typed plain US-ASCII text.\r\nIt DOES end with a linebreak.\r\n\r\n--simple boundary--\r\n\r\nThis is the epilogue.  It is also to be ignored.")).unwrap());
+    }
+
+    #[test]
+    fn entity_test() {
+        assert_eq!(Entity::Text {
+            subtype: "html".into(),
+            value: "<p>Testé</p>".into()
+        }, raw_entity(Cow::Owned(b"Content-type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Test=C3=A9</p>".to_vec())).unwrap().parse().unwrap());
     }
 }
