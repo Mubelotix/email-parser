@@ -79,7 +79,7 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
             "iso-8859-16" => Cow::Owned(iso8859_16::decode_to_string(&raw_entity.value)),
             "iso-6937" => Cow::Owned(iso6937::decode_to_string(&raw_entity.value)),
             "gb2312" => Cow::Owned(gb2312::decode_to_string(&raw_entity.value)),
-            _ => return Err(Error::Known("Unknown charset")),
+            _ => return Ok(Entity::Unknown(raw_entity)),
         };
 
         return Ok(Entity::Text {
