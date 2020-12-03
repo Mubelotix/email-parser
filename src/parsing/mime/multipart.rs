@@ -15,7 +15,7 @@ fn before_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), 
         }
     }
 
-    for idx in 0..input.len().saturating_sub(full_boundary_len) + 1 {
+    for idx in 0..input.len().saturating_sub(full_boundary_len) {
         unsafe {
             // FIXME: ignore whitespaces after the boundary
             if input.get_unchecked(idx..idx + 4) == b"\r\n--"
