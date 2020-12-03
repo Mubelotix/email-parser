@@ -403,7 +403,15 @@ mod test {
 
     #[test]
     fn test_full_email() {
-        //println!("{:?}", Email::parse(include_bytes!("../mail.txt")).unwrap().mime_entity.parse().unwrap());
+        /*let multipart = Email::parse(include_bytes!("../mail.txt")).unwrap().mime_entity.parse().unwrap();
+        println!("{:?}", multipart);
+        if let Entity::Multipart{content, subtype: _} = multipart {
+            for entity in content {
+                println!("{:?}", entity.parse().unwrap())
+            }
+        } else {
+            panic!("Failed to parse multipart");
+        }*/
     }
 
     #[test]
