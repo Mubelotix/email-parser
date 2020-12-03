@@ -5,25 +5,22 @@ use std::collections::HashMap;
 fn before_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), Error> {
     let full_boundary_len = 2 + 2 + boundary.len() + 2;
 
-    unsafe {
-        // FIXME: ignore whitespaces after the boundary
-        if input.get_unchecked(..2) == b"--"
-            && input.get_unchecked(2..2 + boundary.len()) == boundary
-            && input.get_unchecked(2 + boundary.len()..full_boundary_len - 2) == b"\r\n"
-        {
-            return Ok((0, full_boundary_len - 2));
-        }
+    // FIXME: ignore whitespaces after the boundary
+    if full_boundary_len - 2 <= input.len()
+        && input.get(..2) == Some(b"--")
+        && input.get(2..2 + boundary.len()) == Some(boundary)
+        && input.get(2 + boundary.len()..full_boundary_len - 2) == Some(b"\r\n")
+    {
+        return Ok((0, full_boundary_len - 2));
     }
 
-    for idx in 0..input.len().saturating_sub(full_boundary_len) {
-        unsafe {
-            // FIXME: ignore whitespaces after the boundary
-            if input.get_unchecked(idx..idx + 4) == b"\r\n--"
-                && input.get_unchecked(idx + 4..idx + 4 + boundary.len()) == boundary
-                && input.get_unchecked(idx + 4 + boundary.len()..idx + full_boundary_len) == b"\r\n"
-            {
-                return Ok((idx, full_boundary_len));
-            }
+    for idx in 0..input.len() {
+        // FIXME: ignore whitespaces after the boundary
+        if input.get(idx..idx + 4) == Some(b"\r\n--")
+            && input.get(idx + 4..idx + 4 + boundary.len()) == Some(boundary)
+            && input.get(idx + 4 + boundary.len()..idx + full_boundary_len) == Some(b"\r\n")
+        {
+            return Ok((idx, full_boundary_len));
         }
     }
 
@@ -43,16 +40,13 @@ fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [
 
 fn before_closing_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), Error> {
     let full_boundary_len = 2 + 2 + boundary.len() + 2 + 2;
-    for idx in 0..input.len().saturating_sub(full_boundary_len) + 1 {
-        unsafe {
-            // FIXME: ignore whitespaces after the boundary
-            if input.get_unchecked(idx..idx + 4) == b"\r\n--"
-                && input.get_unchecked(idx + 4..idx + 4 + boundary.len()) == boundary
-                && input.get_unchecked(idx + 4 + boundary.len()..idx + full_boundary_len)
-                    == b"--\r\n"
-            {
-                return Ok((idx, full_boundary_len));
-            }
+    for idx in 0..input.len() {
+        // FIXME: ignore whitespaces after the boundary
+        if input.get(idx..idx + 4) == Some(b"\r\n--")
+            && input.get(idx + 4..idx + 4 + boundary.len()) == Some(boundary)
+            && input.get(idx + 4 + boundary.len()..idx + full_boundary_len) == Some(b"--\r\n")
+        {
+            return Ok((idx, full_boundary_len));
         }
     }
 
@@ -153,6 +147,12 @@ mod tests {
             )
             .unwrap()
             .1
+        );
+        assert_eq!(
+            b"aeiouy",
+            before_boundary(b"aeiouy\r\n--boundary\r\n", b"boundary")
+                .unwrap()
+                .1
         );
         assert_eq!(
             b"This was a triumph",
