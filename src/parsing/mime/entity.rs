@@ -158,14 +158,7 @@ pub fn decode_value<'a>(
         ContentTransferEncoding::Base64 => {
             Cow::Owned(super::base64::decode_base64(value.into_owned())?)
         }
-        ContentTransferEncoding::SevenBit => {
-            for c in value.as_ref().iter() {
-                if c >= &127 || c == &0 {
-                    return Err(Error::Known("7bit data is containing non-7bit characters"));
-                }
-            }
-            value
-        }
+        ContentTransferEncoding::SevenBit => value, // No need to check, we have to be tolerant
         ContentTransferEncoding::HeightBit => value,
         ContentTransferEncoding::QuotedPrintable => {
             Cow::Owned(super::quoted_printables::decode_qp(value.into_owned()))
