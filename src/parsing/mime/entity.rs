@@ -5,8 +5,10 @@ use std::collections::HashMap;
 use super::multipart;
 
 pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
-    let (new_input, (encoding, mime_type, subtype, parameters, id, description)) =
-        header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
+    let (
+        new_input,
+        (encoding, mime_type, subtype, parameters, additional_headers, id, description),
+    ) = header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
     match input {
         Cow::Borrowed(ref mut input) => *input = &input[input.len() - new_input.len()..],
         Cow::Owned(ref mut input) => {
@@ -22,6 +24,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
         id,
         description,
         value,
+        additional_headers,
     })
 }
 
@@ -98,6 +101,7 @@ pub fn header_part(
     MimeType,
     Cow<str>,
     HashMap<Cow<str>, Cow<str>>,
+    Vec<(Cow<str>, Cow<str>)>,
     Option<(Cow<str>, Cow<str>)>,
     Option<Cow<str>>,
 )> {
@@ -105,6 +109,7 @@ pub fn header_part(
     let mut mime_type = None;
     let mut id = None;
     let mut description = None;
+    let mut additional_headers = Vec::new();
 
     loop {
         // FIXME: Should we trigger errors on duplicated fields?
@@ -120,8 +125,9 @@ pub fn header_part(
         } else if let Ok((new_input, cdescription)) = content_description(input) {
             input = new_input;
             description = Some(cdescription);
-        } else if let Ok((new_input, _unknown)) = unknown(input) {
+        } else if let Ok((new_input, header)) = unknown(input) {
             input = new_input;
+            additional_headers.push(header);
         } else {
             break;
         }
@@ -139,7 +145,15 @@ pub fn header_part(
     if input.is_empty() {
         return Ok((
             input,
-            (encoding, mime_type, subtype, parameters, id, description),
+            (
+                encoding,
+                mime_type,
+                subtype,
+                parameters,
+                additional_headers,
+                id,
+                description,
+            ),
         ));
     }
 
@@ -147,7 +161,15 @@ pub fn header_part(
 
     Ok((
         input,
-        (encoding, mime_type, subtype, parameters, id, description),
+        (
+            encoding,
+            mime_type,
+            subtype,
+            parameters,
+            additional_headers,
+            id,
+            description,
+        ),
     ))
 }
 

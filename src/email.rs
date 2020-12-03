@@ -383,6 +383,7 @@ impl<'a> Email<'a> {
                 id: content_id,
                 parameters: content_type.2,
                 value: body.unwrap_or(Cow::Borrowed(b"")),
+                additional_headers: Vec::new(),
             },
             unknown_fields,
         })

@@ -10,6 +10,7 @@ pub struct RawEntity<'a> {
     pub id: Option<(Cow<'a, str>, Cow<'a, str>)>,
     pub parameters: HashMap<Cow<'a, str>, Cow<'a, str>>,
     pub value: Cow<'a, [u8]>,
+    pub additional_headers: Vec<(Cow<'a, str>, Cow<'a, str>)>,
 }
 
 impl<'a> RawEntity<'a> {
