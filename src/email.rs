@@ -311,38 +311,23 @@ impl<'a> Email<'a> {
         };
 
         #[cfg(feature = "mime")]
-        let content_type = match content_type {
-            Some(content_type) => content_type,
-            None => (
+        let (content_type, body) = (
+            content_type.unwrap_or((
                 MimeType::Text,
                 Cow::Borrowed("plain"),
                 vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
                     .into_iter()
                     .collect(),
-            ),
-        };
-        #[cfg(feature = "mime")]
-        let mut content_transfer_encoding = match content_transfer_encoding {
-            Some(content_transfer_encoding) => content_transfer_encoding,
-            None => ContentTransferEncoding::SevenBit,
-        };
-        #[cfg(feature = "mime")]
-        if content_type.0.is_composite_type()
-            && content_transfer_encoding != ContentTransferEncoding::SevenBit
-            && content_transfer_encoding != ContentTransferEncoding::HeightBit
-            && content_transfer_encoding != ContentTransferEncoding::Binary
-        {
-            content_transfer_encoding = ContentTransferEncoding::SevenBit;
-        }
-        #[cfg(feature = "mime")]
-        let body = if let Some(body) = body {
-            Some(crate::parsing::mime::entity::decode_value(
-                Cow::Borrowed(body),
-                content_transfer_encoding,
-            )?)
-        } else {
-            None
-        };
+            )),
+            if let Some(body) = body {
+                Some(crate::parsing::mime::entity::decode_value(
+                    Cow::Borrowed(body),
+                    content_transfer_encoding.unwrap_or(ContentTransferEncoding::SevenBit),
+                )?)
+            } else {
+                None
+            },
+        );
 
         Ok(Email {
             #[cfg(not(feature = "mime"))]
