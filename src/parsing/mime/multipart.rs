@@ -2,7 +2,7 @@ use crate::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
+fn before_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), Error> {
     let full_boundary_len = 2 + 2 + boundary.len() + 2;
 
     unsafe {
@@ -11,7 +11,7 @@ fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [
             && input.get_unchecked(2..2 + boundary.len()) == boundary
             && input.get_unchecked(2 + boundary.len()..full_boundary_len - 2) == b"\r\n"
         {
-            return Ok((input.get_unchecked(full_boundary_len - 2..), b""));
+            return Ok((0, full_boundary_len - 2));
         }
     }
 
@@ -22,10 +22,7 @@ fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [
                 && input.get_unchecked(idx + 4..idx + 4 + boundary.len()) == boundary
                 && input.get_unchecked(idx + 4 + boundary.len()..idx + full_boundary_len) == b"\r\n"
             {
-                return Ok((
-                    input.get_unchecked(idx + full_boundary_len..),
-                    input.get_unchecked(..idx),
-                ));
+                return Ok((idx, full_boundary_len));
             }
         }
     }
@@ -33,7 +30,15 @@ fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [
     Err(Error::Known("boundary not found"))
 }
 
-fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
+fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
+    let (before, len) = before_boundary_idx(input, boundary)?;
+
+    unsafe {
+        Ok((input.get_unchecked(before + len..), input.get_unchecked(..before)))
+    }
+}
+
+fn before_closing_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), Error> {
     let full_boundary_len = 2 + 2 + boundary.len() + 2 + 2;
     for idx in 0..input.len().saturating_sub(full_boundary_len) + 1 {
         unsafe {
@@ -44,8 +49,8 @@ fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'
                     == b"--\r\n"
             {
                 return Ok((
-                    input.get_unchecked(idx + full_boundary_len..),
-                    input.get_unchecked(..idx),
+                    idx,
+                    full_boundary_len
                 ));
             }
         }
@@ -54,10 +59,29 @@ fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'
     Err(Error::Known("closing boundary not found"))
 }
 
+fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
+    let (before, len) = before_closing_boundary_idx(input, boundary)?;
+
+    unsafe {
+        Ok((input.get_unchecked(before + len..), input.get_unchecked(..before)))
+    }
+}
+
+fn before_closing_boundary_owned(mut input: Vec<u8>, boundary: &[u8]) -> Result<(Vec<u8>, Vec<u8>), Error> {
+    let (before, len) = before_closing_boundary_idx(&input, boundary)?;
+
+    let before: Vec<u8> = input.drain(..before).collect();
+    {
+        let _boundary = input.drain(..len);
+    }
+
+    Ok((before, input))
+}
+
 pub fn parse_multipart<'a>(
     input: &'a [u8],
     parameters: HashMap<Cow<str>, Cow<str>>,
-) -> Result<Vec<Entity<'a>>, Error> {
+) -> Result<Vec<RawEntity<'a>>, Error> {
     let boundary = parameters
         .get("boundary")
         .ok_or(Error::Known("Missing boundary parameter"))?;
@@ -68,7 +92,33 @@ pub fn parse_multipart<'a>(
 
     let mut entities = Vec::new();
     for part in parts {
-        entities.push(super::entity::entity(Cow::Borrowed(part))?);
+        entities.push(super::entity::raw_entity(Cow::Borrowed(part))?);
+    }
+
+    Ok(entities)
+}
+
+pub fn parse_multipart_owned<'a>(
+    mut input: Vec<u8>,
+    parameters: HashMap<Cow<str>, Cow<str>>,
+) -> Result<Vec<RawEntity<'a>>, Error> {
+    let boundary = parameters
+        .get("boundary")
+        .ok_or(Error::Known("Missing boundary parameter"))?;
+    let mut parts = Vec::new();
+    while let Ok((before, len)) = before_boundary_idx(&input, boundary.as_bytes()) {
+        let part: Vec<u8> = input.drain(..before).collect();
+        let _boundary = input.drain(..len);
+        parts.push(part);
+    };
+
+    let (_epilogue, last_part) = before_closing_boundary_owned(input, boundary.as_bytes())?;
+    parts.push(last_part);
+    parts.remove(0); // the prelude
+
+    let mut entities = Vec::new();
+    for part in parts {
+        entities.push(super::entity::raw_entity(Cow::Owned(part))?);
     }
 
     Ok(entities)

@@ -2,16 +2,46 @@ use crate::{parsing::fields::unknown, prelude::*};
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-pub fn entity(mut input: Cow<[u8]>) -> Result<Entity, Error> {
-    let (new_input, (encoding, mime_type, subtype, parameters, _id, _desc)) =
-        header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
-    input = match input {
-        Cow::Borrowed(input) => Cow::Borrowed(&input[input.len() - new_input.len()..]),
-        Cow::Owned(input) => Cow::Owned(input[input.len() - new_input.len()..].to_owned()),
-    };
-    let entity = body_part(input, encoding, mime_type, subtype, parameters)?;
+use super::multipart;
 
-    Ok(entity)
+pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
+    let (new_input, (encoding, mime_type, subtype, parameters, id, description)) =
+        header_part(unsafe { &*(input.as_ref() as *const [u8]) })?;
+    match input {
+        Cow::Borrowed(ref mut input) => *input = &input[input.len() - new_input.len()..],
+        Cow::Owned(ref mut input) => {
+            input.drain(..input.len() - new_input.len());
+        }
+    };
+    let value = decode_value(input, encoding)?;
+
+    Ok(RawEntity {
+        mime_type,
+        subtype,
+        parameters,
+        id,
+        description,
+        value,
+    })
+}
+
+pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
+    if raw_entity.mime_type == MimeType::Multipart {
+        match raw_entity.value {
+            Cow::Borrowed(value) => {
+                return Ok(Entity::Multipart {
+                    subtype: raw_entity.subtype,
+                    content: multipart::parse_multipart(value, raw_entity.parameters)?,
+                })
+            }
+            Cow::Owned(value) => return Ok(Entity::Multipart {
+                subtype: raw_entity.subtype,
+                content: multipart::parse_multipart_owned(value, raw_entity.parameters)?,
+            }),
+        }
+    }
+
+    Ok(Entity::Unknown(raw_entity))
 }
 
 pub fn header_part(
@@ -74,71 +104,30 @@ pub fn header_part(
     ))
 }
 
-pub fn body_part<'a>(
-    input: Cow<'a, [u8]>,
+pub fn decode_value<'a>(
+    value: Cow<'a, [u8]>,
     encoding: ContentTransferEncoding,
-    mime_type: MimeType<'a>,
-    subtype: Cow<'a, str>,
-    parameters: HashMap<Cow<str>, Cow<str>>,
-) -> Result<Entity<'a>, Error> {
-    let value: Cow<[u8]> = match encoding {
+) -> Result<Cow<'a, [u8]>, Error> {
+    Ok(match encoding {
         ContentTransferEncoding::Base64 => {
-            Cow::Owned(super::base64::decode_base64(input.to_vec())?)
+            Cow::Owned(super::base64::decode_base64(value.into_owned())?)
         }
         ContentTransferEncoding::SevenBit => {
-            for c in input.as_ref().iter() {
+            for c in value.as_ref().iter() {
                 if c >= &127 || c == &0 {
-                    return Err(Error::Known("Invalid 7bit"));
+                    return Err(Error::Known("7bit data is containing non-7bit characters"));
                 }
             }
-            input
+            value
         }
-        ContentTransferEncoding::HeightBit => input,
+        ContentTransferEncoding::HeightBit => value,
         ContentTransferEncoding::QuotedPrintable => {
-            Cow::Owned(super::quoted_printables::decode_qp(input.to_vec()))
+            Cow::Owned(super::quoted_printables::decode_qp(value.into_owned()))
         }
         ContentTransferEncoding::Other(_) => {
-            return Err(Error::Known("Unknown format"));
+            return Err(Error::Known("Unknown format")); // FIXME: Allow user to get this data
         }
-        ContentTransferEncoding::Binary => {
-            return Err(Error::Known("Unimplemented binary"));
-        }
-    };
-
-    if mime_type == MimeType::Multipart {
-        if let Cow::Borrowed(value) = value {
-            return Ok(Entity::Multipart(super::multipart::parse_multipart(
-                value, parameters,
-            )?));
-        }
-    }
-
-    if mime_type == MimeType::Text {
-        // Fixme: handle charset
-        match value {
-            Cow::Borrowed(value) => {
-                return Ok(Entity::Text {
-                    subtype,
-                    value: Cow::Borrowed(
-                        std::str::from_utf8(value).map_err(|_| Error::Known("Not utf8"))?,
-                    ),
-                })
-            }
-            Cow::Owned(value) => {
-                return Ok(Entity::Text {
-                    subtype,
-                    value: Cow::Owned(
-                        String::from_utf8(value).map_err(|_| Error::Known("Not utf8"))?,
-                    ),
-                })
-            }
-        }
-    }
-
-    Ok(Entity::Unknown {
-        mime_type,
-        subtype,
-        value,
+        ContentTransferEncoding::Binary => value,
     })
 }
 
@@ -147,17 +136,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn entity_test() {
-        println!("{:?}", entity(Cow::Borrowed(b"\r\nText")).unwrap());
-        println!("{:?}", entity(Cow::Owned(b"\r\nText".to_vec())).unwrap());
+    fn raw_entity_test() {
+        println!("{:?}", raw_entity(Cow::Borrowed(b"\r\nText")).unwrap());
         println!(
             "{:?}",
-            entity(Cow::Owned(
+            raw_entity(Cow::Owned(b"\r\nText".to_vec())).unwrap()
+        );
+        println!(
+            "{:?}",
+            raw_entity(Cow::Owned(
                 b"Content-type: text/html; charset=utf8\r\n\r\n<p>Text</p>".to_vec()
             ))
             .unwrap()
         );
-        println!("{:?}", entity(Cow::Owned(b"Content-type: text/html; charset=utf8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Test=C3=A9</p>".to_vec())).unwrap());
-        println!("{:?}", entity(Cow::Borrowed(b"Content-type: multipart/alternative; boundary=\"simple boundary\"\r\n\r\nThis is the preamble.  It is to be ignored, though it\r\nis a handy place for composition agents to include an\r\nexplanatory note to non-MIME conformant readers.\r\n\r\n--simple boundary\r\n\r\nThis is implicitly typed plain US-ASCII text.\r\nIt does NOT end with a linebreak.\r\n--simple boundary\r\nContent-type: text/plain; charset=us-ascii\r\n\r\nThis is explicitly typed plain US-ASCII text.\r\nIt DOES end with a linebreak.\r\n\r\n--simple boundary--\r\n\r\nThis is the epilogue.  It is also to be ignored.")).unwrap());
+        println!("{:?}", raw_entity(Cow::Owned(b"Content-type: text/html; charset=utf8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Test=C3=A9</p>".to_vec())).unwrap());
+        println!("{:?}", raw_entity(Cow::Borrowed(b"Content-type: multipart/alternative; boundary=\"simple boundary\"\r\n\r\nThis is the preamble.  It is to be ignored, though it\r\nis a handy place for composition agents to include an\r\nexplanatory note to non-MIME conformant readers.\r\n\r\n--simple boundary\r\n\r\nThis is implicitly typed plain US-ASCII text.\r\nIt does NOT end with a linebreak.\r\n--simple boundary\r\nContent-type: text/plain; charset=us-ascii\r\n\r\nThis is explicitly typed plain US-ASCII text.\r\nIt DOES end with a linebreak.\r\n\r\n--simple boundary--\r\n\r\nThis is the epilogue.  It is also to be ignored.")).unwrap());
     }
 }

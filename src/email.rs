@@ -31,10 +31,6 @@ pub struct Email<'a> {
     #[cfg(not(feature = "mime"))]
     pub body: Option<Cow<'a, str>>,
 
-    /// The MIME-encoded data of the body.
-    #[cfg(feature = "mime")]
-    pub body: Option<&'a [u8]>,
-
     #[cfg(feature = "from")]
     /// The list of authors of the message.\
     /// It's **not** the identity of the sender. See the [sender field](#structfield.sender).
@@ -90,13 +86,7 @@ pub struct Email<'a> {
     )>,
 
     #[cfg(feature = "mime")]
-    pub mime_version: Option<(u8, u8)>,
-
-    #[cfg(feature = "mime")]
-    pub content_id: Option<(Cow<'a, str>, Cow<'a, str>)>,
-
-    #[cfg(feature = "mime")]
-    pub content_description: Option<Cow<'a, str>>,
+    pub mime_entity: RawEntity<'a>,
 
     /// The list of unrecognized fields.\
     /// Each field is stored as a `(name, value)` tuple.
@@ -345,19 +335,17 @@ impl<'a> Email<'a> {
             content_transfer_encoding = ContentTransferEncoding::SevenBit;
         }
         #[cfg(feature = "mime")]
-        if let Some(body) = body {
-            let entities = crate::parsing::mime::entity::body_part(
+        let body = if let Some(body) = body {
+            Some(crate::parsing::mime::entity::decode_value(
                 Cow::Borrowed(body),
-                content_transfer_encoding,
-                content_type.0,
-                content_type.1,
-                content_type.2,
-            )
-            .unwrap();
-            println!("{:?}", entities);
-        }
+                content_transfer_encoding
+            )?)
+        } else {
+            None
+        };
 
         Ok(Email {
+            #[cfg(not(feature = "mime"))]
             body,
             #[cfg(feature = "from")]
             from,
@@ -388,11 +376,14 @@ impl<'a> Email<'a> {
             #[cfg(feature = "keywords")]
             keywords,
             #[cfg(feature = "mime")]
-            mime_version,
-            #[cfg(feature = "mime")]
-            content_id,
-            #[cfg(feature = "mime")]
-            content_description,
+            mime_entity: RawEntity {
+                mime_type: content_type.0,
+                subtype: content_type.1,
+                description: content_description,
+                id: content_id,
+                parameters: content_type.2,
+                value: body.unwrap_or(Cow::Borrowed(b""))
+            },
             unknown_fields,
         })
     }
@@ -412,7 +403,7 @@ mod test {
 
     #[test]
     fn test_full_email() {
-        //println!("{:?}", Email::parse(include_bytes!("../mail.txt")).is_ok());
+        //println!("{:?}", Email::parse(include_bytes!("../mail.txt")).unwrap().mime_entity.parse().unwrap());
     }
 
     #[test]

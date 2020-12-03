@@ -1,17 +1,34 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
+use crate::prelude::*;
+
+#[derive(Debug)]
+pub struct RawEntity<'a> {
+    pub mime_type: MimeType<'a>,
+    pub subtype: Cow<'a, str>,
+    pub description: Option<Cow<'a, str>>,
+    pub id: Option<(Cow<'a, str>, Cow<'a, str>)>,
+    pub parameters: HashMap<Cow<'a, str>, Cow<'a, str>>,
+    pub value: Cow<'a, [u8]>,
+}
+
+impl<'a> RawEntity<'a> {
+    pub fn parse(self) -> Result<Entity<'a>, Error> {
+        crate::parsing::mime::entity::entity(self)
+    }
+}
 
 #[derive(Debug)]
 pub enum Entity<'a> {
-    Multipart(Vec<Entity<'a>>),
+    Multipart {
+        subtype: Cow<'a, str>,
+        content: Vec<RawEntity<'a>>,
+    },
     Text {
         subtype: Cow<'a, str>,
         value: Cow<'a, str>,
     },
-    Unknown {
-        mime_type: MimeType<'a>,
-        subtype: Cow<'a, str>,
-        value: Cow<'a, [u8]>,
-    },
+    Unknown(RawEntity<'a>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
