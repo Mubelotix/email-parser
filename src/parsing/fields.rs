@@ -646,6 +646,16 @@ mod tests {
         );
 
         assert_eq!(
+            from(b"From: =?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>\r\n")
+                .unwrap()
+                .1[0]
+                .name
+                .as_ref()
+                .unwrap()[0],
+            "Keith Moore"
+        );
+
+        assert_eq!(
             unknown(b"X-SG-EID:\r\n =?us-ascii?Q?t3vk5cTFE=2FYEGeQ8h3SwrnzIAGc=2F+ADymlys=2FfRFW4Zjpt=2F3MuaO9JNHS2enYQ?=\r\n =?us-ascii?Q?Jsv0=2FpYrPem+YssHetKlrE5nJnOfr=2FYdJOyJFf8?=\r\n =?us-ascii?Q?3mRuMRE9KGu=2F5O75=2FwwN6dG14nuP4SyMIZwbMdG?=\r\n =?us-ascii?Q?vXmM2kgcM=2FOalKeT03BMp4YCg9h1LhkV6PZEoHB?=\r\n =?us-ascii?Q?d4tcAvNZQqLaA4ykI1EpNxKVVyZXVWqTp2uisdf?=\r\n =?us-ascii?Q?HB=2F6BKcIs+XSDNeakQqmn=2FwAqOk78AvtRB5LnNL?=\r\n =?us-ascii?Q?lz3oRXlMZbdFgRH+KAyLQ=3D=3D?=\r\n").unwrap().1.1,
             " t3vk5cTFE/YEGeQ8h3SwrnzIAGc/+ADymlys/fRFW4Zjpt/3MuaO9JNHS2enYQJsv0/pYrPem+YssHetKlrE5nJnOfr/YdJOyJFf83mRuMRE9KGu/5O75/wwN6dG14nuP4SyMIZwbMdGvXmM2kgcM/OalKeT03BMp4YCg9h1LhkV6PZEoHBd4tcAvNZQqLaA4ykI1EpNxKVVyZXVWqTp2uisdfHB/6BKcIs+XSDNeakQqmn/wAqOk78AvtRB5LnNLlz3oRXlMZbdFgRH+KAyLQ=="
         );

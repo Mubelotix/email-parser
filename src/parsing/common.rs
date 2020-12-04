@@ -57,6 +57,20 @@ pub fn word(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
 }
 
 pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
+    #[cfg(feature = "mime")]
+    fn word(input: &[u8]) -> Res<Cow<str>> {
+        match_parsers(
+            input,
+            &mut [
+                (|i| {
+                    let (i, _) = optional(i, fws);
+                    crate::parsing::mime::encoded_headers::encoded_word(i)
+                }),
+                (|i| crate::parsing::common::word(i)),
+            ][..],
+        )
+    }
+
     let mut words = Vec::new();
     let (mut input, first_word) = word(input)?;
     words.push(first_word);
@@ -120,7 +134,7 @@ mod tests {
 
     #[cfg(feature = "mime")]
     #[test]
-    fn test_encoded_unstructure() {
+    fn test_encoded_unstructured() {
         assert_eq!(
             "the quick brown fox jumps over Chloé Helloco",
             mime_unstructured(
@@ -156,6 +170,25 @@ mod tests {
             mime_unstructured(b"=?ISO-8859-1?Q?a?= =?ISO-8859-2?Q?_b?=")
                 .unwrap()
                 .1
+        );
+    }
+
+    #[cfg(feature = "mime")]
+    #[test]
+    fn test_encoded_phrase() {
+        assert_eq!(
+            phrase(b"Lou =?UTF-8?Q?Dorl=C3=A9ans?=").unwrap().1,
+            vec!["Lou", "Dorléans"]
+        );
+
+        assert_eq!(
+            phrase(b"=?ISO-8859-1?Q?Andr=E9?= Pirard").unwrap().1,
+            vec!["André", "Pirard"]
+        );
+
+        assert_eq!(
+            phrase(b" =?US-ASCII?Q?Keith_Moore?=").unwrap().1,
+            vec!["Keith Moore"]
         );
     }
 
