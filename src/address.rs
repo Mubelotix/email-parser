@@ -3,7 +3,8 @@ use std::borrow::Cow;
 #[derive(Debug, Clone)]
 pub struct Mailbox<'a> {
     /// The name associated with an email.\
-    /// Each name is stored individually in the `Vec`. For example "Elton John" results in `Some(["Elton", "John"])`.
+    /// Each name is stored individually in the `Vec`. For example "Elton John" results in `Some(["Elton", "John"])`.\
+    /// Be aware that might also get `Some(["Elton John"])` when the `mime` feature is enabled because whitespaces may appear after decoding encoded data.
     pub name: Option<Vec<Cow<'a, str>>>,
     pub address: EmailAddress<'a>,
 }
