@@ -87,20 +87,24 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
 
 #[cfg(feature = "mime")]
 pub fn mime_unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
+    let mut previous_was_encoded = false;
     let (mut input, output) = collect_many(input, |i| {
-        collect_pair(
-            i,
-            |i| Ok(fws(i).unwrap_or((i, empty_string()))),
-            |i| {
-                match_parsers(
-                    i,
-                    &mut [
-                        crate::parsing::mime::encoded_headers::encoded_word,
-                        (|i| take_while1(i, is_vchar)) as fn(input: &[u8]) -> Res<Cow<str>>,
-                    ][..],
-                )
-            },
-        )
+        let (i, mut wsp) = fws(i).unwrap_or((i, empty_string()));
+
+        if let Ok((i, text)) = crate::parsing::mime::encoded_headers::encoded_word(i) {
+            if previous_was_encoded {
+                return Ok((i, text));
+            } else {
+                previous_was_encoded = true;
+                add_string(&mut wsp, text);
+                return Ok((i, wsp));
+            }
+        } else if let Ok((i, text)) = take_while1(i, is_vchar) {
+            previous_was_encoded = false;
+            add_string(&mut wsp, text);
+            return Ok((i, wsp));
+        }
+        Err(Error::Known("No match arm is matching the data"))
     })?;
 
     while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
@@ -114,14 +118,44 @@ pub fn mime_unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
 mod tests {
     use super::*;
 
-    #[cfg(feature="mime")]
+    #[cfg(feature = "mime")]
     #[test]
     fn test_encoded_unstructure() {
         assert_eq!(
-            mime_unstructured(b"the quick brown fox jumps\r\n over =?UTF-8?Q?Chlo=C3=A9_Helloco?=   ")
+            "the quick brown fox jumps over Chloé Helloco",
+            mime_unstructured(
+                b"the quick brown fox jumps\r\n over =?UTF-8?Q?Chlo=C3=A9_Helloco?=   "
+            )
+            .unwrap()
+            .1
+        );
+
+        assert_eq!("a", mime_unstructured(b"=?ISO-8859-1?Q?a?=").unwrap().1);
+        assert_eq!("a b", mime_unstructured(b"=?ISO-8859-1?Q?a?= b").unwrap().1);
+        assert_eq!(
+            "ab",
+            mime_unstructured(b"=?ISO-8859-1?Q?a?= =?ISO-8859-1?Q?b?=")
                 .unwrap()
-                .1,
-            "the quick brown fox jumps over Chloé Helloco"
+                .1
+        );
+        assert_eq!(
+            "ab",
+            mime_unstructured(b"=?ISO-8859-1?Q?a?=  =?ISO-8859-1?Q?b?=")
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            "ab",
+            mime_unstructured(b"=?ISO-8859-1?Q?a?=\r\n  =?ISO-8859-1?Q?b?=")
+                .unwrap()
+                .1
+        );
+        assert_eq!("a b", mime_unstructured(b"=?ISO-8859-1?Q?a_b?=").unwrap().1);
+        assert_eq!(
+            "a b",
+            mime_unstructured(b"=?ISO-8859-1?Q?a?= =?ISO-8859-2?Q?_b?=")
+                .unwrap()
+                .1
         );
     }
 
