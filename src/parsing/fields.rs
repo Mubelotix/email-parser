@@ -251,9 +251,9 @@ pub fn references(input: &[u8]) -> Res<Vec<(Cow<str>, Cow<str>)>> {
 
 pub fn subject(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Subject:", b"sUBJECT:")?;
-    #[cfg(not(feature="mime"))]
+    #[cfg(not(feature = "mime"))]
     let (input, subject) = unstructured(input)?;
-    #[cfg(feature="mime")]
+    #[cfg(feature = "mime")]
     let (input, subject) = mime_unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
@@ -262,9 +262,9 @@ pub fn subject(input: &[u8]) -> Res<Cow<str>> {
 
 pub fn comments(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Comments:", b"cOMMENTS:")?;
-    #[cfg(not(feature="mime"))]
+    #[cfg(not(feature = "mime"))]
     let (input, comments) = unstructured(input)?;
-    #[cfg(feature="mime")]
+    #[cfg(feature = "mime")]
     let (input, comments) = mime_unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
@@ -629,7 +629,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature="mime")]
+    #[cfg(feature = "mime")]
     fn test_mime_encoding() {
         assert_eq!(
             subject(b"Subject: =?UTF-8?B?8J+OiEJpcnRoZGF5IEdpdmVhd2F58J+OiA==?= Win free stickers\r\n from daily.dev =?UTF-8?B?8J+MiA==?=\r\n").unwrap().1,

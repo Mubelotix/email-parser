@@ -74,9 +74,9 @@ pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
 
     use textcode::*;
     let text: Cow<str> = match charset.as_ref() {
-        "utf-8" | "us-ascii" => Cow::Owned(
-            String::from_utf8(value).map_err(|_| Error::Known("Invalid text encoding"))?,
-        ),
+        "utf-8" | "us-ascii" => {
+            Cow::Owned(String::from_utf8(value).map_err(|_| Error::Known("Invalid text encoding"))?)
+        }
         "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&value)),
         "iso-8859-2" => Cow::Owned(iso8859_2::decode_to_string(&value)),
         "iso-8859-3" => Cow::Owned(iso8859_3::decode_to_string(&value)),
@@ -106,11 +106,34 @@ mod tests {
 
     #[test]
     fn encoded_word_test() {
-        assert_eq!("this is some text", encoded_word(b"=?iso-8859-1?q?this=20is=20some=20text?=").unwrap().1);
-        assert_eq!("Don't forget! Claim your $5 today 💸", encoded_word(b"=?utf-8?q?Don=27t_forget!_Claim_your_=245_today_=F0=9F=92=B8?=").unwrap().1);
-        assert_eq!("Chloé Helloco", encoded_word(b"=?UTF-8?Q?Chlo=C3=A9_Helloco?=").unwrap().1);
+        assert_eq!(
+            "this is some text",
+            encoded_word(b"=?iso-8859-1?q?this=20is=20some=20text?=")
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            "Don't forget! Claim your $5 today 💸",
+            encoded_word(b"=?utf-8?q?Don=27t_forget!_Claim_your_=245_today_=F0=9F=92=B8?=")
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            "Chloé Helloco",
+            encoded_word(b"=?UTF-8?Q?Chlo=C3=A9_Helloco?=").unwrap().1
+        );
 
-        assert_eq!("If you can read this yo", encoded_word(b"=?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=").unwrap().1);
-        assert_eq!("u understand the example.", encoded_word(b"=?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=").unwrap().1);
+        assert_eq!(
+            "If you can read this yo",
+            encoded_word(b"=?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=")
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            "u understand the example.",
+            encoded_word(b"=?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=")
+                .unwrap()
+                .1
+        );
     }
 }
