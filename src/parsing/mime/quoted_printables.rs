@@ -107,6 +107,56 @@ pub fn decode_qp(mut data: Vec<u8>) -> Vec<u8> {
     data
 }
 
+pub fn decode_header_qp(mut data: Vec<u8>) -> Vec<u8> {
+    let mut idx = 0;
+
+    while let Some(byte) = data.get(idx).copied() {
+        if byte == b'_' {
+            data[idx] = 0x20;
+            idx += 1;
+        } else if byte == b'=' {
+            if data.get(idx + 1) == Some(&b'\r') && data.get(idx + 2) == Some(&b'\n') {
+                data.remove(idx);
+                data.remove(idx);
+                data.remove(idx);
+            } else if data.len() > idx + 2 {
+                let first = data.remove(idx + 1);
+                let second = data.remove(idx + 1);
+
+                fn from_hex(n: u8) -> Option<u8> {
+                    match n {
+                        b'0'..=b'9' => Some(n - b'0'),
+                        b'A'..=b'F' => Some(10 + n - b'A'),
+                        b'a'..=b'f' => Some(10 + n - b'a'),
+                        _ => None,
+                    }
+                }
+
+                if let (Some(first), Some(second)) = (from_hex(first), from_hex(second)) {
+                    data[idx] = first * 16 + second;
+                    idx += 1;
+                } else {
+                    data[idx] = 189;
+                    data.insert(idx, 191);
+                    data.insert(idx, 239);
+                    idx += 3;
+                }
+            } else {
+                idx += 1;
+            }
+        } else if byte >= 0x20 && byte <= 0x7E {
+            idx += 1;
+        } else {
+            data[idx] = 189;
+            data.insert(idx, 191);
+            data.insert(idx, 239);
+            idx += 3;
+        }
+    }
+
+    data
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
