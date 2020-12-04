@@ -195,7 +195,7 @@ pub fn content_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
 
 pub fn content_description(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Content-Description:", b"cONTENT-dESCRIPTION:")?;
-    let (input, description) = unstructured(input)?;
+    let (input, description) = mime_unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, description))
