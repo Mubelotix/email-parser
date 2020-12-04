@@ -411,7 +411,11 @@ pub fn trace(
 pub fn unknown(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, name) = take_while1(input, is_ftext)?;
     let (input, ()) = tag(input, b":")?;
+    #[cfg(not(feature = "unrecognized-headers"))]
     let (input, value) = unstructured(input)?;
+    #[cfg(all(feature = "unrecognized-headers", feature = "mime"))]
+    let (input, value) = mime_unstructured(input)?;
+
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, (name, value)))
@@ -629,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "mime")]
+    #[cfg(all(feature = "mime", feature = "unrecognized-headers"))]
     fn test_mime_encoding() {
         assert_eq!(
             subject(b"Subject: =?UTF-8?B?8J+OiEJpcnRoZGF5IEdpdmVhd2F58J+OiA==?= Win free stickers\r\n from daily.dev =?UTF-8?B?8J+MiA==?=\r\n").unwrap().1,
@@ -639,6 +643,11 @@ mod tests {
         assert_eq!(
             comments(b"Comments: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=\r\n =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=\r\n").unwrap().1,
             " If you can read this you understand the example."
+        );
+
+        assert_eq!(
+            unknown(b"X-SG-EID:\r\n =?us-ascii?Q?t3vk5cTFE=2FYEGeQ8h3SwrnzIAGc=2F+ADymlys=2FfRFW4Zjpt=2F3MuaO9JNHS2enYQ?=\r\n =?us-ascii?Q?Jsv0=2FpYrPem+YssHetKlrE5nJnOfr=2FYdJOyJFf8?=\r\n =?us-ascii?Q?3mRuMRE9KGu=2F5O75=2FwwN6dG14nuP4SyMIZwbMdG?=\r\n =?us-ascii?Q?vXmM2kgcM=2FOalKeT03BMp4YCg9h1LhkV6PZEoHB?=\r\n =?us-ascii?Q?d4tcAvNZQqLaA4ykI1EpNxKVVyZXVWqTp2uisdf?=\r\n =?us-ascii?Q?HB=2F6BKcIs+XSDNeakQqmn=2FwAqOk78AvtRB5LnNL?=\r\n =?us-ascii?Q?lz3oRXlMZbdFgRH+KAyLQ=3D=3D?=\r\n").unwrap().1.1,
+            " t3vk5cTFE/YEGeQ8h3SwrnzIAGc/+ADymlys/fRFW4Zjpt/3MuaO9JNHS2enYQJsv0/pYrPem+YssHetKlrE5nJnOfr/YdJOyJFf83mRuMRE9KGu/5O75/wwN6dG14nuP4SyMIZwbMdGvXmM2kgcM/OalKeT03BMp4YCg9h1LhkV6PZEoHBd4tcAvNZQqLaA4ykI1EpNxKVVyZXVWqTp2uisdfHB/6BKcIs+XSDNeakQqmn/wAqOk78AvtRB5LnNLlz3oRXlMZbdFgRH+KAyLQ=="
         );
     }
 }

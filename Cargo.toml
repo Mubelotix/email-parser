@@ -12,8 +12,8 @@ repository = "https://github.com/Mubelotix/email-parser"
 textcode = {version="0.2", optional=true}
 
 [features]
-default = ["fields"]
-fields = ["to", "cc", "bcc", "date", "from", "sender", "reply-to", "message-id", "in-reply-to", "references", "subject", "comments", "keywords", "trace"]
+default = ["headers"]
+headers = ["to", "cc", "bcc", "date", "from", "sender", "reply-to", "message-id", "in-reply-to", "references", "subject", "comments", "keywords", "trace", "unrecognized-headers"]
 to = []
 cc = []
 bcc = []
@@ -28,6 +28,7 @@ subject = []
 comments = []
 keywords = []
 trace = []
+unrecognized-headers = []
 mime = ["textcode"]
 
 [dev-dependencies]
