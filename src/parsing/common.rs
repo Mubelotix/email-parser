@@ -85,32 +85,73 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     Ok((input, output))
 }
 
-#[test]
-fn test_word_and_phrase() {
-    assert_eq!(word(b" this is a \"rust\\ test\" ").unwrap().1, "this");
-    assert_eq!(
-        phrase(b" this is a \"rust\\ test\" ").unwrap().1,
-        vec!["this", "is", "a", "rust test"]
-    );
+#[cfg(feature = "mime")]
+pub fn mime_unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
+    let (mut input, output) = collect_many(input, |i| {
+        collect_pair(
+            i,
+            |i| Ok(fws(i).unwrap_or((i, empty_string()))),
+            |i| {
+                match_parsers(
+                    i,
+                    &mut [
+                        crate::parsing::mime::encoded_headers::encoded_word,
+                        (|i| take_while1(i, is_vchar)) as fn(input: &[u8]) -> Res<Cow<str>>,
+                    ][..],
+                )
+            },
+        )
+    })?;
+
+    while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
+        input = new_input;
+    }
+
+    Ok((input, output))
 }
 
-#[test]
-fn test_unstructured() {
-    assert_eq!(
-        unstructured(b"the quick brown fox jumps\r\n over the lazy dog   ")
-            .unwrap()
-            .1,
-        "the quick brown fox jumps over the lazy dog"
-    );
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_atom() {
-    assert_eq!(atom(b"this is a test").unwrap().1, "this");
-    assert_eq!(atom(b"   averylongatom ").unwrap().1, "averylongatom");
-    assert_eq!(
-        dot_atom_text(b"this.is.a.test").unwrap().1,
-        "this.is.a.test"
-    );
-    assert_eq!(dot_atom(b"  this.is.a.test ").unwrap().1, "this.is.a.test");
+    #[cfg(feature="mime")]
+    #[test]
+    fn test_encoded_unstructure() {
+        assert_eq!(
+            mime_unstructured(b"the quick brown fox jumps\r\n over =?UTF-8?Q?Chlo=C3=A9_Helloco?=   ")
+                .unwrap()
+                .1,
+            "the quick brown fox jumps over Chloé Helloco"
+        );
+    }
+
+    #[test]
+    fn test_word_and_phrase() {
+        assert_eq!(word(b" this is a \"rust\\ test\" ").unwrap().1, "this");
+        assert_eq!(
+            phrase(b" this is a \"rust\\ test\" ").unwrap().1,
+            vec!["this", "is", "a", "rust test"]
+        );
+    }
+
+    #[test]
+    fn test_unstructured() {
+        assert_eq!(
+            unstructured(b"the quick brown fox jumps\r\n over the lazy dog   ")
+                .unwrap()
+                .1,
+            "the quick brown fox jumps over the lazy dog"
+        );
+    }
+
+    #[test]
+    fn test_atom() {
+        assert_eq!(atom(b"this is a test").unwrap().1, "this");
+        assert_eq!(atom(b"   averylongatom ").unwrap().1, "averylongatom");
+        assert_eq!(
+            dot_atom_text(b"this.is.a.test").unwrap().1,
+            "this.is.a.test"
+        );
+        assert_eq!(dot_atom(b"  this.is.a.test ").unwrap().1, "this.is.a.test");
+    }
 }

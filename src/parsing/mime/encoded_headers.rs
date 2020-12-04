@@ -57,7 +57,7 @@ fn encoded_text(input: &[u8]) -> Res<Cow<str>> {
     take_while1(input, |c| c > 0x20 && c <= 0x7E && c != b'?')
 }
 
-fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
+pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
     let (input, _) = tag(input, b"=?")?;
     let (input, charset) = charset(input)?;
     let (input, _) = tag(input, b"?")?;
