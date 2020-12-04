@@ -262,7 +262,10 @@ pub fn subject(input: &[u8]) -> Res<Cow<str>> {
 
 pub fn comments(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Comments:", b"cOMMENTS:")?;
+    #[cfg(not(feature="mime"))]
     let (input, comments) = unstructured(input)?;
+    #[cfg(feature="mime")]
+    let (input, comments) = mime_unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, comments))
@@ -631,6 +634,11 @@ mod tests {
         assert_eq!(
             subject(b"Subject: =?UTF-8?B?8J+OiEJpcnRoZGF5IEdpdmVhd2F58J+OiA==?= Win free stickers\r\n from daily.dev =?UTF-8?B?8J+MiA==?=\r\n").unwrap().1,
             " 🎈Birthday Giveaway🎈 Win free stickers from daily.dev 🌈"
+        );
+
+        assert_eq!(
+            comments(b"Comments: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=\r\n =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=\r\n").unwrap().1,
+            " If you can read this you understand the example."
         );
     }
 }
