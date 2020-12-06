@@ -51,6 +51,28 @@ pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
     Ok((input, (d1, d2)))
 }
 
+fn parameter(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+    let (input, _) = optional(input, cfws);
+    let (input, ()) = tag(input, b";")?;
+    let (input, _) = optional(input, cfws);
+    let (input, mut attribute) = token(input)?;
+
+    let mut change_needed = false;
+    for c in attribute.chars() {
+        if c.is_uppercase() {
+            change_needed = true;
+        }
+    }
+    if change_needed {
+        attribute = Cow::Owned(attribute.to_ascii_lowercase());
+    }
+
+    let (input, ()) = tag(input, b"=")?;
+    let (input, value) = match_parsers(input, &mut [token, quoted_string][..])?;
+
+    Ok((input, (attribute, value)))
+}
+
 pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, Cow<str>>)> {
     let (input, ()) = tag_no_case(input, b"Content-Type:", b"cONTENT-tYPE:")?;
     let (input, _) = optional(input, cfws);
@@ -95,28 +117,6 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     let (input, ()) = tag(input, b"/")?;
     let (input, sub_type) = token(input)?;
 
-    fn parameter(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
-        let (input, _) = optional(input, cfws);
-        let (input, ()) = tag(input, b";")?;
-        let (input, _) = optional(input, cfws);
-        let (input, mut attribute) = token(input)?;
-
-        let mut change_needed = false;
-        for c in attribute.chars() {
-            if c.is_uppercase() {
-                change_needed = true;
-            }
-        }
-        if change_needed {
-            attribute = Cow::Owned(attribute.to_ascii_lowercase());
-        }
-
-        let (input, ()) = tag(input, b"=")?;
-        let (input, value) = match_parsers(input, &mut [token, quoted_string][..])?;
-
-        Ok((input, (attribute, value)))
-    }
-
     let (input, parameters_vec) = many(input, parameter)?;
     let mut parameters: HashMap<_, _> = HashMap::new();
     for (name, value) in parameters_vec {
@@ -127,6 +127,52 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, (mime_type, sub_type, parameters)))
+}
+
+pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, HashMap<Cow<str>, Cow<str>>)> {
+    let (input, ()) = tag_no_case(input, b"Content-Disposition:", b"cONTENT-dISPOSITION:")?;
+    let (input, _) = optional(input, cfws);
+
+    let (input, disposition_type) = match_parsers(
+        input,
+        &mut [
+            |input| {
+                tag_no_case(input, b"inline", b"INLINE").map(|(i, ())| (i, DispositionType::Inline))
+            },
+            |input| {
+                tag_no_case(input, b"attachment", b"ATTACHMENT")
+                    .map(|(i, ())| (i, DispositionType::Attachment))
+            },
+            |input| {
+                // TODO ietf token
+                let (input, mut name) = token(input)?;
+
+                // convert to lowercase
+                let mut change_needed = false;
+                for c in name.chars() {
+                    if c.is_uppercase() {
+                        change_needed = true;
+                    }
+                }
+                if change_needed {
+                    name = Cow::Owned(name.to_ascii_lowercase());
+                }
+
+                Ok((input, DispositionType::Other(name)))
+            },
+        ][..],
+    )?;
+
+    let (input, parameters_vec) = many(input, parameter)?;
+    let mut parameters: HashMap<_, _> = HashMap::new();
+    for (name, value) in parameters_vec {
+        parameters.insert(name, value);
+    }
+
+    let (input, ()) = ignore_inline_cfws(input)?;
+    let (input, ()) = tag(input, b"\r\n")?;
+
+    Ok((input, (disposition_type, parameters)))
 }
 
 pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
@@ -204,6 +250,23 @@ pub fn content_description(input: &[u8]) -> Res<Cow<str>> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_content_disposition() {
+        println!(
+            "{:?}",
+            content_disposition(b"Content-Disposition: inline\r\n")
+                .unwrap()
+                .1
+        );
+        println!("{:?}", content_disposition(b"Content-Disposition: attachment; filename=genome.jpeg;\r\n modification-date=\"Wed, 12 Feb 1997 16:29:51 -0500\"\r\n").unwrap().1);
+        println!(
+            "{:?}",
+            content_disposition(b"Content-Disposition: attachment\r\n")
+                .unwrap()
+                .1
+        );
+    }
 
     #[test]
     fn test_content_id() {

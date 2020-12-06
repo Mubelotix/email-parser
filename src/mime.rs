@@ -49,6 +49,7 @@ pub enum Entity<'a> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MimeType<'a> {
+    // Fixme: rename to ContentType
     Text,
     Image,
     Audio,
@@ -56,6 +57,13 @@ pub enum MimeType<'a> {
     Application,
     Message,
     Multipart,
+    Other(Cow<'a, str>),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum DispositionType<'a> {
+    Inline,
+    Attachment,
     Other(Cow<'a, str>),
 }
 
