@@ -60,15 +60,27 @@ pub enum MimeType<'a> {
     Other(Cow<'a, str>), // FIXME: rename to unknown
 }
 
+/// Information about how a [RawEntity] must be displayed.\
+/// Is accessible from [Disposition::disposition_type].
 #[derive(Debug, PartialEq, Clone)]
 pub enum DispositionType<'a> {
+    /// An inline entity\
+    /// [Learn more](https://tools.ietf.org/html/rfc2183#section-2.1)
     Inline,
+    /// An attachment\
+    /// [Learn more](https://tools.ietf.org/html/rfc2183#section-2.2)
     Attachment,
+    /// An unknown content-disposition. Should be treated as [DispositionType::Attachment].\
+    /// [Learn more](https://tools.ietf.org/html/rfc2183#section-2.8).
     Unknown(Cow<'a, str>),
 }
 
+/// Some information about how to display a [RawEntity] and some file metadata.\
+/// Is accessible from [RawEntity::disposition].\
+/// The size parameter is not directly supported as it is the "approximate size". You can get the exact size in bytes by calling `.len()` on the value of an [RawEntity::value].
 #[derive(Debug, PartialEq, Clone)]
-pub struct DispositionParameters<'a> {
+pub struct Disposition<'a> {
+    pub disposition_type: DispositionType<'a>,
     pub filename: Option<Cow<'a, str>>,
     pub creation_date: Option<DateTime>,
     pub modification_date: Option<DateTime>,

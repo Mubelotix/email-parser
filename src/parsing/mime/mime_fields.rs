@@ -129,7 +129,7 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     Ok((input, (mime_type, sub_type, parameters)))
 }
 
-pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, DispositionParameters)> {
+pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
     use crate::parsing::time::date_time;
 
     let (input, ()) = tag_no_case(input, b"Content-Disposition:", b"cONTENT-dISPOSITION:")?;
@@ -165,7 +165,8 @@ pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, DispositionPar
         ][..],
     )?;
 
-    let mut parameters = DispositionParameters {
+    let mut disposition = Disposition {
+        disposition_type,
         unstructured: HashMap::new(),
         creation_date: None,
         modification_date: None,
@@ -185,7 +186,11 @@ pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, DispositionPar
             Ok((input, value))
         }
 
-        fn date_parameter<'a>(input: &'a [u8], name: &'static [u8], name_uppercase: &'static [u8]) -> Res<'a, DateTime> {
+        fn date_parameter<'a>(
+            input: &'a [u8],
+            name: &'static [u8],
+            name_uppercase: &'static [u8],
+        ) -> Res<'a, DateTime> {
             let (input, _) = optional(input, cfws);
             let (input, ()) = tag(input, b";")?;
             let (input, _) = optional(input, cfws);
@@ -199,19 +204,23 @@ pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, DispositionPar
         }
 
         if let Ok((new_input, value)) = filename_parameter(input) {
-            parameters.filename = Some(value);
+            disposition.filename = Some(value);
             input = new_input;
-        } else if let Ok((new_input, value)) = date_parameter(input, b"creation-date", b"CREATION-DATE") {
-            parameters.creation_date = Some(value);
+        } else if let Ok((new_input, value)) =
+            date_parameter(input, b"creation-date", b"CREATION-DATE")
+        {
+            disposition.creation_date = Some(value);
             input = new_input;
-        } else if let Ok((new_input, value)) = date_parameter(input, b"modification-date", b"MODIFICATION-DATE") {
-            parameters.modification_date = Some(value);
+        } else if let Ok((new_input, value)) =
+            date_parameter(input, b"modification-date", b"MODIFICATION-DATE")
+        {
+            disposition.modification_date = Some(value);
             input = new_input;
         } else if let Ok((new_input, value)) = date_parameter(input, b"read-date", b"READ-DATE") {
-            parameters.read_date = Some(value);
+            disposition.read_date = Some(value);
             input = new_input;
         } else if let Ok((new_input, (name, value))) = parameter(input) {
-            parameters.unstructured.insert(name, value);
+            disposition.unstructured.insert(name, value);
             input = new_input;
         } else {
             break;
@@ -221,7 +230,7 @@ pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, DispositionPar
     let (input, ()) = ignore_inline_cfws(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
-    Ok((input, (disposition_type, parameters)))
+    Ok((input, disposition))
 }
 
 pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
