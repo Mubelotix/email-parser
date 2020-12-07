@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use super::multipart;
 
 pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
+    #[allow(unused_variables)]
     let (
         len,
         encoding,
@@ -35,6 +36,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
         description,
         value,
         additional_headers,
+        #[cfg(feature = "content-disposition")]
         disposition,
     })
 }
@@ -142,13 +144,21 @@ pub fn header_part(
         } else if let Ok((new_input, cdescription)) = content_description(input) {
             input = new_input;
             description = Some(cdescription.to_owned());
-        } else if let Ok((new_input, cdisposition)) = content_disposition(input) {
-            input = new_input;
-            disposition = Some(cdisposition.to_owned());
-        } else if let Ok((new_input, header)) = unknown(input) {
-            input = new_input;
-            additional_headers.push(header.to_owned());
         } else {
+            if cfg!(feature = "content-disposition") {
+                if let Ok((new_input, cdisposition)) = content_disposition(input) {
+                    input = new_input;
+                    disposition = Some(cdisposition.to_owned());
+                    continue;
+                }
+            }
+
+            if let Ok((new_input, header)) = unknown(input) {
+                input = new_input;
+                additional_headers.push(header.to_owned());
+                continue;
+            }
+
             break;
         }
     }
@@ -227,6 +237,7 @@ mod tests {
                     .into_iter()
                     .collect(),
                 value: Cow::Borrowed(&[84, 101, 120, 116]),
+                #[cfg(feature = "content-disposition")]
                 disposition: None,
                 additional_headers: vec![]
             },
@@ -242,6 +253,7 @@ mod tests {
                     .into_iter()
                     .collect(),
                 value: Cow::Borrowed(&[84, 101, 120, 116]),
+                #[cfg(feature = "content-disposition")]
                 disposition: None,
                 additional_headers: vec![]
             },
@@ -257,6 +269,7 @@ mod tests {
                     .into_iter()
                     .collect(),
                 value: Cow::Borrowed(&[60, 112, 62, 84, 101, 120, 116, 60, 47, 112, 62]),
+                #[cfg(feature = "content-disposition")]
                 disposition: None,
                 additional_headers: vec![("Unknown".into(), " Test".into())]
             },

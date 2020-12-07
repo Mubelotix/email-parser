@@ -136,7 +136,7 @@ impl<'a> Email<'a> {
         let mut content_id = None;
         #[cfg(feature = "mime")]
         let mut content_description = None;
-        #[cfg(feature = "mime")]
+        #[cfg(feature = "content-disposition")]
         let mut content_disposition = None;
 
         let mut unknown_fields = Vec::new();
@@ -289,7 +289,7 @@ impl<'a> Email<'a> {
                         return Err(Error::Known("Multiple content_description fields"));
                     }
                 }
-                #[cfg(feature = "mime")]
+                #[cfg(feature = "content-disposition")]
                 Field::ContentDisposition(disposition) => {
                     if content_disposition.is_none() {
                         content_disposition = Some(disposition)
@@ -377,6 +377,7 @@ impl<'a> Email<'a> {
                 description: content_description,
                 id: content_id,
                 parameters: content_type.2,
+                #[cfg(feature = "content-disposition")]
                 disposition: content_disposition,
                 value: body.unwrap_or(Cow::Borrowed(b"")),
                 additional_headers: Vec::new(),

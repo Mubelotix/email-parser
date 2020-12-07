@@ -28,6 +28,7 @@ subject = []
 comments = []
 keywords = []
 trace = []
+content-disposition = ["mime"]
 unrecognized-headers = ["mime"]
 mime = ["textcode"]
 

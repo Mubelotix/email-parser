@@ -58,7 +58,7 @@ pub enum Field<'a> {
     ContentId((Cow<'a, str>, Cow<'a, str>)),
     #[cfg(feature = "mime")]
     ContentDescription(Cow<'a, str>),
-    #[cfg(feature = "mime")]
+    #[cfg(feature = "content-disposition")]
     ContentDisposition(Disposition<'a>),
     #[cfg(feature = "trace")]
     Trace {
@@ -153,7 +153,7 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
             |i| content_id(i).map(|(i, v)| (i, Field::ContentId(v))),
             #[cfg(feature = "mime")]
             |i| content_description(i).map(|(i, d)| (i, Field::ContentDescription(d))),
-            #[cfg(feature = "mime")]
+            #[cfg(feature = "content-disposition")]
             |i| content_disposition(i).map(|(i, d)| (i, Field::ContentDisposition(d))),
             #[cfg(feature = "keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
