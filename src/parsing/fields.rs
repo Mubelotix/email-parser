@@ -417,7 +417,7 @@ pub fn unknown(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     let (input, ()) = tag(input, b":")?;
     #[cfg(not(feature = "unrecognized-headers"))]
     let (input, value) = unstructured(input)?;
-    #[cfg(all(feature = "unrecognized-headers", feature = "mime"))]
+    #[cfg(feature = "unrecognized-headers")]
     let (input, value) = mime_unstructured(input)?;
 
     let (input, ()) = tag(input, b"\r\n")?;
