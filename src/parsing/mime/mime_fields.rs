@@ -129,11 +129,13 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     Ok((input, (mime_type, sub_type, parameters)))
 }
 
-pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, HashMap<Cow<str>, Cow<str>>)> {
+pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, DispositionParameters)> {
+    use crate::parsing::time::date_time;
+
     let (input, ()) = tag_no_case(input, b"Content-Disposition:", b"cONTENT-dISPOSITION:")?;
     let (input, _) = optional(input, cfws);
 
-    let (input, disposition_type) = match_parsers(
+    let (mut input, disposition_type) = match_parsers(
         input,
         &mut [
             |input| {
@@ -158,15 +160,62 @@ pub fn content_disposition(input: &[u8]) -> Res<(DispositionType, HashMap<Cow<st
                     name = Cow::Owned(name.to_ascii_lowercase());
                 }
 
-                Ok((input, DispositionType::Other(name)))
+                Ok((input, DispositionType::Unknown(name)))
             },
         ][..],
     )?;
 
-    let (input, parameters_vec) = many(input, parameter)?;
-    let mut parameters: HashMap<_, _> = HashMap::new();
-    for (name, value) in parameters_vec {
-        parameters.insert(name, value);
+    let mut parameters = DispositionParameters {
+        unstructured: HashMap::new(),
+        creation_date: None,
+        modification_date: None,
+        read_date: None,
+        filename: None,
+    };
+    loop {
+        fn filename_parameter(input: &[u8]) -> Res<Cow<str>> {
+            let (input, _) = optional(input, cfws);
+            let (input, ()) = tag(input, b";")?;
+            let (input, _) = optional(input, cfws);
+            let (input, ()) = tag_no_case(input, b"filename", b"FILENAME")?;
+
+            let (input, ()) = tag(input, b"=")?;
+            let (input, value) = match_parsers(input, &mut [token, quoted_string][..])?;
+
+            Ok((input, value))
+        }
+
+        fn date_parameter<'a>(input: &'a [u8], name: &'static [u8], name_uppercase: &'static [u8]) -> Res<'a, DateTime> {
+            let (input, _) = optional(input, cfws);
+            let (input, ()) = tag(input, b";")?;
+            let (input, _) = optional(input, cfws);
+            let (input, ()) = tag_no_case(input, name, name_uppercase)?;
+
+            let (input, ()) = tag(input, b"=\"")?;
+            let (input, value) = date_time(input)?;
+            let (input, ()) = tag(input, b"\"")?;
+
+            Ok((input, value))
+        }
+
+        if let Ok((new_input, value)) = filename_parameter(input) {
+            parameters.filename = Some(value);
+            input = new_input;
+        } else if let Ok((new_input, value)) = date_parameter(input, b"creation-date", b"CREATION-DATE") {
+            parameters.creation_date = Some(value);
+            input = new_input;
+        } else if let Ok((new_input, value)) = date_parameter(input, b"modification-date", b"MODIFICATION-DATE") {
+            parameters.modification_date = Some(value);
+            input = new_input;
+        } else if let Ok((new_input, value)) = date_parameter(input, b"read-date", b"READ-DATE") {
+            parameters.read_date = Some(value);
+            input = new_input;
+        } else if let Ok((new_input, (name, value))) = parameter(input) {
+            parameters.unstructured.insert(name, value);
+            input = new_input;
+        } else {
+            break;
+        }
     }
 
     let (input, ()) = ignore_inline_cfws(input)?;

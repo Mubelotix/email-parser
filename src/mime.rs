@@ -57,14 +57,23 @@ pub enum MimeType<'a> {
     Application,
     Message,
     Multipart,
-    Other(Cow<'a, str>),
+    Other(Cow<'a, str>), // FIXME: rename to unknown
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum DispositionType<'a> {
     Inline,
     Attachment,
-    Other(Cow<'a, str>),
+    Unknown(Cow<'a, str>),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct DispositionParameters<'a> {
+    pub filename: Option<Cow<'a, str>>,
+    pub creation_date: Option<DateTime>,
+    pub modification_date: Option<DateTime>,
+    pub read_date: Option<DateTime>,
+    pub unstructured: HashMap<Cow<'a, str>, Cow<'a, str>>,
 }
 
 impl<'a> MimeType<'a> {
