@@ -12,6 +12,7 @@ pub struct RawEntity<'a> {
     pub id: Option<(Cow<'a, str>, Cow<'a, str>)>,
     /// Parameters named in lowercase.
     pub parameters: HashMap<Cow<'a, str>, Cow<'a, str>>,
+    pub disposition: Option<Disposition<'a>>,
     /// The raw value of this entity.
     /// It has already been decoded.
     pub value: Cow<'a, [u8]>,

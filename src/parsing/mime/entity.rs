@@ -5,11 +5,20 @@ use std::collections::HashMap;
 use super::multipart;
 
 pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
-    let (len, encoding, mime_type, subtype, parameters, additional_headers, id, description) =
-        header_part(unsafe {
-            // The header_part function returns only owned data, so we are not borrowing input
-            &*(input.as_ref() as *const [u8])
-        })?;
+    let (
+        len,
+        encoding,
+        mime_type,
+        subtype,
+        parameters,
+        additional_headers,
+        id,
+        description,
+        disposition,
+    ) = header_part(unsafe {
+        // The header_part function returns only owned data, so we are not borrowing input
+        &*(input.as_ref() as *const [u8])
+    })?;
     match input {
         Cow::Borrowed(ref mut input) => *input = &input[input.len() - len..],
         Cow::Owned(ref mut input) => {
@@ -26,6 +35,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
         description,
         value,
         additional_headers,
+        disposition,
     })
 }
 
@@ -107,6 +117,7 @@ pub fn header_part(
         Vec<(Cow<str>, Cow<str>)>,
         Option<(Cow<str>, Cow<str>)>,
         Option<Cow<str>>,
+        Option<Disposition>,
     ),
     Error,
 > {
@@ -114,6 +125,7 @@ pub fn header_part(
     let mut mime_type = None;
     let mut id = None;
     let mut description = None;
+    let mut disposition = None;
     let mut additional_headers = Vec::new();
 
     loop {
@@ -130,6 +142,9 @@ pub fn header_part(
         } else if let Ok((new_input, cdescription)) = content_description(input) {
             input = new_input;
             description = Some(cdescription.to_owned());
+        } else if let Ok((new_input, cdisposition)) = content_disposition(input) {
+            input = new_input;
+            disposition = Some(cdisposition.to_owned());
         } else if let Ok((new_input, header)) = unknown(input) {
             input = new_input;
             additional_headers.push(header.to_owned());
@@ -157,6 +172,7 @@ pub fn header_part(
             additional_headers,
             id,
             description,
+            disposition,
         ));
     }
 
@@ -171,6 +187,7 @@ pub fn header_part(
         additional_headers,
         id,
         description,
+        disposition,
     ))
 }
 
@@ -210,6 +227,7 @@ mod tests {
                     .into_iter()
                     .collect(),
                 value: Cow::Borrowed(&[84, 101, 120, 116]),
+                disposition: None,
                 additional_headers: vec![]
             },
             raw_entity(Cow::Borrowed(b"\r\nText")).unwrap()
@@ -224,6 +242,7 @@ mod tests {
                     .into_iter()
                     .collect(),
                 value: Cow::Borrowed(&[84, 101, 120, 116]),
+                disposition: None,
                 additional_headers: vec![]
             },
             raw_entity(Cow::Owned(b"\r\nText".to_vec())).unwrap()
@@ -238,6 +257,7 @@ mod tests {
                     .into_iter()
                     .collect(),
                 value: Cow::Borrowed(&[60, 112, 62, 84, 101, 120, 116, 60, 47, 112, 62]),
+                disposition: None,
                 additional_headers: vec![("Unknown".into(), " Test".into())]
             },
             raw_entity(Cow::Owned(
