@@ -46,7 +46,7 @@ pub enum Entity<'a> {
         value: Cow<'a, str>,
     },
     /// All other entities that are not supported by this library.
-    Unknown(RawEntity<'a>),
+    Unknown(Box<RawEntity<'a>>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
