@@ -149,49 +149,8 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     let (input, ()) = tag(input, b"/")?;
     let (input, sub_type) = token(input)?;
 
-    use super::percent_encoding::decode_parameter;
     let (input, parameters_vec) = many(input, parameter)?;
-    let mut parameters: HashMap<_, _> = HashMap::new();
-    let mut complex_parameters: HashMap<_, HashMap<_, _>> = HashMap::new();
-    for (name, index, encoded, value) in parameters_vec {
-        if let Some(index) = index {
-            if !complex_parameters.contains_key(&name) {
-                complex_parameters.insert(name.clone(), HashMap::new());
-            }
-            complex_parameters.get_mut(&name).unwrap().insert(index, (encoded, value));
-        } else {
-            parameters.insert(name, value);
-        }
-    }
-    for (name, values) in complex_parameters.iter_mut() {
-        if let Some((encoded, value)) = values.remove(&0) {
-            let (mut value, charset, language) = if encoded {
-                let value = unsafe {
-                    std::mem::transmute::<_, &'static [u8]>(value.as_ref())
-                };
-                let (value, charset) = take_while(value, |c| c!=b'\'')?;
-                let charset = Cow::Owned(charset.to_lowercase());
-                let (value, _) = tag(value, b"'")?;
-                let (value, language) = take_while(value, |c| c!=b'\'')?;
-                let (value, _) = tag(value, b"'")?;
-                (decode_parameter(unsafe {Cow::Borrowed(std::str::from_utf8_unchecked(value))}, Cow::Borrowed(&charset))?, Some(charset), Some(language))
-            } else {
-                (value, None, None)
-            };
-
-            let mut idx = 1;
-            while let Some((encoded, new_value)) = values.remove(&idx) {
-                if encoded && charset.is_some() {
-                    add_string(&mut value, decode_parameter(new_value, charset.clone().unwrap())?);
-                } else {
-                    add_string(&mut value, new_value);
-                }
-                idx+=1;
-            }
-
-            parameters.insert(Cow::Owned(name.clone().into_owned()), value);
-        }
-    }
+    let parameters = super::percent_encoding::collect_parameters(parameters_vec)?;
 
     let (input, ()) = ignore_inline_cfws(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
@@ -243,6 +202,7 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
         read_date: None,
         filename: None,
     };
+    let mut parameters_vec = Vec::new();
     loop {
         fn filename_parameter(input: &[u8]) -> Res<Cow<str>> {
             let (input, _) = optional(input, cfws);
@@ -290,12 +250,13 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
             disposition.read_date = Some(value);
             input = new_input;
         } else if let Ok((new_input, (name, index, encoded, value))) = parameter(input) {
-            disposition.unstructured.insert(name, value);
+            parameters_vec.push((name, value));
             input = new_input;
         } else {
             break;
         }
     }
+    disposition.unstructured = super::percent_encoding::collect_parameters(parameters_vec)?;
 
     let (input, ()) = ignore_inline_cfws(input)?;
     let (input, ()) = tag(input, b"\r\n")?;

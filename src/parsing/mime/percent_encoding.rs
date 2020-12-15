@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 use crate::prelude::*;
 
 pub fn decode_parameter<'a, 'b>(input: Cow<'a, str>, charset: Cow<'b, str>) -> Result<Cow<'a, str>, Error> {
@@ -68,6 +68,51 @@ pub fn decode_parameter<'a, 'b>(input: Cow<'a, str>, charset: Cow<'b, str>) -> R
     Ok(text)
 }
 
+pub fn collect_parameters(parameters_vec: Vec<(Cow<str>, Option<u8>, bool, Cow<str>)>) -> Result<HashMap<Cow<str>, Cow<str>>, Error> {
+    let mut parameters: HashMap<_, _> = HashMap::new();
+    let mut complex_parameters: HashMap<_, HashMap<_, _>> = HashMap::new();
+    for (name, index, encoded, value) in parameters_vec {
+        if let Some(index) = index {
+            if !complex_parameters.contains_key(&name) {
+                complex_parameters.insert(name.clone(), HashMap::new());
+            }
+            complex_parameters.get_mut(&name).unwrap().insert(index, (encoded, value));
+        } else {
+            parameters.insert(name, value);
+        }
+    }
+    for (name, values) in complex_parameters.iter_mut() {
+        if let Some((encoded, value)) = values.remove(&0) {
+            let (mut value, charset, language) = if encoded {
+                let value = unsafe {
+                    std::mem::transmute::<_, &'static [u8]>(value.as_ref())
+                };
+                let (value, charset) = take_while(value, |c| c!=b'\'')?;
+                let charset = Cow::Owned(charset.to_lowercase());
+                let (value, _) = tag(value, b"'")?;
+                let (value, language) = take_while(value, |c| c!=b'\'')?;
+                let (value, _) = tag(value, b"'")?;
+                (decode_parameter(unsafe {Cow::Borrowed(std::str::from_utf8_unchecked(value))}, Cow::Borrowed(&charset))?, Some(charset), Some(language))
+            } else {
+                (value, None, None)
+            };
+
+            let mut idx = 1;
+            while let Some((encoded, new_value)) = values.remove(&idx) {
+                if encoded && charset.is_some() {
+                    add_string(&mut value, decode_parameter(new_value, charset.clone().unwrap())?);
+                } else {
+                    add_string(&mut value, new_value);
+                }
+                idx+=1;
+            }
+
+            parameters.insert(Cow::Owned(name.clone().into_owned()), value);
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
