@@ -26,7 +26,7 @@ fn especials(c: u8) -> bool {
 }
 
 fn charset(input: &[u8]) -> Res<Cow<str>> {
-    let (input, mut charset) = take_while1(input, |c| c > 0x20 && c < 0x7F && !especials(c))?;
+    let (input, mut charset) = take_while1(input, |c| c > 0x20 && c < 0x7F && !especials(c) && c != b'*')?;
     let mut change_needed = false;
     for c in charset.chars() {
         if c.is_uppercase() {
@@ -60,6 +60,10 @@ fn encoded_text(input: &[u8]) -> Res<Cow<str>> {
 pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
     let (input, _) = tag(input, b"=?")?;
     let (input, charset) = charset(input)?;
+    let (input, _language) = match optional(input, |input| pair(input, |input| tag(input, b"*"), encoding)) {
+        (input, Some(((), language))) => (input, Some(language)),
+        (input, None) => (input, None),
+    };
     let (input, _) = tag(input, b"?")?;
     let (input, encoding) = encoding(input)?;
     let (input, _) = tag(input, b"?")?;
@@ -103,6 +107,22 @@ pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn encoded_with_language() {
+        assert_eq!(
+            "this is some text",
+            encoded_word(b"=?iso-8859-1*en?q?this=20is=20some=20text?=")
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            "voici un peu de texte",
+            encoded_word(b"=?utf-8*en?q?voici=20un=20peu=20de=20texte?=")
+                .unwrap()
+                .1
+        );
+    }
 
     #[test]
     fn encoded_word_test() {
