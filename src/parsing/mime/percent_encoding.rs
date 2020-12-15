@@ -68,7 +68,7 @@ pub fn decode_parameter<'a, 'b>(input: Cow<'a, str>, charset: Cow<'b, str>) -> R
     Ok(text)
 }
 
-pub fn collect_parameters(parameters_vec: Vec<(Cow<str>, Option<u8>, bool, Cow<str>)>) -> Result<HashMap<Cow<str>, Cow<str>>, Error> {
+pub fn collect_parameters<'a>(parameters_vec: Vec<(Cow<'a, str>, Option<u8>, bool, Cow<'a, str>)>) -> Result<HashMap<Cow<'a, str>, Cow<'a, str>>, Error> {
     let mut parameters: HashMap<_, _> = HashMap::new();
     let mut complex_parameters: HashMap<_, HashMap<_, _>> = HashMap::new();
     for (name, index, encoded, value) in parameters_vec {
@@ -110,6 +110,7 @@ pub fn collect_parameters(parameters_vec: Vec<(Cow<str>, Option<u8>, bool, Cow<s
             parameters.insert(Cow::Owned(name.clone().into_owned()), value);
         }
     }
+    Ok(parameters)
 }
 
 #[cfg(test)]

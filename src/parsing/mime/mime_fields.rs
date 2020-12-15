@@ -3,8 +3,6 @@ use crate::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use super::percent_encoding::decode_parameter;
-
 #[inline]
 fn ignore_inline_cfws(input: &[u8]) -> Res<()> {
     triplet(
@@ -250,7 +248,7 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
             disposition.read_date = Some(value);
             input = new_input;
         } else if let Ok((new_input, (name, index, encoded, value))) = parameter(input) {
-            parameters_vec.push((name, value));
+            parameters_vec.push((name, index, encoded, value));
             input = new_input;
         } else {
             break;
