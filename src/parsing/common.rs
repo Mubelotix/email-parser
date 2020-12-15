@@ -18,7 +18,7 @@ pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
 
     loop {
         if input.starts_with(b".") {
-            if let Ok((new_input, atom)) = take_while1(&input[1..], is_atext) {
+            if let Ok((new_input, atom)) = if cfg!(feature = "compatibility-fixes") {take_while(&input[1..], is_atext)} else {take_while1(&input[1..], is_atext)} {
                 add_string(&mut output, from_slice(&input[..1]));
                 input = new_input;
                 add_string(&mut output, atom);
