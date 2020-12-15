@@ -113,8 +113,12 @@ pub fn collect_parameters<'a>(
     }
     for (name, values) in complex_parameters.iter_mut() {
         if let Some((encoded, value)) = values.remove(&0) {
-            let (mut value, charset, language) = if encoded {
-                let value = unsafe { std::mem::transmute::<_, &'static [u8]>(value.as_ref()) };
+            let (mut value, charset, _language) = if encoded {
+                let value = unsafe {
+                    // We are sure that it is a borrowed value
+                    debug_assert!(matches!(value, Cow::Borrowed(_)));
+                    &*(value.as_ref() as *const str as *const [u8])
+                };
                 let (value, charset) = take_while(value, |c| c != b'\'')?;
                 let charset = Cow::Owned(charset.to_lowercase());
                 let (value, _) = tag(value, b"'")?;
