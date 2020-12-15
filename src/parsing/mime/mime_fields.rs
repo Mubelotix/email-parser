@@ -3,6 +3,8 @@ use crate::prelude::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use super::percent_encoding::decode_parameter;
+
 #[inline]
 fn ignore_inline_cfws(input: &[u8]) -> Res<()> {
     triplet(
@@ -51,26 +53,56 @@ pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
     Ok((input, (d1, d2)))
 }
 
-fn parameter(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
     let (input, _) = optional(input, cfws);
     let (input, ()) = tag(input, b";")?;
     let (input, _) = optional(input, cfws);
-    let (input, mut attribute) = token(input)?;
+    let (input, (mut name, index, encoded)) = match_parsers(input, &mut[
+        |input| {
+            let (input, name) = take_while1(input, |c| {
+                c > 0x1F && c < 0x7F && !is_wsp(c) && !tspecial(c) && c != b'*'
+            })?;
+
+            let (mut input, index) = optional(input, |input| pair(input, |input| tag(input, b"*"), |input| take_while1(input, is_digit)));
+            let index = if let Some(((), index)) = index {
+                Some(index.parse::<u8>().map_err(|_| Error::Known("Invalid index"))?)
+            } else {
+                None
+            };
+
+            let encoded = if input.get(0) == Some(&b'*') {
+                input = &input[1..];
+                true
+            } else {
+                false
+            };
+
+            if input.get(0) == Some(&b'=') {
+                Ok((input, (name, index, encoded)))
+            } else {
+                Err(Error::Known("It wont work with this method"))
+            }
+        },
+        |input| {
+            let (input, name) = token(input)?;
+            Ok((input, (name, None, false)))
+        }
+    ][..])?;
 
     let mut change_needed = false;
-    for c in attribute.chars() {
+    for c in name.chars() {
         if c.is_uppercase() {
             change_needed = true;
         }
     }
     if change_needed {
-        attribute = Cow::Owned(attribute.to_ascii_lowercase());
+        name = Cow::Owned(name.to_ascii_lowercase());
     }
 
     let (input, ()) = tag(input, b"=")?;
     let (input, value) = match_parsers(input, &mut [token, quoted_string][..])?;
 
-    Ok((input, (attribute, value)))
+    Ok((input, (name, index, encoded, value)))
 }
 
 pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, Cow<str>>)> {
@@ -117,10 +149,48 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     let (input, ()) = tag(input, b"/")?;
     let (input, sub_type) = token(input)?;
 
+    use super::percent_encoding::decode_parameter;
     let (input, parameters_vec) = many(input, parameter)?;
     let mut parameters: HashMap<_, _> = HashMap::new();
-    for (name, value) in parameters_vec {
-        parameters.insert(name, value);
+    let mut complex_parameters: HashMap<_, HashMap<_, _>> = HashMap::new();
+    for (name, index, encoded, value) in parameters_vec {
+        if let Some(index) = index {
+            if !complex_parameters.contains_key(&name) {
+                complex_parameters.insert(name.clone(), HashMap::new());
+            }
+            complex_parameters.get_mut(&name).unwrap().insert(index, (encoded, value));
+        } else {
+            parameters.insert(name, value);
+        }
+    }
+    for (name, values) in complex_parameters.iter_mut() {
+        if let Some((encoded, value)) = values.remove(&0) {
+            let (mut value, charset, language) = if encoded {
+                let value = unsafe {
+                    std::mem::transmute::<_, &'static [u8]>(value.as_ref())
+                };
+                let (value, charset) = take_while(value, |c| c!=b'\'')?;
+                let charset = Cow::Owned(charset.to_lowercase());
+                let (value, _) = tag(value, b"'")?;
+                let (value, language) = take_while(value, |c| c!=b'\'')?;
+                let (value, _) = tag(value, b"'")?;
+                (decode_parameter(unsafe {Cow::Borrowed(std::str::from_utf8_unchecked(value))}, Cow::Borrowed(&charset))?, Some(charset), Some(language))
+            } else {
+                (value, None, None)
+            };
+
+            let mut idx = 1;
+            while let Some((encoded, new_value)) = values.remove(&idx) {
+                if encoded && charset.is_some() {
+                    add_string(&mut value, decode_parameter(new_value, charset.clone().unwrap())?);
+                } else {
+                    add_string(&mut value, new_value);
+                }
+                idx+=1;
+            }
+
+            parameters.insert(Cow::Owned(name.clone().into_owned()), value);
+        }
     }
 
     let (input, ()) = ignore_inline_cfws(input)?;
@@ -219,7 +289,7 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
         } else if let Ok((new_input, value)) = date_parameter(input, b"read-date", b"READ-DATE") {
             disposition.read_date = Some(value);
             input = new_input;
-        } else if let Ok((new_input, (name, value))) = parameter(input) {
+        } else if let Ok((new_input, (name, index, encoded, value))) = parameter(input) {
             disposition.unstructured.insert(name, value);
             input = new_input;
         } else {
@@ -385,6 +455,15 @@ mod test {
         assert_eq!(
             content_type(b"Content-type: tExt/plain\r\n").unwrap().1 .0,
             MimeType::Text
+        );
+        println!(
+            "{:?}", content_type(b"Content-Type: message/external-body; access-type=URL;\r\n URL*0=\"ftp://\";\r\n URL*1=\"cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar\"\r\n").unwrap().1,
+        );
+        println!(
+            "{:?}", content_type(b"Content-Type: application/x-stuff;\r\n title*0*=us-ascii'en'This%20is%20even%20more%20;\r\n title*1*=%2A%2A%2Afun%2A%2A%2A%20;\r\n title*2=\"isn't it!\"\r\n").unwrap().1,
+        );
+        println!(
+            "{:?}", parameter(b";\r\n URL*0=\"ftp://\"").unwrap().1,
         );
         assert_eq!(
             content_type(b"Content-type: text/plain\r\n").unwrap().1 .1,
