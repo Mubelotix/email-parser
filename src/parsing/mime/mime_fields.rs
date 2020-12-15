@@ -55,37 +55,50 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
     let (input, _) = optional(input, cfws);
     let (input, ()) = tag(input, b";")?;
     let (input, _) = optional(input, cfws);
-    let (input, (mut name, index, encoded)) = match_parsers(input, &mut[
-        |input| {
-            let (input, name) = take_while1(input, |c| {
-                c > 0x1F && c < 0x7F && !is_wsp(c) && !tspecial(c) && c != b'*'
-            })?;
+    let (input, (mut name, index, encoded)) = match_parsers(
+        input,
+        &mut [
+            |input| {
+                let (input, name) = take_while1(input, |c| {
+                    c > 0x1F && c < 0x7F && !is_wsp(c) && !tspecial(c) && c != b'*'
+                })?;
 
-            let (mut input, index) = optional(input, |input| pair(input, |input| tag(input, b"*"), |input| take_while1(input, is_digit)));
-            let index = if let Some(((), index)) = index {
-                Some(index.parse::<u8>().map_err(|_| Error::Known("Invalid index"))?)
-            } else {
-                None
-            };
+                let (mut input, index) = optional(input, |input| {
+                    pair(
+                        input,
+                        |input| tag(input, b"*"),
+                        |input| take_while1(input, is_digit),
+                    )
+                });
+                let index = if let Some(((), index)) = index {
+                    Some(
+                        index
+                            .parse::<u8>()
+                            .map_err(|_| Error::Known("Invalid index"))?,
+                    )
+                } else {
+                    None
+                };
 
-            let encoded = if input.get(0) == Some(&b'*') {
-                input = &input[1..];
-                true
-            } else {
-                false
-            };
+                let encoded = if input.get(0) == Some(&b'*') {
+                    input = &input[1..];
+                    true
+                } else {
+                    false
+                };
 
-            if input.get(0) == Some(&b'=') {
-                Ok((input, (name, index, encoded)))
-            } else {
-                Err(Error::Known("It wont work with this method"))
-            }
-        },
-        |input| {
-            let (input, name) = token(input)?;
-            Ok((input, (name, None, false)))
-        }
-    ][..])?;
+                if input.get(0) == Some(&b'=') {
+                    Ok((input, (name, index, encoded)))
+                } else {
+                    Err(Error::Known("It wont work with this method"))
+                }
+            },
+            |input| {
+                let (input, name) = token(input)?;
+                Ok((input, (name, None, false)))
+            },
+        ][..],
+    )?;
 
     let mut change_needed = false;
     for c in name.chars() {
@@ -340,18 +353,36 @@ mod test {
 
     #[test]
     fn test_content_disposition() {
-        println!(
-            "{:?}",
+        assert_eq!(
+            Disposition {
+                disposition_type: DispositionType::Inline,
+                filename: None,
+                creation_date: None,
+                modification_date: None,
+                read_date: None,
+                unstructured: HashMap::new()
+            },
             content_disposition(b"Content-Disposition: inline\r\n")
                 .unwrap()
                 .1
         );
-        println!("{:?}", content_disposition(b"Content-Disposition: attachment; filename=genome.jpeg;\r\n modification-date=\"Wed, 12 Feb 1997 16:29:51 -0500\"\r\n").unwrap().1);
-        println!(
-            "{:?}",
-            content_disposition(b"Content-Disposition: attachment\r\n")
-                .unwrap()
-                .1
+        assert_eq!(Disposition { disposition_type: DispositionType::Attachment, filename: Some("genome.jpeg".into()), creation_date: None, modification_date: Some(DateTime { day_name: Some(Day::Wednesday), date: Date { day: 12, month: Month::February, year: 1997 }, time: TimeWithZone { time: Time { hour: 16, minute: 29, second: 51 }, zone: Zone { sign: false, hour_offset: 5, minute_offset: 0 } } }), read_date: None, unstructured: HashMap::new() }, content_disposition(b"Content-Disposition: attachment; filename=genome.jpeg;\r\n modification-date=\"Wed, 12 Feb 1997 16:29:51 -0500\"\r\n").unwrap().1);
+        assert_eq!(
+            Disposition {
+                disposition_type: DispositionType::Attachment,
+                filename: None,
+                creation_date: None,
+                modification_date: None,
+                read_date: None,
+                unstructured: vec![("param".into(), "foobar".into())]
+                    .into_iter()
+                    .collect()
+            },
+            content_disposition(
+                b"Content-Disposition: attachment; param*0=foo;\r\n param*1=bar\r\n"
+            )
+            .unwrap()
+            .1
         );
     }
 
@@ -415,14 +446,11 @@ mod test {
             content_type(b"Content-type: tExt/plain\r\n").unwrap().1 .0,
             MimeType::Text
         );
-        println!(
-            "{:?}", content_type(b"Content-Type: message/external-body; access-type=URL;\r\n URL*0=\"ftp://\";\r\n URL*1=\"cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar\"\r\n").unwrap().1,
+        assert_eq!(
+            (MimeType::Message, "external-body".into(), vec![("access-type".into(), "URL".into()), ("url".into(), "ftp://cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar".into())].into_iter().collect()), content_type(b"Content-Type: message/external-body; access-type=URL;\r\n URL*0=\"ftp://\";\r\n URL*1=\"cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar\"\r\n").unwrap().1,
         );
-        println!(
-            "{:?}", content_type(b"Content-Type: application/x-stuff;\r\n title*0*=us-ascii'en'This%20is%20even%20more%20;\r\n title*1*=%2A%2A%2Afun%2A%2A%2A%20;\r\n title*2=\"isn't it!\"\r\n").unwrap().1,
-        );
-        println!(
-            "{:?}", parameter(b";\r\n URL*0=\"ftp://\"").unwrap().1,
+        assert_eq!(
+            (MimeType::Application, "x-stuff".into(), vec![("title".into(), "This is even more ***fun*** isn\'t it!".into())].into_iter().collect()), content_type(b"Content-Type: application/x-stuff;\r\n title*0*=us-ascii'en'This%20is%20even%20more%20;\r\n title*1*=%2A%2A%2Afun%2A%2A%2A%20;\r\n title*2=\"isn't it!\"\r\n").unwrap().1,
         );
         assert_eq!(
             content_type(b"Content-type: text/plain\r\n").unwrap().1 .1,

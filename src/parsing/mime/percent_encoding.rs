@@ -1,8 +1,33 @@
-use std::{borrow::Cow, collections::HashMap};
 use crate::prelude::*;
+use std::{borrow::Cow, collections::HashMap};
 
-pub fn decode_parameter<'a, 'b>(input: Cow<'a, str>, charset: Cow<'b, str>) -> Result<Cow<'a, str>, Error> {
-    if !["utf-8", "us-ascii", "iso-8859-1", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-9", "iso-8859-10", "iso-8859-11", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "iso-6937", "gb2312"].contains(&charset.as_ref()) {
+pub fn decode_parameter<'a, 'b>(
+    input: Cow<'a, str>,
+    charset: Cow<'b, str>,
+) -> Result<Cow<'a, str>, Error> {
+    if ![
+        "utf-8",
+        "us-ascii",
+        "iso-8859-1",
+        "iso-8859-2",
+        "iso-8859-3",
+        "iso-8859-4",
+        "iso-8859-5",
+        "iso-8859-6",
+        "iso-8859-7",
+        "iso-8859-8",
+        "iso-8859-9",
+        "iso-8859-10",
+        "iso-8859-11",
+        "iso-8859-13",
+        "iso-8859-14",
+        "iso-8859-15",
+        "iso-8859-16",
+        "iso-6937",
+        "gb2312",
+    ]
+    .contains(&charset.as_ref())
+    {
         return Ok(input);
     }
 
@@ -68,7 +93,9 @@ pub fn decode_parameter<'a, 'b>(input: Cow<'a, str>, charset: Cow<'b, str>) -> R
     Ok(text)
 }
 
-pub fn collect_parameters<'a>(parameters_vec: Vec<(Cow<'a, str>, Option<u8>, bool, Cow<'a, str>)>) -> Result<HashMap<Cow<'a, str>, Cow<'a, str>>, Error> {
+pub fn collect_parameters<'a>(
+    parameters_vec: Vec<(Cow<'a, str>, Option<u8>, bool, Cow<'a, str>)>,
+) -> Result<HashMap<Cow<'a, str>, Cow<'a, str>>, Error> {
     let mut parameters: HashMap<_, _> = HashMap::new();
     let mut complex_parameters: HashMap<_, HashMap<_, _>> = HashMap::new();
     for (name, index, encoded, value) in parameters_vec {
@@ -76,7 +103,10 @@ pub fn collect_parameters<'a>(parameters_vec: Vec<(Cow<'a, str>, Option<u8>, boo
             if !complex_parameters.contains_key(&name) {
                 complex_parameters.insert(name.clone(), HashMap::new());
             }
-            complex_parameters.get_mut(&name).unwrap().insert(index, (encoded, value));
+            complex_parameters
+                .get_mut(&name)
+                .unwrap()
+                .insert(index, (encoded, value));
         } else {
             parameters.insert(name, value);
         }
@@ -84,15 +114,20 @@ pub fn collect_parameters<'a>(parameters_vec: Vec<(Cow<'a, str>, Option<u8>, boo
     for (name, values) in complex_parameters.iter_mut() {
         if let Some((encoded, value)) = values.remove(&0) {
             let (mut value, charset, language) = if encoded {
-                let value = unsafe {
-                    std::mem::transmute::<_, &'static [u8]>(value.as_ref())
-                };
-                let (value, charset) = take_while(value, |c| c!=b'\'')?;
+                let value = unsafe { std::mem::transmute::<_, &'static [u8]>(value.as_ref()) };
+                let (value, charset) = take_while(value, |c| c != b'\'')?;
                 let charset = Cow::Owned(charset.to_lowercase());
                 let (value, _) = tag(value, b"'")?;
-                let (value, language) = take_while(value, |c| c!=b'\'')?;
+                let (value, language) = take_while(value, |c| c != b'\'')?;
                 let (value, _) = tag(value, b"'")?;
-                (decode_parameter(unsafe {Cow::Borrowed(std::str::from_utf8_unchecked(value))}, Cow::Borrowed(&charset))?, Some(charset), Some(language))
+                (
+                    decode_parameter(
+                        unsafe { Cow::Borrowed(std::str::from_utf8_unchecked(value)) },
+                        Cow::Borrowed(&charset),
+                    )?,
+                    Some(charset),
+                    Some(language),
+                )
             } else {
                 (value, None, None)
             };
@@ -100,11 +135,14 @@ pub fn collect_parameters<'a>(parameters_vec: Vec<(Cow<'a, str>, Option<u8>, boo
             let mut idx = 1;
             while let Some((encoded, new_value)) = values.remove(&idx) {
                 if encoded && charset.is_some() {
-                    add_string(&mut value, decode_parameter(new_value, charset.clone().unwrap())?);
+                    add_string(
+                        &mut value,
+                        decode_parameter(new_value, charset.clone().unwrap())?,
+                    );
                 } else {
                     add_string(&mut value, new_value);
                 }
-                idx+=1;
+                idx += 1;
             }
 
             parameters.insert(Cow::Owned(name.clone().into_owned()), value);
@@ -119,7 +157,13 @@ mod tests {
 
     #[test]
     fn test_percent_encoding() {
-        assert_eq!("This is even more ", decode_parameter("This%20is%20even%20more%20".into(), "us-ascii".into()).unwrap());
-        assert_eq!("***fun*** ", decode_parameter("%2A%2A%2Afun%2A%2A%2A%20".into(), "us-ascii".into()).unwrap());
+        assert_eq!(
+            "This is even more ",
+            decode_parameter("This%20is%20even%20more%20".into(), "us-ascii".into()).unwrap()
+        );
+        assert_eq!(
+            "***fun*** ",
+            decode_parameter("%2A%2A%2Afun%2A%2A%2A%20".into(), "us-ascii".into()).unwrap()
+        );
     }
 }
