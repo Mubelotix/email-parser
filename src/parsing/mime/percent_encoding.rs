@@ -1,10 +1,7 @@
 use crate::prelude::*;
 use std::{borrow::Cow, collections::HashMap};
 
-pub fn decode_parameter<'a, 'b>(
-    input: Cow<'a, str>,
-    charset: Cow<'b, str>,
-) -> Result<Cow<'a, str>, Error> {
+pub fn decode_parameter(mut input: Vec<u8>, charset: Cow<str>) -> Result<String, Error> {
     if ![
         "utf-8",
         "us-ascii",
@@ -28,13 +25,13 @@ pub fn decode_parameter<'a, 'b>(
     ]
     .contains(&charset.as_ref())
     {
-        return Ok(input);
+        // JUSTIFICATION
+        //  Benefit
+        //      Gain performances by avoiding the utf8 string check.
+        //  Correctness
+        //      It's valid ASCII so it cannot be invalid utf8.
+        return Ok(unsafe { String::from_utf8_unchecked(input.to_vec()) });
     }
-
-    let mut input = match input {
-        Cow::Borrowed(input) => input.as_bytes().to_vec(),
-        Cow::Owned(input) => input.into_bytes(),
-    };
 
     let mut percents = Vec::new();
     for (idx, byte) in input.iter().enumerate() {
@@ -56,37 +53,42 @@ pub fn decode_parameter<'a, 'b>(
         if let (Some(first), Some(second)) = (input.get(percent + 1), input.get(percent + 2)) {
             if let (Some(first), Some(second)) = (from_hex(first), from_hex(second)) {
                 let n = first * 16 + second;
+                // JUSTIFICATION
+                //  Benefit
+                //      Improve performances by avoiding useless index checks.
+                //  Correctness:
+                //      We never delete items before `percent`. Since `percent` is decreasing, there is always an item at this index.
                 unsafe {
                     *input.get_unchecked_mut(*percent) = n;
-                    input.remove(percent + 2);
-                    input.remove(percent + 1);
                 }
+                input.remove(percent + 2);
+                input.remove(percent + 1);
             }
         }
     }
 
     use textcode::*;
-    let text: Cow<str> = match charset.as_ref() {
+    let text = match charset.as_ref() {
         "utf-8" | "us-ascii" => {
-            Cow::Owned(String::from_utf8(input).map_err(|_| Error::Known("Invalid text encoding"))?)
+            String::from_utf8(input).map_err(|_| Error::Known("Invalid text encoding"))?
         }
-        "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&input)),
-        "iso-8859-2" => Cow::Owned(iso8859_2::decode_to_string(&input)),
-        "iso-8859-3" => Cow::Owned(iso8859_3::decode_to_string(&input)),
-        "iso-8859-4" => Cow::Owned(iso8859_4::decode_to_string(&input)),
-        "iso-8859-5" => Cow::Owned(iso8859_5::decode_to_string(&input)),
-        "iso-8859-6" => Cow::Owned(iso8859_6::decode_to_string(&input)),
-        "iso-8859-7" => Cow::Owned(iso8859_7::decode_to_string(&input)),
-        "iso-8859-8" => Cow::Owned(iso8859_8::decode_to_string(&input)),
-        "iso-8859-9" => Cow::Owned(iso8859_9::decode_to_string(&input)),
-        "iso-8859-10" => Cow::Owned(iso8859_10::decode_to_string(&input)),
-        "iso-8859-11" => Cow::Owned(iso8859_11::decode_to_string(&input)),
-        "iso-8859-13" => Cow::Owned(iso8859_13::decode_to_string(&input)),
-        "iso-8859-14" => Cow::Owned(iso8859_14::decode_to_string(&input)),
-        "iso-8859-15" => Cow::Owned(iso8859_15::decode_to_string(&input)),
-        "iso-8859-16" => Cow::Owned(iso8859_16::decode_to_string(&input)),
-        "iso-6937" => Cow::Owned(iso6937::decode_to_string(&input)),
-        "gb2312" => Cow::Owned(gb2312::decode_to_string(&input)),
+        "iso-8859-1" => iso8859_1::decode_to_string(&input),
+        "iso-8859-2" => iso8859_2::decode_to_string(&input),
+        "iso-8859-3" => iso8859_3::decode_to_string(&input),
+        "iso-8859-4" => iso8859_4::decode_to_string(&input),
+        "iso-8859-5" => iso8859_5::decode_to_string(&input),
+        "iso-8859-6" => iso8859_6::decode_to_string(&input),
+        "iso-8859-7" => iso8859_7::decode_to_string(&input),
+        "iso-8859-8" => iso8859_8::decode_to_string(&input),
+        "iso-8859-9" => iso8859_9::decode_to_string(&input),
+        "iso-8859-10" => iso8859_10::decode_to_string(&input),
+        "iso-8859-11" => iso8859_11::decode_to_string(&input),
+        "iso-8859-13" => iso8859_13::decode_to_string(&input),
+        "iso-8859-14" => iso8859_14::decode_to_string(&input),
+        "iso-8859-15" => iso8859_15::decode_to_string(&input),
+        "iso-8859-16" => iso8859_16::decode_to_string(&input),
+        "iso-6937" => iso6937::decode_to_string(&input),
+        "gb2312" => gb2312::decode_to_string(&input),
         _ => return Err(Error::Known("Unknown charset")),
     };
 
@@ -114,8 +116,14 @@ pub fn collect_parameters<'a>(
     for (name, values) in complex_parameters.iter_mut() {
         if let Some((encoded, value)) = values.remove(&0) {
             let (mut value, charset, _language) = if encoded {
+                // JUSTIFICATION
+                //  Benefit
+                //      We need `value` to be a reference so that we can return data referencing this data.
+                //  Correctness
+                //      Fortunately, owned values are never used as parameters in this crate.
+                //  Fixme
+                //      It should not even be possible to pass owned values.
                 let value = unsafe {
-                    // We are sure that it is a borrowed value
                     debug_assert!(matches!(value, Cow::Borrowed(_)));
                     &*(value.as_ref() as *const str as *const [u8])
                 };
@@ -125,10 +133,7 @@ pub fn collect_parameters<'a>(
                 let (value, language) = take_while(value, |c| c != b'\'')?;
                 let (value, _) = tag(value, b"'")?;
                 (
-                    decode_parameter(
-                        unsafe { Cow::Borrowed(std::str::from_utf8_unchecked(value)) },
-                        Cow::Borrowed(&charset),
-                    )?,
+                    Cow::Owned(decode_parameter(value.to_vec(), Cow::Borrowed(&charset))?),
                     Some(charset),
                     Some(language),
                 )
@@ -141,7 +146,10 @@ pub fn collect_parameters<'a>(
                 if encoded && charset.is_some() {
                     add_string(
                         &mut value,
-                        decode_parameter(new_value, charset.clone().unwrap())?,
+                        Cow::Owned(decode_parameter(
+                            new_value.into_owned().into_bytes(),
+                            charset.clone().unwrap(),
+                        )?),
                     );
                 } else {
                     add_string(&mut value, new_value);

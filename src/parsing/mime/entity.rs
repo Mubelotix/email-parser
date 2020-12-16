@@ -17,7 +17,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
         description,
         disposition,
     ) = header_part(unsafe {
-        // The header_part function returns only owned data, so we are not borrowing input
+        // FIXME: remove this unsafe
         &*(input.as_ref() as *const [u8])
     })?;
     match input {

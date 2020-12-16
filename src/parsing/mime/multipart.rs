@@ -30,6 +30,11 @@ fn before_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), 
 fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
     let (before, len) = before_boundary_idx(input, boundary)?;
 
+    // JUSTIFICATION
+    //  Benefit
+    //      Improve performances by avoiding checking the range.
+    //  Correctness
+    //      The function cannot return out of range indexes.
     unsafe {
         Ok((
             input.get_unchecked(before + len..),
@@ -56,6 +61,11 @@ fn before_closing_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, 
 fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
     let (before, len) = before_closing_boundary_idx(input, boundary)?;
 
+    // JUSTIFICATION
+    //  Benefit
+    //      Improve performances by avoiding checking the range.
+    //  Correctness
+    //      The function returning indexes cannot return out of range.
     unsafe {
         Ok((
             input.get_unchecked(before + len..),

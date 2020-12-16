@@ -66,7 +66,7 @@ pub fn decode_qp(mut data: Vec<u8>) -> Vec<u8> {
             idx += 1;
         } else if byte == &b'=' {
             if data.get(idx + 1) == Some(&b'\r') && data.get(idx + 2) == Some(&b'\n') {
-                data.drain(idx..idx+3);
+                data.drain(idx..idx + 3);
             } else if data.len() > idx + 2 {
                 let first = data.remove(idx + 1);
                 let second = data.remove(idx + 1);
@@ -114,7 +114,7 @@ pub fn decode_header_qp(mut data: Vec<u8>) -> Vec<u8> {
             idx += 1;
         } else if byte == b'=' {
             if data.get(idx + 1) == Some(&b'\r') && data.get(idx + 2) == Some(&b'\n') {
-                data.drain(idx..idx+3);
+                data.drain(idx..idx + 3);
             } else if data.len() > idx + 2 {
                 let first = data.remove(idx + 1);
                 let second = data.remove(idx + 1);

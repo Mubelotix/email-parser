@@ -19,36 +19,45 @@ pub fn encode_base64(data: Vec<u8>) -> Vec<u8> {
             encoded_data.push(b'\n');
             line_lenght = 0;
         }
-        match (bytes.next(), bytes.next()) {
-            (Some(byte2), Some(byte3)) => {
-                let output_byte1 = (0b11111100 & byte1) >> 2;
-                let output_byte2 = ((0b00000011 & byte1) << 4) + ((0b11110000 & byte2) >> 4);
-                let output_byte3 = ((0b00001111 & byte2) << 2) + ((0b11000000 & byte3) >> 6);
-                let output_byte4 = 0b00111111 & byte3;
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte1 as usize) });
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte2 as usize) });
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte3 as usize) });
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte4 as usize) });
+
+        // JUSTIFICATION
+        //  Benefit
+        //      Gain performance by avoiding index checks on a fixed size array.
+        //  Correctness
+        //      Generated indexes cannot be greater than 63, which is the lenght of the array.
+        unsafe {
+            match (bytes.next(), bytes.next()) {
+                (Some(byte2), Some(byte3)) => {
+                    let output_byte1 = (0b11111100 & byte1) >> 2;
+                    let output_byte2 = ((0b00000011 & byte1) << 4) + ((0b11110000 & byte2) >> 4);
+                    let output_byte3 = ((0b00001111 & byte2) << 2) + ((0b11000000 & byte3) >> 6);
+                    let output_byte4 = 0b00111111 & byte3;
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte1 as usize));
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte2 as usize));
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte3 as usize));
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte4 as usize));
+                }
+                (Some(byte2), None) => {
+                    let output_byte1 = (0b11111100 & byte1) >> 2;
+                    let output_byte2 = ((0b00000011 & byte1) << 4) + ((0b11110000 & byte2) >> 4);
+                    let output_byte3 = (0b00001111 & byte2) << 2;
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte1 as usize));
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte2 as usize));
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte3 as usize));
+                    encoded_data.push(b'=');
+                }
+                (None, None) => {
+                    let output_byte1 = (0b11111100 & byte1) >> 2;
+                    let output_byte2 = (0b00000011 & byte1) << 4;
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte1 as usize));
+                    encoded_data.push(*BASE64_MAP.get_unchecked(output_byte2 as usize));
+                    encoded_data.push(b'=');
+                    encoded_data.push(b'=');
+                }
+                _ => unreachable!(),
             }
-            (Some(byte2), None) => {
-                let output_byte1 = (0b11111100 & byte1) >> 2;
-                let output_byte2 = ((0b00000011 & byte1) << 4) + ((0b11110000 & byte2) >> 4);
-                let output_byte3 = (0b00001111 & byte2) << 2;
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte1 as usize) });
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte2 as usize) });
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte3 as usize) });
-                encoded_data.push(b'=');
-            }
-            (None, None) => {
-                let output_byte1 = (0b11111100 & byte1) >> 2;
-                let output_byte2 = (0b00000011 & byte1) << 4;
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte1 as usize) });
-                encoded_data.push(unsafe { *BASE64_MAP.get_unchecked(output_byte2 as usize) });
-                encoded_data.push(b'=');
-                encoded_data.push(b'=');
-            }
-            _ => unreachable!(),
         }
+
         line_lenght += 4;
     }
 
@@ -132,6 +141,12 @@ pub fn decode_base64(mut data: Vec<u8>) -> Result<Vec<u8>, Error> {
             }
         };
 
+        // JUSTIFICATION
+        //  Benefit
+        //      Gain performance by avoiding index checks on the vector.
+        //  Correctness
+        //      i < len (see checks above)
+        //      i >= offset (so index cannot underflow)
         unsafe {
             *data.get_unchecked_mut(i - offset) = (b1 << 2) + ((b2 & 0b00110000) >> 4);
             if let Some(b3) = b3 {
