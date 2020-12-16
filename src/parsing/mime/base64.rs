@@ -66,16 +66,19 @@ fn get_value_encoded(c: u8) -> Option<u8> {
     }
 }
 
-pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, Error> {
-    let mut bytes = data.iter();
-    let mut decoded_data = Vec::new();
+pub fn decode_base64(mut data: Vec<u8>) -> Result<Vec<u8>, Error> {
+    let mut i = 0;
+    let mut offset = 0;
 
     'main: loop {
         let b1 = 'inner1: loop {
-            match bytes.next() {
+            match data.get(i) {
                 Some(b) => {
                     if let Some(b) = get_value_encoded(*b) {
                         break 'inner1 b;
+                    } else {
+                        i += 1;
+                        offset += 1;
                     }
                 }
                 None => break 'main,
@@ -83,10 +86,13 @@ pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, Error> {
         };
 
         let b2 = 'inner2: loop {
-            match bytes.next() {
+            match data.get(i + 1) {
                 Some(b) => {
                     if let Some(b) = get_value_encoded(*b) {
                         break 'inner2 b;
+                    } else {
+                        i += 1;
+                        offset += 1;
                     }
                 }
                 None => return Err(Error::Known("Missing at least 3 bytes")),
@@ -94,11 +100,14 @@ pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, Error> {
         };
 
         let b3 = 'inner3: loop {
-            match bytes.next() {
+            match data.get(i + 2) {
                 Some(b) if *b == b'=' => break 'inner3 None,
                 Some(b) => {
                     if let Some(b) = get_value_encoded(*b) {
                         break 'inner3 Some(b);
+                    } else {
+                        i += 1;
+                        offset += 1;
                     }
                 }
                 None => return Err(Error::Known("Missing at least 2 bytes")),
@@ -106,29 +115,45 @@ pub fn decode_base64(data: Vec<u8>) -> Result<Vec<u8>, Error> {
         };
 
         let b4 = 'inner4: loop {
-            match bytes.next() {
+            match data.get(i + 3) {
                 Some(b) if *b == b'=' => break 'inner4 None,
-                Some(_) if b3.is_none() => return Err(Error::Known("Data after end of data")),
+                Some(b) if b3.is_none() && get_value_encoded(*b).is_some() => {
+                    return Err(Error::Known("Data after end of data"))
+                }
                 Some(b) => {
                     if let Some(b) = get_value_encoded(*b) {
                         break 'inner4 Some(b);
+                    } else {
+                        i += 1;
+                        offset += 1;
                     }
                 }
                 None => return Err(Error::Known("Missing at least 1 byte")),
             }
         };
 
-        decoded_data.push((b1 << 2) + ((b2 & 0b00110000) >> 4));
-        if let Some(b3) = b3 {
-            decoded_data.push(((b2 & 0b00001111) << 4) + ((b3 & 0b00111100) >> 2));
+        unsafe {
+            *data.get_unchecked_mut(i - offset) = (b1 << 2) + ((b2 & 0b00110000) >> 4);
+            if let Some(b3) = b3 {
+                *data.get_unchecked_mut((i + 1) - offset) =
+                    ((b2 & 0b00001111) << 4) + ((b3 & 0b00111100) >> 2);
 
-            if let Some(b4) = b4 {
-                decoded_data.push(((b3 & 0b00000011) << 6) + b4);
-            };
-        };
+                if let Some(b4) = b4 {
+                    *data.get_unchecked_mut((i + 2) - offset) = ((b3 & 0b00000011) << 6) + b4;
+                } else {
+                    offset += 1;
+                }
+            } else {
+                offset += 2;
+            }
+        }
+        i += 4;
+        offset += 1;
     }
 
-    Ok(decoded_data)
+    data.truncate(i - offset);
+
+    Ok(data)
 }
 
 #[cfg(test)]
@@ -178,6 +203,25 @@ mod tests {
         assert_eq!(
             "abcdefghijkl",
             String::from_utf8(decode_base64(b"YWJjZGVmZ2hpamts".to_vec()).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "abcdefghij",
+            String::from_utf8(decode_base64(b"YWJjZGVmZ2hpag==".to_vec()).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "abcdefghij",
+            String::from_utf8(decode_base64(b"YWJjZGV*mZ2hpag==".to_vec()).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "abcdefghij",
+            String::from_utf8(decode_base64(b"YWJjZGV*******mZ2hpag==".to_vec()).unwrap()).unwrap()
+        );
+        assert_eq!(
+            "abcdefghij",
+            String::from_utf8(
+                decode_base64(b"***Y*WJ*jZ*GV*******mZ2**hp*ag=*=**".to_vec()).unwrap()
+            )
+            .unwrap()
         );
         assert_eq!(
             "<div dir=\"ltr\">Hey émoji 😍</div>\r\n",

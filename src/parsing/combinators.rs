@@ -6,7 +6,9 @@ pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
     if input.starts_with(expected) {
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
-        Err(Error::TagError(unsafe {std::str::from_utf8_unchecked(expected)}))
+        Err(Error::TagError(unsafe {
+            std::str::from_utf8_unchecked(expected)
+        }))
     }
 }
 

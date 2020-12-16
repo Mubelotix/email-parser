@@ -14,3 +14,6 @@ pub(crate) use crate::parsing::quoted_string::*;
 pub(crate) use crate::parsing::whitespaces::*;
 pub(crate) use crate::string::*;
 pub use crate::time::*;
+
+#[cfg(feature = "benchmarking")]
+pub use crate::parsing::mime::base64::decode_base64;
