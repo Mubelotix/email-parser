@@ -1,6 +1,6 @@
 // Second rule of the encoding
-fn litteral_repr_possible(c: u8) -> bool {
-    (c >= 33 && c <= 60) || (c >= 62 && c <= 126)
+fn litteral_repr_possible(c: &u8) -> bool {
+    (c >= &33 && c <= &60) || (c >= &62 && c <= &126)
 }
 
 #[allow(clippy::if_same_then_else)]
@@ -20,7 +20,7 @@ pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> {
             line_lenght = 0;
         }
 
-        if litteral_repr_possible(byte) {
+        if litteral_repr_possible(&byte) {
             // Second rule
             idx += 1;
             line_lenght += 1;
@@ -61,10 +61,10 @@ pub fn encode_qp(mut data: Vec<u8>) -> Vec<u8> {
 pub fn decode_qp(mut data: Vec<u8>) -> Vec<u8> {
     let mut idx = 0;
 
-    while let Some(byte) = data.get(idx).copied() {
-        if litteral_repr_possible(byte) || byte == b' ' || byte == b'\t' {
+    while let Some(byte) = data.get(idx) {
+        if litteral_repr_possible(byte) || byte == &b' ' || byte == &b'\t' {
             idx += 1;
-        } else if byte == b'=' {
+        } else if byte == &b'=' {
             if data.get(idx + 1) == Some(&b'\r') && data.get(idx + 2) == Some(&b'\n') {
                 data.remove(idx);
                 data.remove(idx);
@@ -94,7 +94,7 @@ pub fn decode_qp(mut data: Vec<u8>) -> Vec<u8> {
             } else {
                 idx += 1;
             }
-        } else if byte == b'\r' && data.get(idx + 1) == Some(&b'\n') {
+        } else if byte == &b'\r' && data.get(idx + 1) == Some(&b'\n') {
             idx += 2;
         } else {
             data[idx] = 189;
@@ -116,9 +116,7 @@ pub fn decode_header_qp(mut data: Vec<u8>) -> Vec<u8> {
             idx += 1;
         } else if byte == b'=' {
             if data.get(idx + 1) == Some(&b'\r') && data.get(idx + 2) == Some(&b'\n') {
-                data.remove(idx);
-                data.remove(idx);
-                data.remove(idx);
+                data.drain(idx..idx+3);
             } else if data.len() > idx + 2 {
                 let first = data.remove(idx + 1);
                 let second = data.remove(idx + 1);

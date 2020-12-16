@@ -17,3 +17,5 @@ pub use crate::time::*;
 
 #[cfg(feature = "benchmarking")]
 pub use crate::parsing::mime::base64::decode_base64;
+#[cfg(feature = "benchmarking")]
+pub use crate::parsing::mime::quoted_printables::decode_qp;
