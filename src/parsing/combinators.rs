@@ -6,7 +6,7 @@ pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
     if input.starts_with(expected) {
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
-        Err(Error::Known("Tag error, data does not match"))
+        Err(Error::TagError(unsafe {std::str::from_utf8_unchecked(expected)}))
     }
 }
 
@@ -30,7 +30,7 @@ pub(crate) fn tag_no_case<'a>(
             if input.get_unchecked(idx) != expected.get_unchecked(idx)
                 && input.get_unchecked(idx) != expected2.get_unchecked(idx)
             {
-                return Err(Error::Known("Tag error, data does not match"));
+                return Err(Error::TagError(std::str::from_utf8_unchecked(expected)));
             }
         }
     }
