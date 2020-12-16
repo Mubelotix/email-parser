@@ -37,3 +37,6 @@ mime = ["textcode"]
 email = "0.0.21"
 email-format = "0.8"
 mailparse = "0.13"
+
+[profile.release]
+codegen-units = 1
