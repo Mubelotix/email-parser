@@ -78,7 +78,6 @@ where
     Err(Error::Unknown("No match arm is matching the data"))
 }
 
-// FIXME: take_whiles should return &[u8]
 #[inline]
 pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<&str>
 where
