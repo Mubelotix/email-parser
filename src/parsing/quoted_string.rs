@@ -14,12 +14,12 @@ pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
                 ))
             }
         } else {
-            Err(Error::Known(
+            Err(Error::Unknown(
                 "The quoted-pair character is no a vchar or a wsp.",
             ))
         }
     } else {
-        Err(Error::Known("The quoted-pair has no second character."))
+        Err(Error::Unknown("The quoted-pair has no second character."))
     }
 }
 
@@ -33,7 +33,7 @@ pub fn quoted_string(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     let mut input = if input.starts_with(b"\"") {
         &input[1..]
     } else {
-        return Err(Error::Known("Quoted string must begin with a dquote"));
+        return Err(Error::Unknown("Quoted string must begin with a dquote"));
     };
     let mut output = empty_string();
 
@@ -48,7 +48,7 @@ pub fn quoted_string(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
         };
 
         let new_input = if let Ok((new_input, str)) = take_while1(new_input, is_qtext) {
-            add_string(&mut additionnal_output, str);
+            add_str(&mut additionnal_output, str);
             new_input
         } else if let Ok((new_input, str)) = quoted_pair(new_input) {
             add_string(&mut additionnal_output, str);
@@ -71,7 +71,7 @@ pub fn quoted_string(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     let input = if input.starts_with(b"\"") {
         &input[1..]
     } else {
-        return Err(Error::Known("Quoted string must end with a dquote"));
+        return Err(Error::Unknown("Quoted string must end with a dquote"));
     };
 
     let input = if let Ok((input, _cfws)) = cfws(input) {

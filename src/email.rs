@@ -28,6 +28,7 @@ use std::borrow::Cow;
 #[derive(Debug)]
 pub struct Email<'a> {
     /// The ASCII text of the body.
+    #[cfg(not(feature = "mime"))]
     pub body: Option<Cow<'a, str>>,
 
     #[cfg(feature = "from")]
@@ -84,9 +85,12 @@ pub struct Email<'a> {
         Vec<crate::parsing::fields::TraceField<'a>>,
     )>,
 
+    #[cfg(feature = "mime")]
+    pub mime_entity: RawEntity<'a>,
+
     /// The list of unrecognized fields.\
     /// Each field is stored as a `(name, value)` tuple.
-    pub unknown_fields: Vec<(Cow<'a, str>, Cow<'a, str>)>,
+    pub unknown_fields: Vec<(&'a str, Cow<'a, str>)>,
 }
 
 impl<'a> Email<'a> {
@@ -122,6 +126,18 @@ impl<'a> Email<'a> {
         let mut keywords = Vec::new();
         #[cfg(feature = "trace")]
         let mut trace = Vec::new();
+        #[cfg(feature = "mime")]
+        let mut mime_version = None;
+        #[cfg(feature = "mime")]
+        let mut content_type = None;
+        #[cfg(feature = "mime")]
+        let mut content_transfer_encoding = None;
+        #[cfg(feature = "mime")]
+        let mut content_id = None;
+        #[cfg(feature = "mime")]
+        let mut content_description = None;
+        #[cfg(feature = "content-disposition")]
+        let mut content_disposition = None;
 
         let mut unknown_fields = Vec::new();
 
@@ -132,7 +148,7 @@ impl<'a> Email<'a> {
                     if from.is_none() {
                         from = Some(mailboxes)
                     } else {
-                        return Err(Error::Known("Multiple from fields"));
+                        return Err(Error::DuplicateHeader("From"));
                     }
                 }
                 #[cfg(feature = "sender")]
@@ -140,7 +156,7 @@ impl<'a> Email<'a> {
                     if sender.is_none() {
                         sender = Some(mailbox)
                     } else {
-                        return Err(Error::Known("Multiple sender fields"));
+                        return Err(Error::DuplicateHeader("Sender"));
                     }
                 }
                 #[cfg(feature = "subject")]
@@ -148,7 +164,7 @@ impl<'a> Email<'a> {
                     if subject.is_none() {
                         subject = Some(data)
                     } else {
-                        return Err(Error::Known("Multiple subject fields"));
+                        return Err(Error::DuplicateHeader("Subject"));
                     }
                 }
                 #[cfg(feature = "date")]
@@ -156,7 +172,7 @@ impl<'a> Email<'a> {
                     if date.is_none() {
                         date = Some(data)
                     } else {
-                        return Err(Error::Known("Multiple date fields"));
+                        return Err(Error::DuplicateHeader("Date"));
                     }
                 }
                 #[cfg(feature = "to")]
@@ -164,7 +180,7 @@ impl<'a> Email<'a> {
                     if to.is_none() {
                         to = Some(addresses)
                     } else {
-                        return Err(Error::Known("Multiple to fields"));
+                        return Err(Error::DuplicateHeader("To"));
                     }
                 }
                 #[cfg(feature = "cc")]
@@ -172,7 +188,7 @@ impl<'a> Email<'a> {
                     if cc.is_none() {
                         cc = Some(addresses)
                     } else {
-                        return Err(Error::Known("Multiple cc fields"));
+                        return Err(Error::DuplicateHeader("Cc"));
                     }
                 }
                 #[cfg(feature = "bcc")]
@@ -180,7 +196,7 @@ impl<'a> Email<'a> {
                     if bcc.is_none() {
                         bcc = Some(addresses)
                     } else {
-                        return Err(Error::Known("Multiple bcc fields"));
+                        return Err(Error::DuplicateHeader("Bcc"));
                     }
                 }
                 #[cfg(feature = "message-id")]
@@ -188,7 +204,7 @@ impl<'a> Email<'a> {
                     if message_id.is_none() {
                         message_id = Some(id)
                     } else {
-                        return Err(Error::Known("Multiple message-id fields"));
+                        return Err(Error::DuplicateHeader("Message-ID"));
                     }
                 }
                 #[cfg(feature = "in-reply-to")]
@@ -196,7 +212,7 @@ impl<'a> Email<'a> {
                     if in_reply_to.is_none() {
                         in_reply_to = Some(ids)
                     } else {
-                        return Err(Error::Known("Multiple in-reply-to fields"));
+                        return Err(Error::DuplicateHeader("In-Reply-To"));
                     }
                 }
                 #[cfg(feature = "references")]
@@ -204,7 +220,7 @@ impl<'a> Email<'a> {
                     if references.is_none() {
                         references = Some(ids)
                     } else {
-                        return Err(Error::Known("Multiple references fields"));
+                        return Err(Error::DuplicateHeader("References"));
                     }
                 }
                 #[cfg(feature = "reply-to")]
@@ -212,7 +228,7 @@ impl<'a> Email<'a> {
                     if reply_to.is_none() {
                         reply_to = Some(mailboxes)
                     } else {
-                        return Err(Error::Known("Multiple reply-to fields"));
+                        return Err(Error::DuplicateHeader("Reply-To"));
                     }
                 }
                 #[cfg(feature = "comments")]
@@ -229,6 +245,58 @@ impl<'a> Email<'a> {
                 } => {
                     trace.push((return_path, received, fields));
                 }
+                #[cfg(feature = "mime")]
+                Field::MimeVersion(major, minor) => {
+                    if mime_version.is_none() {
+                        mime_version = Some((major, minor))
+                    } else {
+                        return Err(Error::DuplicateHeader("Mime-Version"));
+                    }
+                }
+                #[cfg(feature = "mime")]
+                Field::ContentType {
+                    mime_type,
+                    subtype,
+                    parameters,
+                } => {
+                    if content_type.is_none() {
+                        content_type = Some((mime_type, subtype, parameters))
+                    } else {
+                        return Err(Error::DuplicateHeader("Content-Type"));
+                    }
+                }
+                #[cfg(feature = "mime")]
+                Field::ContentTransferEncoding(encoding) => {
+                    if content_transfer_encoding.is_none() {
+                        content_transfer_encoding = Some(encoding)
+                    } else {
+                        return Err(Error::DuplicateHeader("Content-Transfer-Encoding"));
+                    }
+                }
+                #[cfg(feature = "mime")]
+                Field::ContentId(id) => {
+                    if content_id.is_none() {
+                        content_id = Some(id)
+                    } else {
+                        return Err(Error::DuplicateHeader("Content-Id"));
+                    }
+                }
+                #[cfg(feature = "mime")]
+                Field::ContentDescription(description) => {
+                    if content_description.is_none() {
+                        content_description = Some(description)
+                    } else {
+                        return Err(Error::DuplicateHeader("Content-Description"));
+                    }
+                }
+                #[cfg(feature = "content-disposition")]
+                Field::ContentDisposition(disposition) => {
+                    if content_disposition.is_none() {
+                        content_disposition = Some(disposition)
+                    } else {
+                        return Err(Error::DuplicateHeader("Content-Disposition"));
+                    }
+                }
                 Field::Unknown { name, value } => {
                     unknown_fields.push((name, value));
                 }
@@ -236,9 +304,9 @@ impl<'a> Email<'a> {
         }
 
         #[cfg(feature = "from")]
-        let from = from.ok_or(Error::Known("Expected at least one from field"))?;
+        let from = from.ok_or(Error::MissingHeader("From"))?;
         #[cfg(feature = "date")]
-        let date = date.ok_or(Error::Known("Expected at least one date field"))?;
+        let date = date.ok_or(Error::MissingHeader("Date"))?;
 
         #[cfg(feature = "sender")]
         let sender = match sender {
@@ -247,12 +315,32 @@ impl<'a> Email<'a> {
                 if from.len() == 1 {
                     from[0].clone()
                 } else {
-                    return Err(Error::Known("Sender field required but missing"));
+                    return Err(Error::MissingHeader("Sender"));
                 }
             }
         };
 
+        #[cfg(feature = "mime")]
+        let (content_type, body) = (
+            content_type.unwrap_or((
+                ContentType::Text,
+                Cow::Borrowed("plain"),
+                vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
+                    .into_iter()
+                    .collect(),
+            )),
+            if let Some(body) = body {
+                Some(crate::parsing::mime::entity::decode_value(
+                    Cow::Borrowed(body),
+                    content_transfer_encoding.unwrap_or(ContentTransferEncoding::SevenBit),
+                )?)
+            } else {
+                None
+            },
+        );
+
         Ok(Email {
+            #[cfg(not(feature = "mime"))]
             body,
             #[cfg(feature = "from")]
             from,
@@ -282,6 +370,18 @@ impl<'a> Email<'a> {
             comments,
             #[cfg(feature = "keywords")]
             keywords,
+            #[cfg(feature = "mime")]
+            mime_entity: RawEntity {
+                mime_type: content_type.0,
+                subtype: content_type.1,
+                description: content_description,
+                id: content_id,
+                parameters: content_type.2,
+                #[cfg(feature = "content-disposition")]
+                disposition: content_disposition,
+                value: body.unwrap_or(Cow::Borrowed(b"")),
+                additional_headers: Vec::new(),
+            },
             unknown_fields,
         })
     }
@@ -298,6 +398,19 @@ impl<'a> std::convert::TryFrom<&'a [u8]> for Email<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_full_email() {
+        /*let multipart = Email::parse(include_bytes!("../mail.txt")).unwrap().mime_entity.parse().unwrap();
+        println!("{:?}", multipart);
+        if let Entity::Multipart{content, subtype: _} = multipart {
+            for entity in content {
+                println!("{:?}", entity.parse().unwrap())
+            }
+        } else {
+            panic!("Failed to parse multipart");
+        }*/
+    }
 
     #[test]
     fn test_field_number() {

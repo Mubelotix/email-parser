@@ -2,3 +2,8 @@
 Cargo.lock
 benches/alternatives.html
 mail.txt
+.vscode/settings.json
+mail3.txt
+mail2.txt
+# This is a file for testing 491179 emails. Too big for git
+tests/local_emails.rs

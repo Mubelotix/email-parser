@@ -2,6 +2,8 @@ use crate::address::*;
 use crate::parsing::time::*;
 use crate::prelude::*;
 use std::borrow::Cow;
+#[cfg(feature = "mime")]
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum TraceField<'a> {
@@ -42,6 +44,22 @@ pub enum Field<'a> {
     Comments(Cow<'a, str>),
     #[cfg(feature = "keywords")]
     Keywords(Vec<Vec<Cow<'a, str>>>),
+    #[cfg(feature = "mime")]
+    MimeVersion(u8, u8),
+    #[cfg(feature = "mime")]
+    ContentType {
+        mime_type: ContentType<'a>,
+        subtype: Cow<'a, str>,
+        parameters: HashMap<Cow<'a, str>, Cow<'a, str>>,
+    },
+    #[cfg(feature = "mime")]
+    ContentTransferEncoding(ContentTransferEncoding<'a>),
+    #[cfg(feature = "mime")]
+    ContentId((Cow<'a, str>, Cow<'a, str>)),
+    #[cfg(feature = "mime")]
+    ContentDescription(Cow<'a, str>),
+    #[cfg(feature = "content-disposition")]
+    ContentDisposition(Disposition<'a>),
     #[cfg(feature = "trace")]
     Trace {
         return_path: Option<Option<EmailAddress<'a>>>,
@@ -49,7 +67,7 @@ pub enum Field<'a> {
         fields: Vec<TraceField<'a>>,
     },
     Unknown {
-        name: Cow<'a, str>,
+        name: &'a str,
         value: Cow<'a, str>,
     },
 }
@@ -114,6 +132,29 @@ pub fn fields(mut input: &[u8]) -> Res<Vec<Field>> {
             |i| subject(i).map(|(i, v)| (i, Field::Subject(v))),
             #[cfg(feature = "comments")]
             |i| comments(i).map(|(i, v)| (i, Field::Comments(v))),
+            #[cfg(feature = "mime")]
+            |i| mime_version(i).map(|(i, (mj, mn))| (i, Field::MimeVersion(mj, mn))),
+            #[cfg(feature = "mime")]
+            |i| {
+                content_type(i).map(|(i, (t, st, p))| {
+                    (
+                        i,
+                        Field::ContentType {
+                            mime_type: t,
+                            subtype: st,
+                            parameters: p,
+                        },
+                    )
+                })
+            },
+            #[cfg(feature = "mime")]
+            |i| content_transfer_encoding(i).map(|(i, e)| (i, Field::ContentTransferEncoding(e))),
+            #[cfg(feature = "mime")]
+            |i| content_id(i).map(|(i, v)| (i, Field::ContentId(v))),
+            #[cfg(feature = "mime")]
+            |i| content_description(i).map(|(i, d)| (i, Field::ContentDescription(d))),
+            #[cfg(feature = "content-disposition")]
+            |i| content_disposition(i).map(|(i, d)| (i, Field::ContentDisposition(d))),
             #[cfg(feature = "keywords")]
             |i| keywords(i).map(|(i, v)| (i, Field::Keywords(v))),
             |i| unknown(i).map(|(i, (name, value))| (i, Field::Unknown { name, value })),
@@ -181,7 +222,7 @@ pub fn bcc(input: &[u8]) -> Res<Vec<Address>> {
     } else if let Ok((input, _cfws)) = cfws(input) {
         (input, Vec::new())
     } else {
-        return Err(Error::Known("Invalid bcc field"));
+        return Err(Error::Unknown("Invalid bcc field"));
     };
     let (input, ()) = tag(input, b"\r\n")?;
 
@@ -214,7 +255,10 @@ pub fn references(input: &[u8]) -> Res<Vec<(Cow<str>, Cow<str>)>> {
 
 pub fn subject(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Subject:", b"sUBJECT:")?;
+    #[cfg(not(feature = "mime"))]
     let (input, subject) = unstructured(input)?;
+    #[cfg(feature = "mime")]
+    let (input, subject) = mime_unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, subject))
@@ -222,7 +266,10 @@ pub fn subject(input: &[u8]) -> Res<Cow<str>> {
 
 pub fn comments(input: &[u8]) -> Res<Cow<str>> {
     let (input, ()) = tag_no_case(input, b"Comments:", b"cOMMENTS:")?;
+    #[cfg(not(feature = "mime"))]
     let (input, comments) = unstructured(input)?;
+    #[cfg(feature = "mime")]
+    let (input, comments) = mime_unstructured(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, comments))
@@ -343,7 +390,7 @@ pub fn received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
         } else if let Ok((input, domain)) = domain(input) {
             Ok((input, ReceivedToken::Domain(domain)))
         } else {
-            Err(Error::Known("match error"))
+            Err(Error::Unknown("match error"))
         }
     })?;
     let (input, ()) = tag(input, b";")?;
@@ -365,10 +412,14 @@ pub fn trace(
     Ok((input, (return_path, received)))
 }
 
-pub fn unknown(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+pub fn unknown(input: &[u8]) -> Res<(&str, Cow<str>)> {
     let (input, name) = take_while1(input, is_ftext)?;
     let (input, ()) = tag(input, b":")?;
+    #[cfg(not(feature = "unrecognized-headers"))]
     let (input, value) = unstructured(input)?;
+    #[cfg(feature = "unrecognized-headers")]
+    let (input, value) = mime_unstructured(input)?;
+
     let (input, ()) = tag(input, b"\r\n")?;
 
     Ok((input, (name, value)))
@@ -391,8 +442,14 @@ mod tests {
 
     #[test]
     fn test_unknown_field() {
-        assert_eq!(unknown(b"hidden-field:hidden message\r\n").unwrap().1.1, "hidden message");
-        assert_eq!(unknown(b"hidden-field:hidden message\r\n").unwrap().1.0, "hidden-field");
+        assert_eq!(
+            unknown(b"hidden-field:hidden message\r\n").unwrap().1 .1,
+            "hidden message"
+        );
+        assert_eq!(
+            unknown(b"hidden-field:hidden message\r\n").unwrap().1 .0,
+            "hidden-field"
+        );
     }
 
     #[test]
@@ -407,9 +464,27 @@ mod tests {
             "mubelotix"
         );
 
-        assert!(matches!(received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[0], ReceivedToken::Word(_)));
-        assert!(matches!(received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[1], ReceivedToken::Addr(_)));
-        assert!(matches!(received(b"Received:mubelotix.dev;5 May 2003 18:59:03 +0000\r\n").unwrap().1.0[0], ReceivedToken::Domain(_)));
+        assert!(matches!(
+            received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n")
+                .unwrap()
+                .1
+                 .0[0],
+            ReceivedToken::Word(_)
+        ));
+        assert!(matches!(
+            received(b"Received:test<mubelotix@gmail.com>;5 May 2003 18:59:03 +0000\r\n")
+                .unwrap()
+                .1
+                 .0[1],
+            ReceivedToken::Addr(_)
+        ));
+        assert!(matches!(
+            received(b"Received:mubelotix.dev;5 May 2003 18:59:03 +0000\r\n")
+                .unwrap()
+                .1
+                 .0[0],
+            ReceivedToken::Domain(_)
+        ));
 
         assert!(trace(b"Return-Path:<>\r\nReceived:akala miam miam;5 May 2003 18:59:03 +0000\r\nReceived:mubelotix.dev;5 May 2003 18:59:03 +0000\r\n").unwrap().0.is_empty());
     }
@@ -504,8 +579,20 @@ mod tests {
 
     #[test]
     fn test_ids() {
-        assert_eq!(message_id(b"Message-ID:<556100154@gmail.com>\r\n").unwrap().1.0, "556100154");
-        assert_eq!(message_id(b"Message-ID:<556100154@gmail.com>\r\n").unwrap().1.1, "gmail.com");
+        assert_eq!(
+            message_id(b"Message-ID:<556100154@gmail.com>\r\n")
+                .unwrap()
+                .1
+                 .0,
+            "556100154"
+        );
+        assert_eq!(
+            message_id(b"Message-ID:<556100154@gmail.com>\r\n")
+                .unwrap()
+                .1
+                 .1,
+            "gmail.com"
+        );
 
         assert_eq!(
             references(b"References:<qzdzdq@qdz.com><dzdzjd@zdzdj.dz>\r\n")
@@ -546,6 +633,35 @@ mod tests {
                 .1
                 .len(),
             2
+        );
+    }
+
+    #[test]
+    #[cfg(all(feature = "mime", feature = "unrecognized-headers"))]
+    fn test_mime_encoding() {
+        assert_eq!(
+            subject(b"Subject: =?UTF-8?B?8J+OiEJpcnRoZGF5IEdpdmVhd2F58J+OiA==?= Win free stickers\r\n from daily.dev =?UTF-8?B?8J+MiA==?=\r\n").unwrap().1,
+            " 🎈Birthday Giveaway🎈 Win free stickers from daily.dev 🌈"
+        );
+
+        assert_eq!(
+            comments(b"Comments: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=\r\n =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=\r\n").unwrap().1,
+            " If you can read this you understand the example."
+        );
+
+        assert_eq!(
+            from(b"From: =?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>\r\n")
+                .unwrap()
+                .1[0]
+                .name
+                .as_ref()
+                .unwrap()[0],
+            "Keith Moore"
+        );
+
+        assert_eq!(
+            unknown(b"X-SG-EID:\r\n =?us-ascii?Q?t3vk5cTFE=2FYEGeQ8h3SwrnzIAGc=2F+ADymlys=2FfRFW4Zjpt=2F3MuaO9JNHS2enYQ?=\r\n =?us-ascii?Q?Jsv0=2FpYrPem+YssHetKlrE5nJnOfr=2FYdJOyJFf8?=\r\n =?us-ascii?Q?3mRuMRE9KGu=2F5O75=2FwwN6dG14nuP4SyMIZwbMdG?=\r\n =?us-ascii?Q?vXmM2kgcM=2FOalKeT03BMp4YCg9h1LhkV6PZEoHB?=\r\n =?us-ascii?Q?d4tcAvNZQqLaA4ykI1EpNxKVVyZXVWqTp2uisdf?=\r\n =?us-ascii?Q?HB=2F6BKcIs+XSDNeakQqmn=2FwAqOk78AvtRB5LnNL?=\r\n =?us-ascii?Q?lz3oRXlMZbdFgRH+KAyLQ=3D=3D?=\r\n").unwrap().1.1,
+            " t3vk5cTFE/YEGeQ8h3SwrnzIAGc/+ADymlys/fRFW4Zjpt/3MuaO9JNHS2enYQJsv0/pYrPem+YssHetKlrE5nJnOfr/YdJOyJFf83mRuMRE9KGu/5O75/wwN6dG14nuP4SyMIZwbMdGvXmM2kgcM/OalKeT03BMp4YCg9h1LhkV6PZEoHBd4tcAvNZQqLaA4ykI1EpNxKVVyZXVWqTp2uisdfHB/6BKcIs+XSDNeakQqmn/wAqOk78AvtRB5LnNLlz3oRXlMZbdFgRH+KAyLQ=="
         );
     }
 }

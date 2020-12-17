@@ -11,10 +11,10 @@ pub fn day_name(input: &[u8]) -> Res<Day> {
             b"fri" => Ok((input, Day::Friday)),
             b"sat" => Ok((input, Day::Saturday)),
             b"sun" => Ok((input, Day::Sunday)),
-            _ => Err(Error::Known("Not a valid day_name")),
+            _ => Err(Error::Unknown("Not a valid day_name")),
         }
     } else {
-        Err(Error::Known(
+        Err(Error::Unknown(
             "Expected day_name, but characters are missing (at least 3).",
         ))
     }
@@ -36,10 +36,10 @@ pub fn month(input: &[u8]) -> Res<Month> {
             b"oct" => Ok((input, Month::October)),
             b"nov" => Ok((input, Month::November)),
             b"dec" => Ok((input, Month::December)),
-            _ => Err(Error::Known("Not a valid month")),
+            _ => Err(Error::Unknown("Not a valid month")),
         }
     } else {
-        Err(Error::Known(
+        Err(Error::Unknown(
             "Expected month, but characters are missing (at least 3).",
         ))
     }
@@ -56,16 +56,16 @@ pub fn year(input: &[u8]) -> Res<usize> {
     let (input, _) = fws(input)?;
 
     let (input, year) =
-        take_while1(input, is_digit).map_err(|_e| Error::Known("no digit in year"))?;
+        take_while1(input, is_digit).map_err(|_e| Error::Unknown("no digit in year"))?;
     if year.len() < 4 {
-        return Err(Error::Known("year is expected to have 4 digits or more"));
+        return Err(Error::Unknown("year is expected to have 4 digits or more"));
     }
     let year: usize = year
         .parse()
-        .map_err(|_e| Error::Known("Failed to parse year"))?;
+        .map_err(|_e| Error::Unknown("Failed to parse year"))?;
 
     if year < 1990 {
-        return Err(Error::Known("year must be after 1990"));
+        return Err(Error::Unknown("year must be after 1990"));
     }
 
     let (input, _) = fws(input)?;
@@ -82,7 +82,7 @@ pub fn day(input: &[u8]) -> Res<u8> {
         input = new_input;
     }
     if day > 31 {
-        return Err(Error::Known("day must be less than 31"));
+        return Err(Error::Unknown("day must be less than 31"));
     }
     let (input, _) = fws(input)?;
     Ok((input, day))
@@ -91,13 +91,13 @@ pub fn day(input: &[u8]) -> Res<u8> {
 pub fn time_of_day(input: &[u8]) -> Res<Time> {
     let (input, hour) = two_digits(input)?;
     if hour > 23 {
-        return Err(Error::Known("There is only 24 hours in a day"));
+        return Err(Error::Unknown("There is only 24 hours in a day"));
     }
     let (input, ()) = tag(input, b":")?;
 
     let (input, minute) = two_digits(input)?;
     if minute > 59 {
-        return Err(Error::Known("There is only 60 minutes per hour"));
+        return Err(Error::Unknown("There is only 60 minutes per hour"));
     }
 
     if input.starts_with(b":") {
@@ -105,7 +105,7 @@ pub fn time_of_day(input: &[u8]) -> Res<Time> {
         if let Ok((new_input, second)) = two_digits(new_input) {
             if second > 60 {
                 // leap second allowed
-                return Err(Error::Known("There is only 60 seconds in a minute"));
+                return Err(Error::Unknown("There is only 60 seconds in a minute"));
             }
             return Ok((
                 new_input,
@@ -134,8 +134,8 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
     let sign = match input.get(0) {
         Some(b'+') => true,
         Some(b'-') => false,
-        None => return Err(Error::Known("Expected more characters in zone")),
-        _ => return Err(Error::Known("Invalid sign character in zone")),
+        None => return Err(Error::Unknown("Expected more characters in zone")),
+        _ => return Err(Error::Unknown("Invalid sign character in zone")),
     };
     input = &input[1..];
 
@@ -143,7 +143,7 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
     let (input, minute_offset) = two_digits(input)?;
 
     if minute_offset > 59 {
-        return Err(Error::Known("zone minute_offset out of range"));
+        return Err(Error::Unknown("zone minute_offset out of range"));
     }
 
     Ok((

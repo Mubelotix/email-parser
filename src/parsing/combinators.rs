@@ -3,10 +3,13 @@ use std::borrow::Cow;
 
 #[inline]
 pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
+    debug_assert!(std::str::from_utf8(expected).is_ok());
     if input.starts_with(expected) {
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
-        Err(Error::Known("Tag error, data does not match"))
+        Err(Error::TagError(unsafe {
+            std::str::from_utf8_unchecked(expected)
+        }))
     }
 }
 
@@ -17,10 +20,21 @@ pub(crate) fn tag_no_case<'a>(
     expected2: &'static [u8],
 ) -> Res<'a, ()> {
     debug_assert_eq!(expected.len(), expected2.len());
-    // TODO case check
+    debug_assert!(std::str::from_utf8(expected).is_ok());
+    debug_assert!(std::str::from_utf8(expected2).is_ok());
+
+    #[cfg(debug_assertions)]
+    for i in 0..expected.len() {
+        if (expected[i].is_ascii_lowercase() && expected[i].to_ascii_uppercase() != expected2[i])
+            || (expected[i].is_ascii_uppercase()
+                && expected[i].to_ascii_lowercase() != expected2[i])
+        {
+            panic!("tag_no_case() is supposed to take opposite characters but it is not the case for {:?}", std::str::from_utf8(expected).unwrap());
+        }
+    }
 
     if input.len() < expected.len() {
-        return Err(Error::Known(
+        return Err(Error::Unknown(
             "Tag error, input is smaller than expected string",
         ));
     }
@@ -30,7 +44,7 @@ pub(crate) fn tag_no_case<'a>(
             if input.get_unchecked(idx) != expected.get_unchecked(idx)
                 && input.get_unchecked(idx) != expected2.get_unchecked(idx)
             {
-                return Err(Error::Known("Tag error, data does not match"));
+                return Err(Error::TagError(std::str::from_utf8_unchecked(expected)));
             }
         }
     }
@@ -61,11 +75,11 @@ where
             return result;
         }
     }
-    Err(Error::Known("No match arm is matching the data"))
+    Err(Error::Unknown("No match arm is matching the data"))
 }
 
 #[inline]
-pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<Cow<str>>
+pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<&str>
 where
     F: FnMut(u8) -> bool,
 {
@@ -74,25 +88,25 @@ where
             if !condition(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    from_slice(input.get_unchecked(..i)),
+                    std::str::from_utf8_unchecked(input.get_unchecked(..i)),
                 ));
             }
         }
     }
-    Ok((&[], from_slice(input)))
+    Ok((&[], unsafe { std::str::from_utf8_unchecked(input) }))
 }
 
 #[inline]
-pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<Cow<str>>
+pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<&str>
 where
     F: FnMut(u8) -> bool,
 {
     if let Some(character) = input.get(0) {
         if !condition(*character) {
-            return Err(Error::Known("Expected at least one character matching"));
+            return Err(Error::Unknown("Expected at least one character matching"));
         }
     } else {
-        return Err(Error::Known(
+        return Err(Error::Unknown(
             "Expected at least one character matching, but there is no character",
         ));
     }
@@ -102,12 +116,12 @@ where
             if !condition(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    from_slice(input.get_unchecked(..i)),
+                    std::str::from_utf8_unchecked(input.get_unchecked(..i)),
                 ));
             }
         }
     }
-    Ok((&[], from_slice(input)))
+    Ok((&[], unsafe { std::str::from_utf8_unchecked(input) }))
 }
 
 #[inline]
@@ -182,6 +196,25 @@ where
 }
 
 #[inline]
+pub fn triplet<'a, T, U, V, F, G, H>(
+    input: &'a [u8],
+    mut parser1: F,
+    mut parser2: G,
+    mut parser3: H,
+) -> Res<(U, T, V)>
+where
+    F: FnMut(&'a [u8]) -> Res<U>,
+    G: FnMut(&'a [u8]) -> Res<T>,
+    H: FnMut(&'a [u8]) -> Res<V>,
+{
+    let (input, first) = parser1(input)?;
+    let (input, second) = parser2(input)?;
+    let (input, third) = parser3(input)?;
+
+    Ok((input, (first, second, third)))
+}
+
+#[inline]
 pub fn collect_pair<'a, F, G>(input: &'a [u8], mut parser1: F, mut parser2: G) -> Res<Cow<str>>
 where
     F: FnMut(&'a [u8]) -> Res<Cow<str>>,
@@ -206,7 +239,7 @@ where
     if input.starts_with(prefix.as_bytes()) {
         input = unsafe { input.get_unchecked(prefix.len()..) };
     } else {
-        return Err(Error::Known("Expected a prefix"));
+        return Err(Error::Unknown("Expected a prefix"));
     }
     parser(input)
 }
