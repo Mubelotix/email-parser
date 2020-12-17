@@ -3,6 +3,7 @@ use std::borrow::Cow;
 
 #[inline]
 pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
+    debug_assert!(std::str::from_utf8(expected).is_ok());
     if input.starts_with(expected) {
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
@@ -19,7 +20,18 @@ pub(crate) fn tag_no_case<'a>(
     expected2: &'static [u8],
 ) -> Res<'a, ()> {
     debug_assert_eq!(expected.len(), expected2.len());
-    // TODO case check
+    debug_assert!(std::str::from_utf8(expected).is_ok());
+    debug_assert!(std::str::from_utf8(expected2).is_ok());
+
+    #[cfg(debug_assertions)]
+    for i in 0..expected.len() {
+        if (expected[i].is_ascii_lowercase() && expected[i].to_ascii_uppercase() != expected2[i])
+            || (expected[i].is_ascii_uppercase()
+                && expected[i].to_ascii_lowercase() != expected2[i])
+        {
+            panic!("tag_no_case() is supposed to take opposite characters but it is not the case for {:?}", std::str::from_utf8(expected).unwrap());
+        }
+    }
 
     if input.len() < expected.len() {
         return Err(Error::Unknown(
