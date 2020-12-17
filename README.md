@@ -6,7 +6,7 @@ This library has no dependency.
 ## Goal
 
 The goal of this library is to be fully compliant with RFC 5322. However, this library does not intend to support the obsolete syntax because it has been obsolete for 12 years, and it would slow down everything.\
-I plan to add optional support to the Multipurpose Internet Mail Extensions and for PGP.
+This library supports MIME and will support PGP in the future.
 
 ## Example
 
@@ -44,7 +44,7 @@ Thanks to this method, around 90% of the strings are references.
 
 This chart shows the time took to parse a single email.
 
-![Benchmark](https://cdn.discordapp.com/attachments/770283472988143616/774711170208104448/Screenshot_2020-11-07_Performance_comparison1.png)
+![Benchmark](https://cdn.discordapp.com/attachments/694923348844609597/789162705494868020/unknown.png)
 
 Run these benchmarks by yourself with `rustup run nightly cargo bench` and `rustup run nightly cargo bench --no-default-features`.\
 Tests require a `mail.txt` file containing a raw mail next to the `Cargo.toml`.\
