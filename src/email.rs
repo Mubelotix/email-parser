@@ -90,7 +90,7 @@ pub struct Email<'a> {
 
     /// The list of unrecognized fields.\
     /// Each field is stored as a `(name, value)` tuple.
-    pub unknown_fields: Vec<(Cow<'a, str>, Cow<'a, str>)>,
+    pub unknown_fields: Vec<(&'a str, Cow<'a, str>)>,
 }
 
 impl<'a> Email<'a> {

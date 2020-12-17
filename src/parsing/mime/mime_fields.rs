@@ -15,7 +15,7 @@ fn ignore_inline_cfws(input: &[u8]) -> Res<()> {
 }
 
 #[inline]
-fn token(input: &[u8]) -> Res<Cow<str>> {
+fn token(input: &[u8]) -> Res<&str> {
     take_while1(input, |c| {
         c > 0x1F && c < 0x7F && !is_wsp(c) && !tspecial(c)
     })
@@ -88,30 +88,31 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
                 };
 
                 if input.get(0) == Some(&b'=') {
-                    Ok((input, (name, index, encoded)))
+                    Ok((input, (Cow::Borrowed(name), index, encoded)))
                 } else {
                     Err(Error::Known("It wont work with this method"))
                 }
             },
             |input| {
                 let (input, name) = token(input)?;
-                Ok((input, (name, None, false)))
+                Ok((input, (Cow::Borrowed(name), None, false)))
             },
         ][..],
     )?;
 
-    let mut change_needed = false;
-    for c in name.chars() {
-        if c.is_uppercase() {
-            change_needed = true;
-        }
-    }
-    if change_needed {
-        name = Cow::Owned(name.to_ascii_lowercase());
-    }
+    name = lowercase(name);
 
     let (input, ()) = tag(input, b"=")?;
-    let (input, value) = match_parsers(input, &mut [token, quoted_string][..])?;
+    let (input, value) = match_parsers(
+        input,
+        &mut [
+            |input| {
+                let (input, value) = token(input)?;
+                Ok((input, Cow::Borrowed(value)))
+            },
+            |input| quoted_string(input),
+        ][..],
+    )?;
 
     Ok((input, (name, index, encoded, value)))
 }
@@ -140,25 +141,16 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
             },
             |input| {
                 // TODO ietf token
-                let (input, mut name) = token(input)?;
-
-                // convert to lowercase
-                let mut change_needed = false;
-                for c in name.chars() {
-                    if c.is_uppercase() {
-                        change_needed = true;
-                    }
-                }
-                if change_needed {
-                    name = Cow::Owned(name.to_ascii_lowercase());
-                }
+                let (input, name) = token(input)?;
+                let name = lowercase(Cow::Borrowed(name));
 
                 Ok((input, MimeType::Other(name)))
             },
         ][..],
     )?;
     let (input, ()) = tag(input, b"/")?;
-    let (input, sub_type) = token(input)?;
+    let (input, subtype) = token(input)?;
+    let subtype = lowercase(Cow::Borrowed(subtype));
 
     let (input, parameters_vec) = many(input, parameter)?;
     let parameters = super::percent_encoding::collect_parameters(parameters_vec)?;
@@ -166,7 +158,7 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
     let (input, ()) = ignore_inline_cfws(input)?;
     let (input, ()) = tag(input, b"\r\n")?;
 
-    Ok((input, (mime_type, sub_type, parameters)))
+    Ok((input, (mime_type, subtype, parameters)))
 }
 
 pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
@@ -187,18 +179,8 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
             },
             |input| {
                 // TODO ietf token
-                let (input, mut name) = token(input)?;
-
-                // convert to lowercase
-                let mut change_needed = false;
-                for c in name.chars() {
-                    if c.is_uppercase() {
-                        change_needed = true;
-                    }
-                }
-                if change_needed {
-                    name = Cow::Owned(name.to_ascii_lowercase());
-                }
+                let (input, name) = token(input)?;
+                let name = lowercase(Cow::Borrowed(name));
 
                 Ok((input, DispositionType::Unknown(name)))
             },
@@ -222,7 +204,16 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
             let (input, ()) = tag_no_case(input, b"filename", b"FILENAME")?;
 
             let (input, ()) = tag(input, b"=")?;
-            let (input, value) = match_parsers(input, &mut [token, quoted_string][..])?;
+            let (input, value) = match_parsers(
+                input,
+                &mut [
+                    |input| {
+                        let (input, value) = token(input)?;
+                        Ok((input, Cow::Borrowed(value)))
+                    },
+                    |input| quoted_string(input),
+                ][..],
+            )?;
 
             Ok((input, value))
         }
@@ -307,18 +298,8 @@ pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
                     .map(|(i, ())| (i, ContentTransferEncoding::Binary))
             },
             |input| {
-                let (input, mut encoding) = token(input)?;
-
-                // convert to lowercase
-                let mut change_needed = false;
-                for c in encoding.chars() {
-                    if c.is_uppercase() {
-                        change_needed = true;
-                    }
-                }
-                if change_needed {
-                    encoding = Cow::Owned(encoding.to_ascii_lowercase());
-                }
+                let (input, encoding) = token(input)?;
+                let encoding = lowercase(Cow::Borrowed(encoding));
 
                 Ok((input, ContentTransferEncoding::Other(encoding)))
             },

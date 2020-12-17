@@ -12,11 +12,12 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
     });
     let (input, after) = take_while1(input, is_wsp)?;
 
-    if let Some((mut before, _crlf)) = before {
-        add_string(&mut before, after);
+    if let Some((before, _crlf)) = before {
+        let mut before = Cow::Borrowed(before);
+        add_string(&mut before, Cow::Borrowed(after));
         Ok((input, before))
     } else {
-        Ok((input, after))
+        Ok((input, Cow::Borrowed(after)))
     }
 }
 
@@ -25,7 +26,10 @@ pub fn ccontent(input: &[u8]) -> Res<Cow<str>> {
     match_parsers(
         input,
         &mut [
-            (|i| take_while1(i, is_ctext)) as fn(input: &[u8]) -> Res<Cow<str>>,
+            (|i| {
+                let (input, value) = take_while1(i, is_ctext)?;
+                Ok((input, Cow::Borrowed(value)))
+            }) as fn(input: &[u8]) -> Res<Cow<str>>,
             quoted_pair,
             comment,
         ][..],

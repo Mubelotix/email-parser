@@ -116,7 +116,7 @@ pub fn header_part(
         MimeType,
         Cow<str>,
         HashMap<Cow<str>, Cow<str>>,
-        Vec<(Cow<str>, Cow<str>)>,
+        Vec<(&str, Cow<str>)>,
         Option<(Cow<str>, Cow<str>)>,
         Option<Cow<str>>,
         Option<Disposition>,
@@ -271,7 +271,7 @@ mod tests {
                 value: Cow::Borrowed(&[60, 112, 62, 84, 101, 120, 116, 60, 47, 112, 62]),
                 #[cfg(feature = "content-disposition")]
                 disposition: None,
-                additional_headers: vec![("Unknown".into(), " Test".into())]
+                additional_headers: vec![("Unknown", " Test".into())]
             },
             raw_entity(Cow::Owned(
                 b"Content-type: text/html; charset=utf-8\r\nUnknown: Test\r\n\r\n<p>Text</p>"

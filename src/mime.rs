@@ -17,7 +17,7 @@ pub struct RawEntity<'a> {
     /// The raw value of this entity.
     /// It has already been decoded.
     pub value: Cow<'a, [u8]>,
-    pub additional_headers: Vec<(Cow<'a, str>, Cow<'a, str>)>,
+    pub additional_headers: Vec<(&'a str, Cow<'a, str>)>,
 }
 
 impl<'a> RawEntity<'a> {

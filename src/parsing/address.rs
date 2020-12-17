@@ -7,7 +7,7 @@ pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
         let (input, ()) = tag(input, b"[")?;
         let (input, domain) = take_while(input, is_dtext)?;
         let (input, ()) = tag(input, b"]")?;
-        Ok((input, domain))
+        Ok((input, Cow::Borrowed(domain)))
     }
 
     let (input, _cfws) = optional(input, cfws);
@@ -67,7 +67,7 @@ pub fn domain_literal<'a>(input: &'a [u8]) -> Res<Cow<'a, str>> {
         if let Ok((new_input, text)) = take_while1(new_input, is_dtext) {
             input = new_input;
             //add_string(&mut output, fws); should it be added?
-            add_string(&mut output, text);
+            add_string(&mut output, Cow::Borrowed(text));
         } else {
             break;
         }

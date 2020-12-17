@@ -26,36 +26,20 @@ fn especials(c: u8) -> bool {
 }
 
 fn charset(input: &[u8]) -> Res<Cow<str>> {
-    let (input, mut charset) = take_while1(input, |c| {
+    let (input, charset) = take_while1(input, |c| {
         c > 0x20 && c < 0x7F && !especials(c) && c != b'*'
     })?;
-    let mut change_needed = false;
-    for c in charset.chars() {
-        if c.is_uppercase() {
-            change_needed = true;
-        }
-    }
-    if change_needed {
-        charset = Cow::Owned(charset.to_ascii_lowercase());
-    }
+    let charset = lowercase(Cow::Borrowed(charset));
     Ok((input, charset))
 }
 
 fn encoding(input: &[u8]) -> Res<Cow<str>> {
-    let (input, mut encoding) = take_while1(input, |c| c > 0x20 && c < 0x7F && !especials(c))?;
-    let mut change_needed = false;
-    for c in encoding.chars() {
-        if c.is_lowercase() {
-            change_needed = true;
-        }
-    }
-    if change_needed {
-        encoding = Cow::Owned(encoding.to_ascii_uppercase());
-    }
+    let (input, encoding) = take_while1(input, |c| c > 0x20 && c < 0x7F && !especials(c))?;
+    let encoding = lowercase(Cow::Borrowed(encoding));
     Ok((input, encoding))
 }
 
-fn encoded_text(input: &[u8]) -> Res<Cow<str>> {
+fn encoded_text(input: &[u8]) -> Res<&str> {
     take_while1(input, |c| c > 0x20 && c <= 0x7E && c != b'?')
 }
 
@@ -75,8 +59,8 @@ pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
     let (input, _) = tag(input, b"?=")?;
 
     let value = match encoding.as_ref() {
-        "B" => base64::decode_base64(data.into_owned().into_bytes())?,
-        "Q" => quoted_printables::decode_header_qp(data.into_owned().into_bytes()),
+        "b" => base64::decode_base64(data.to_owned().into_bytes())?,
+        "q" => quoted_printables::decode_header_qp(data.to_owned().into_bytes()),
         _ => return Err(Error::Known("Unknown encoding")),
     };
 

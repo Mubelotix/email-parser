@@ -1,7 +1,20 @@
 use crate::prelude::*;
 use std::borrow::Cow;
 
-pub fn atom(mut input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
+pub fn lowercase(mut value: Cow<str>) -> Cow<str> {
+    let mut change_needed = false;
+    for c in value.chars() {
+        if c.is_uppercase() {
+            change_needed = true;
+        }
+    }
+    if change_needed {
+        value = Cow::Owned(value.to_ascii_lowercase());
+    }
+    value
+}
+
+pub fn atom(mut input: &[u8]) -> Res<&str> {
     if let Ok((new_input, _)) = cfws(input) {
         input = new_input
     }
@@ -13,8 +26,9 @@ pub fn atom(mut input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     Ok((input, atom))
 }
 
-pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
-    let (mut input, mut output) = take_while1(input, is_atext)?;
+pub fn dot_atom_text(input: &[u8]) -> Res<Cow<str>> {
+    let (mut input, output) = take_while1(input, is_atext)?;
+    let mut output = Cow::Borrowed(output);
 
     loop {
         if input.starts_with(b".") {
@@ -25,7 +39,7 @@ pub fn dot_atom_text(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
             } {
                 add_string(&mut output, from_slice(&input[..1]));
                 input = new_input;
-                add_string(&mut output, atom);
+                add_string(&mut output, Cow::Borrowed(atom));
             } else {
                 break;
             }
@@ -48,16 +62,17 @@ pub fn dot_atom(mut input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     Ok((input, dot_atom))
 }
 
-pub fn word(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
-    if let Ok((input, word)) = atom(input) {
-        Ok((input, word))
-    } else if let Ok((input, word)) = quoted_string(input) {
-        Ok((input, word))
-    } else {
-        Err(Error::Known(
-            "Word is not an atom and is not a quoted_string.",
-        ))
-    }
+pub fn word(input: &[u8]) -> Res<Cow<str>> {
+    match_parsers(
+        input,
+        &mut [
+            |input| {
+                let (input, value) = atom(input)?;
+                Ok((input, Cow::Borrowed(value)))
+            },
+            |input| quoted_string(input),
+        ][..],
+    )
 }
 
 pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
@@ -92,7 +107,10 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
         collect_pair(
             i,
             |i| Ok(fws(i).unwrap_or((i, empty_string()))),
-            |i| take_while1(i, is_vchar),
+            |i| {
+                let (input, value) = take_while1(i, is_vchar)?;
+                Ok((input, Cow::Borrowed(value)))
+            },
         )
     })?;
 
@@ -104,7 +122,7 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
 }
 
 #[cfg(feature = "mime")]
-pub fn mime_unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
+pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
     let mut previous_was_encoded = false;
     let (mut input, output) = collect_many(input, |i| {
         let (i, mut wsp) = fws(i).unwrap_or((i, empty_string()));
@@ -119,7 +137,7 @@ pub fn mime_unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
             }
         } else if let Ok((i, text)) = take_while1(i, is_vchar) {
             previous_was_encoded = false;
-            add_string(&mut wsp, text);
+            add_string(&mut wsp, Cow::Borrowed(text));
             return Ok((i, wsp));
         }
         Err(Error::Known("No match arm is matching the data"))

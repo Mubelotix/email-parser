@@ -67,7 +67,7 @@ pub enum Field<'a> {
         fields: Vec<TraceField<'a>>,
     },
     Unknown {
-        name: Cow<'a, str>,
+        name: &'a str,
         value: Cow<'a, str>,
     },
 }
@@ -412,7 +412,7 @@ pub fn trace(
     Ok((input, (return_path, received)))
 }
 
-pub fn unknown(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
+pub fn unknown(input: &[u8]) -> Res<(&str, Cow<str>)> {
     let (input, name) = take_while1(input, is_ftext)?;
     let (input, ()) = tag(input, b":")?;
     #[cfg(not(feature = "unrecognized-headers"))]

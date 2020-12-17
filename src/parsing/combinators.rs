@@ -68,7 +68,7 @@ where
 
 // FIXME: take_whiles should return &[u8]
 #[inline]
-pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<Cow<str>>
+pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<&str>
 where
     F: FnMut(u8) -> bool,
 {
@@ -77,16 +77,16 @@ where
             if !condition(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    from_slice(input.get_unchecked(..i)),
+                    std::str::from_utf8_unchecked(input.get_unchecked(..i)),
                 ));
             }
         }
     }
-    Ok((&[], from_slice(input)))
+    Ok((&[], unsafe { std::str::from_utf8_unchecked(input) }))
 }
 
 #[inline]
-pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<Cow<str>>
+pub fn take_while1<F>(input: &[u8], mut condition: F) -> Res<&str>
 where
     F: FnMut(u8) -> bool,
 {
@@ -105,12 +105,12 @@ where
             if !condition(*input.get_unchecked(i)) {
                 return Ok((
                     input.get_unchecked(i..),
-                    from_slice(input.get_unchecked(..i)),
+                    std::str::from_utf8_unchecked(input.get_unchecked(..i)),
                 ));
             }
         }
     }
-    Ok((&[], from_slice(input)))
+    Ok((&[], unsafe { std::str::from_utf8_unchecked(input) }))
 }
 
 #[inline]
