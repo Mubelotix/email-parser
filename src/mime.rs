@@ -17,7 +17,7 @@ pub struct RawEntity<'a> {
     /// The raw value of this entity.
     /// It has already been decoded.
     pub value: Cow<'a, [u8]>,
-    pub additional_headers: Vec<(&'a str, Cow<'a, str>)>,
+    pub additional_headers: Vec<(Cow<'a, str>, Cow<'a, str>)>,
 }
 
 impl<'a> RawEntity<'a> {
@@ -62,6 +62,22 @@ pub enum MimeType<'a> {
     Other(Cow<'a, str>), // FIXME: rename to unknown
 }
 
+impl<'a> MimeType<'a> {
+    pub fn into_owned(self) -> MimeType<'static> {
+        match self {
+            MimeType::Other(Cow::Owned(value)) => MimeType::Other(Cow::Owned(value)),
+            MimeType::Other(Cow::Borrowed(value)) => MimeType::Other(Cow::Owned(value.to_owned())),
+            MimeType::Text => MimeType::Text,
+            MimeType::Image => MimeType::Image,
+            MimeType::Audio => MimeType::Audio,
+            MimeType::Video => MimeType::Video,
+            MimeType::Application => MimeType::Application,
+            MimeType::Message => MimeType::Message,
+            MimeType::Multipart => MimeType::Multipart,
+        }
+    }
+}
+
 /// Information about how a [RawEntity] must be displayed.\
 /// Is accessible from [Disposition::disposition_type].
 #[derive(Debug, PartialEq, Clone)]
@@ -77,6 +93,21 @@ pub enum DispositionType<'a> {
     Unknown(Cow<'a, str>),
 }
 
+impl<'a> DispositionType<'a> {
+    pub fn into_owned(self) -> DispositionType<'static> {
+        match self {
+            DispositionType::Unknown(Cow::Owned(value)) => {
+                DispositionType::Unknown(Cow::Owned(value))
+            }
+            DispositionType::Unknown(Cow::Borrowed(value)) => {
+                DispositionType::Unknown(Cow::Owned(value.to_owned()))
+            }
+            DispositionType::Inline => DispositionType::Inline,
+            DispositionType::Attachment => DispositionType::Attachment,
+        }
+    }
+}
+
 /// Some information about how to display a [RawEntity] and some file metadata.\
 /// Is accessible from [RawEntity::disposition].\
 /// The size parameter is not directly supported as it is the "approximate size". You can get the exact size in bytes by calling `.len()` on the value of an [RawEntity::value].
@@ -88,6 +119,25 @@ pub struct Disposition<'a> {
     pub modification_date: Option<DateTime>,
     pub read_date: Option<DateTime>,
     pub unstructured: HashMap<Cow<'a, str>, Cow<'a, str>>,
+}
+
+impl<'a> Disposition<'a> {
+    pub fn into_owned(self) -> Disposition<'static> {
+        Disposition {
+            disposition_type: self.disposition_type.into_owned(),
+            filename: self
+                .filename
+                .map(|filename| Cow::Owned(filename.into_owned())),
+            creation_date: self.creation_date,
+            modification_date: self.modification_date,
+            read_date: self.read_date,
+            unstructured: self
+                .unstructured
+                .into_iter()
+                .map(|(n, v)| (Cow::Owned(n.into_owned()), Cow::Owned(v.into_owned())))
+                .collect(),
+        }
+    }
 }
 
 impl<'a> MimeType<'a> {
@@ -113,4 +163,22 @@ pub enum ContentTransferEncoding<'a> {
     QuotedPrintable,
     Base64,
     Other(Cow<'a, str>),
+}
+
+impl<'a> ContentTransferEncoding<'a> {
+    pub fn into_owned(self) -> ContentTransferEncoding<'static> {
+        match self {
+            ContentTransferEncoding::Other(Cow::Owned(value)) => {
+                ContentTransferEncoding::Other(Cow::Owned(value))
+            }
+            ContentTransferEncoding::Other(Cow::Borrowed(value)) => {
+                ContentTransferEncoding::Other(Cow::Owned(value.to_owned()))
+            }
+            ContentTransferEncoding::SevenBit => ContentTransferEncoding::SevenBit,
+            ContentTransferEncoding::HeightBit => ContentTransferEncoding::HeightBit,
+            ContentTransferEncoding::Binary => ContentTransferEncoding::Binary,
+            ContentTransferEncoding::QuotedPrintable => ContentTransferEncoding::QuotedPrintable,
+            ContentTransferEncoding::Base64 => ContentTransferEncoding::Base64,
+        }
+    }
 }

@@ -5,9 +5,7 @@ use std::collections::HashMap;
 use super::multipart;
 
 pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
-    #[allow(unused_variables)]
     let (
-        len,
         encoding,
         mime_type,
         subtype,
@@ -16,14 +14,16 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
         id,
         description,
         disposition,
-    ) = header_part(unsafe {
-        // FIXME: remove this unsafe
-        &*(input.as_ref() as *const [u8])
-    })?;
-    match input {
-        Cow::Borrowed(ref mut input) => *input = &input[input.len() - len..],
+    ) = match input {
+        Cow::Borrowed(ref mut input) => {
+            let (len, r) = header_part(input)?;
+            *input = &input[input.len() - len..];
+            r
+        }
         Cow::Owned(ref mut input) => {
+            let (len, r) = header_part_owned(input)?;
             input.drain(..input.len() - len);
+            r
         }
     };
     let value = decode_value(input, encoding)?;
@@ -107,19 +107,60 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
     Ok(Entity::Unknown(Box::new(raw_entity)))
 }
 
+pub fn header_part_owned(
+    input: &[u8],
+) -> Result<
+    (
+        usize,
+        (
+            ContentTransferEncoding<'static>,
+            MimeType<'static>,
+            Cow<'static, str>,
+            HashMap<Cow<'static, str>, Cow<'static, str>>,
+            Vec<(Cow<'static, str>, Cow<'static, str>)>,
+            Option<(Cow<'static, str>, Cow<'static, str>)>,
+            Option<Cow<'static, str>>,
+            Option<Disposition<'static>>,
+        ),
+    ),
+    Error,
+> {
+    let (r, (ct, mt, st, p, ah, id, desc, disp)) = header_part(&input)?;
+
+    Ok((
+        r,
+        (
+            ct.into_owned(),
+            mt.into_owned(),
+            Cow::Owned(st.into_owned()),
+            p.into_iter()
+                .map(|(n, v)| (Cow::Owned(n.into_owned()), Cow::Owned(v.into_owned())))
+                .collect(),
+            ah.into_iter()
+                .map(|(n, v)| (Cow::Owned(n.into_owned()), Cow::Owned(v.into_owned())))
+                .collect(),
+            id.map(|(f, l)| (Cow::Owned(f.into_owned()), Cow::Owned(l.into_owned()))),
+            desc.map(|desc| (Cow::Owned(desc.into_owned()))),
+            disp.map(|disp| disp.into_owned()),
+        ),
+    ))
+}
+
 pub fn header_part(
     mut input: &[u8],
 ) -> Result<
     (
         usize,
-        ContentTransferEncoding,
-        MimeType,
-        Cow<str>,
-        HashMap<Cow<str>, Cow<str>>,
-        Vec<(&str, Cow<str>)>,
-        Option<(Cow<str>, Cow<str>)>,
-        Option<Cow<str>>,
-        Option<Disposition>,
+        (
+            ContentTransferEncoding,
+            MimeType,
+            Cow<str>,
+            HashMap<Cow<str>, Cow<str>>,
+            Vec<(Cow<str>, Cow<str>)>,
+            Option<(Cow<str>, Cow<str>)>,
+            Option<Cow<str>>,
+            Option<Disposition>,
+        ),
     ),
     Error,
 > {
@@ -131,31 +172,30 @@ pub fn header_part(
     let mut additional_headers = Vec::new();
 
     loop {
-        // FIXME: Should we trigger errors on duplicated fields?
         if let Ok((new_input, content_transfer_encoding)) = content_transfer_encoding(input) {
             input = new_input;
-            encoding = Some(content_transfer_encoding.to_owned());
+            encoding = Some(content_transfer_encoding);
         } else if let Ok((new_input, content_type)) = content_type(input) {
             input = new_input;
-            mime_type = Some(content_type.to_owned());
+            mime_type = Some(content_type);
         } else if let Ok((new_input, cid)) = content_id(input) {
             input = new_input;
-            id = Some(cid.to_owned());
+            id = Some(cid);
         } else if let Ok((new_input, cdescription)) = content_description(input) {
             input = new_input;
-            description = Some(cdescription.to_owned());
+            description = Some(cdescription);
         } else {
             if cfg!(feature = "content-disposition") {
                 if let Ok((new_input, cdisposition)) = content_disposition(input) {
                     input = new_input;
-                    disposition = Some(cdisposition.to_owned());
+                    disposition = Some(cdisposition);
                     continue;
                 }
             }
 
-            if let Ok((new_input, header)) = unknown(input) {
+            if let Ok((new_input, (name, value))) = unknown(input) {
                 input = new_input;
-                additional_headers.push(header.to_owned());
+                additional_headers.push((Cow::Borrowed(name), value));
                 continue;
             }
 
@@ -175,6 +215,24 @@ pub fn header_part(
     if input.is_empty() {
         return Ok((
             input.len(),
+            (
+                encoding,
+                mime_type,
+                subtype,
+                parameters,
+                additional_headers,
+                id,
+                description,
+                disposition,
+            ),
+        ));
+    }
+
+    let (input, _) = tag(&input, b"\r\n")?;
+
+    Ok((
+        input.len(),
+        (
             encoding,
             mime_type,
             subtype,
@@ -183,21 +241,7 @@ pub fn header_part(
             id,
             description,
             disposition,
-        ));
-    }
-
-    let (input, _) = tag(&input, b"\r\n")?;
-
-    Ok((
-        input.len(),
-        encoding,
-        mime_type,
-        subtype,
-        parameters,
-        additional_headers,
-        id,
-        description,
-        disposition,
+        ),
     ))
 }
 
@@ -271,7 +315,7 @@ mod tests {
                 value: Cow::Borrowed(&[60, 112, 62, 84, 101, 120, 116, 60, 47, 112, 62]),
                 #[cfg(feature = "content-disposition")]
                 disposition: None,
-                additional_headers: vec![("Unknown", " Test".into())]
+                additional_headers: vec![("Unknown".into(), " Test".into())]
             },
             raw_entity(Cow::Owned(
                 b"Content-type: text/html; charset=utf-8\r\nUnknown: Test\r\n\r\n<p>Text</p>"
