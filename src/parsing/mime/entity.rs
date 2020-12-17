@@ -41,7 +41,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
     })
 }
 
-pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
+pub fn entity(mut raw_entity: RawEntity) -> Result<Entity, Error> {
     if raw_entity.mime_type == ContentType::Multipart {
         match raw_entity.value {
             Cow::Borrowed(value) => {
@@ -62,47 +62,51 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
     if raw_entity.mime_type == ContentType::Text {
         use textcode::*;
 
-        let charset = raw_entity
-            .parameters
-            .get("charset")
-            .unwrap_or(&Cow::Borrowed("us-ascii"))
-            .to_lowercase();
+        if raw_entity.subtype == "plain" && raw_entity.parameters.get("charset").is_none() {
+            raw_entity
+                .parameters
+                .insert("charset".into(), "us-ascii".into());
+        }
 
-        let value: Cow<str> = match charset.as_str() {
-            "utf-8" | "us-ascii" => match raw_entity.value {
-                Cow::Borrowed(value) => Cow::Borrowed(
-                    std::str::from_utf8(value)
-                        .map_err(|_| Error::Unknown("Invalid text encoding"))?,
-                ),
-                Cow::Owned(value) => Cow::Owned(
-                    String::from_utf8(value)
-                        .map_err(|_| Error::Unknown("Invalid text encoding"))?,
-                ),
-            },
-            "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&raw_entity.value)),
-            "iso-8859-2" => Cow::Owned(iso8859_2::decode_to_string(&raw_entity.value)),
-            "iso-8859-3" => Cow::Owned(iso8859_3::decode_to_string(&raw_entity.value)),
-            "iso-8859-4" => Cow::Owned(iso8859_4::decode_to_string(&raw_entity.value)),
-            "iso-8859-5" => Cow::Owned(iso8859_5::decode_to_string(&raw_entity.value)),
-            "iso-8859-6" => Cow::Owned(iso8859_6::decode_to_string(&raw_entity.value)),
-            "iso-8859-7" => Cow::Owned(iso8859_7::decode_to_string(&raw_entity.value)),
-            "iso-8859-8" => Cow::Owned(iso8859_8::decode_to_string(&raw_entity.value)),
-            "iso-8859-9" => Cow::Owned(iso8859_9::decode_to_string(&raw_entity.value)),
-            "iso-8859-10" => Cow::Owned(iso8859_10::decode_to_string(&raw_entity.value)),
-            "iso-8859-11" => Cow::Owned(iso8859_11::decode_to_string(&raw_entity.value)),
-            "iso-8859-13" => Cow::Owned(iso8859_13::decode_to_string(&raw_entity.value)),
-            "iso-8859-14" => Cow::Owned(iso8859_14::decode_to_string(&raw_entity.value)),
-            "iso-8859-15" => Cow::Owned(iso8859_15::decode_to_string(&raw_entity.value)),
-            "iso-8859-16" => Cow::Owned(iso8859_16::decode_to_string(&raw_entity.value)),
-            "iso-6937" => Cow::Owned(iso6937::decode_to_string(&raw_entity.value)),
-            "gb2312" => Cow::Owned(gb2312::decode_to_string(&raw_entity.value)),
-            _ => return Ok(Entity::Unknown(Box::new(raw_entity))),
-        };
+        if let Some(charset) = raw_entity.parameters.get("charset") {
+            let charset = charset.to_lowercase();
 
-        return Ok(Entity::Text {
-            subtype: raw_entity.subtype,
-            value,
-        });
+            let value: Cow<str> = match charset.as_str() {
+                "utf-8" | "us-ascii" => match raw_entity.value {
+                    Cow::Borrowed(value) => Cow::Borrowed(
+                        std::str::from_utf8(value)
+                            .map_err(|_| Error::Unknown("Invalid text encoding"))?,
+                    ),
+                    Cow::Owned(value) => Cow::Owned(
+                        String::from_utf8(value)
+                            .map_err(|_| Error::Unknown("Invalid text encoding"))?,
+                    ),
+                },
+                "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&raw_entity.value)),
+                "iso-8859-2" => Cow::Owned(iso8859_2::decode_to_string(&raw_entity.value)),
+                "iso-8859-3" => Cow::Owned(iso8859_3::decode_to_string(&raw_entity.value)),
+                "iso-8859-4" => Cow::Owned(iso8859_4::decode_to_string(&raw_entity.value)),
+                "iso-8859-5" => Cow::Owned(iso8859_5::decode_to_string(&raw_entity.value)),
+                "iso-8859-6" => Cow::Owned(iso8859_6::decode_to_string(&raw_entity.value)),
+                "iso-8859-7" => Cow::Owned(iso8859_7::decode_to_string(&raw_entity.value)),
+                "iso-8859-8" => Cow::Owned(iso8859_8::decode_to_string(&raw_entity.value)),
+                "iso-8859-9" => Cow::Owned(iso8859_9::decode_to_string(&raw_entity.value)),
+                "iso-8859-10" => Cow::Owned(iso8859_10::decode_to_string(&raw_entity.value)),
+                "iso-8859-11" => Cow::Owned(iso8859_11::decode_to_string(&raw_entity.value)),
+                "iso-8859-13" => Cow::Owned(iso8859_13::decode_to_string(&raw_entity.value)),
+                "iso-8859-14" => Cow::Owned(iso8859_14::decode_to_string(&raw_entity.value)),
+                "iso-8859-15" => Cow::Owned(iso8859_15::decode_to_string(&raw_entity.value)),
+                "iso-8859-16" => Cow::Owned(iso8859_16::decode_to_string(&raw_entity.value)),
+                "iso-6937" => Cow::Owned(iso6937::decode_to_string(&raw_entity.value)),
+                "gb2312" => Cow::Owned(gb2312::decode_to_string(&raw_entity.value)),
+                _ => return Ok(Entity::Unknown(Box::new(raw_entity))),
+            };
+
+            return Ok(Entity::Text {
+                subtype: raw_entity.subtype,
+                value,
+            });
+        }
     }
 
     Ok(Entity::Unknown(Box::new(raw_entity)))
