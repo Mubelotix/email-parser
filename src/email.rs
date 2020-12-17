@@ -148,7 +148,7 @@ impl<'a> Email<'a> {
                     if from.is_none() {
                         from = Some(mailboxes)
                     } else {
-                        return Err(Error::Known("Multiple from fields"));
+                        return Err(Error::DuplicateHeader ("From"));
                     }
                 }
                 #[cfg(feature = "sender")]
@@ -156,7 +156,7 @@ impl<'a> Email<'a> {
                     if sender.is_none() {
                         sender = Some(mailbox)
                     } else {
-                        return Err(Error::Known("Multiple sender fields"));
+                        return Err(Error::DuplicateHeader ("Sender"));
                     }
                 }
                 #[cfg(feature = "subject")]
@@ -164,7 +164,7 @@ impl<'a> Email<'a> {
                     if subject.is_none() {
                         subject = Some(data)
                     } else {
-                        return Err(Error::Known("Multiple subject fields"));
+                        return Err(Error::DuplicateHeader ("Subject"));
                     }
                 }
                 #[cfg(feature = "date")]
@@ -172,7 +172,7 @@ impl<'a> Email<'a> {
                     if date.is_none() {
                         date = Some(data)
                     } else {
-                        return Err(Error::Known("Multiple date fields"));
+                        return Err(Error::DuplicateHeader ("Date"));
                     }
                 }
                 #[cfg(feature = "to")]
@@ -180,7 +180,7 @@ impl<'a> Email<'a> {
                     if to.is_none() {
                         to = Some(addresses)
                     } else {
-                        return Err(Error::Known("Multiple to fields"));
+                        return Err(Error::DuplicateHeader ("To"));
                     }
                 }
                 #[cfg(feature = "cc")]
@@ -188,7 +188,7 @@ impl<'a> Email<'a> {
                     if cc.is_none() {
                         cc = Some(addresses)
                     } else {
-                        return Err(Error::Known("Multiple cc fields"));
+                        return Err(Error::DuplicateHeader ("Cc"));
                     }
                 }
                 #[cfg(feature = "bcc")]
@@ -196,7 +196,7 @@ impl<'a> Email<'a> {
                     if bcc.is_none() {
                         bcc = Some(addresses)
                     } else {
-                        return Err(Error::Known("Multiple bcc fields"));
+                        return Err(Error::DuplicateHeader ("Bcc"));
                     }
                 }
                 #[cfg(feature = "message-id")]
@@ -204,7 +204,7 @@ impl<'a> Email<'a> {
                     if message_id.is_none() {
                         message_id = Some(id)
                     } else {
-                        return Err(Error::Known("Multiple message-id fields"));
+                        return Err(Error::DuplicateHeader ("Message-ID"));
                     }
                 }
                 #[cfg(feature = "in-reply-to")]
@@ -212,7 +212,7 @@ impl<'a> Email<'a> {
                     if in_reply_to.is_none() {
                         in_reply_to = Some(ids)
                     } else {
-                        return Err(Error::Known("Multiple in-reply-to fields"));
+                        return Err(Error::DuplicateHeader ("In-Reply-To"));
                     }
                 }
                 #[cfg(feature = "references")]
@@ -220,7 +220,7 @@ impl<'a> Email<'a> {
                     if references.is_none() {
                         references = Some(ids)
                     } else {
-                        return Err(Error::Known("Multiple references fields"));
+                        return Err(Error::DuplicateHeader ("References"));
                     }
                 }
                 #[cfg(feature = "reply-to")]
@@ -228,7 +228,7 @@ impl<'a> Email<'a> {
                     if reply_to.is_none() {
                         reply_to = Some(mailboxes)
                     } else {
-                        return Err(Error::Known("Multiple reply-to fields"));
+                        return Err(Error::DuplicateHeader ("Reply-To"));
                     }
                 }
                 #[cfg(feature = "comments")]
@@ -250,7 +250,7 @@ impl<'a> Email<'a> {
                     if mime_version.is_none() {
                         mime_version = Some((major, minor))
                     } else {
-                        return Err(Error::Known("Multiple mime_version fields"));
+                        return Err(Error::DuplicateHeader ("Mime-Version"));
                     }
                 }
                 #[cfg(feature = "mime")]
@@ -262,7 +262,7 @@ impl<'a> Email<'a> {
                     if content_type.is_none() {
                         content_type = Some((mime_type, subtype, parameters))
                     } else {
-                        return Err(Error::Known("Multiple content_type fields"));
+                        return Err(Error::DuplicateHeader ("Content-Type"));
                     }
                 }
                 #[cfg(feature = "mime")]
@@ -270,7 +270,7 @@ impl<'a> Email<'a> {
                     if content_transfer_encoding.is_none() {
                         content_transfer_encoding = Some(encoding)
                     } else {
-                        return Err(Error::Known("Multiple content_transfer_encoding fields"));
+                        return Err(Error::DuplicateHeader ("Content-Transfer-Encoding"));
                     }
                 }
                 #[cfg(feature = "mime")]
@@ -278,7 +278,7 @@ impl<'a> Email<'a> {
                     if content_id.is_none() {
                         content_id = Some(id)
                     } else {
-                        return Err(Error::Known("Multiple content_id fields"));
+                        return Err(Error::DuplicateHeader ("Content-Id"));
                     }
                 }
                 #[cfg(feature = "mime")]
@@ -286,7 +286,7 @@ impl<'a> Email<'a> {
                     if content_description.is_none() {
                         content_description = Some(description)
                     } else {
-                        return Err(Error::Known("Multiple content_description fields"));
+                        return Err(Error::DuplicateHeader ("Content-Description"));
                     }
                 }
                 #[cfg(feature = "content-disposition")]
@@ -294,7 +294,7 @@ impl<'a> Email<'a> {
                     if content_disposition.is_none() {
                         content_disposition = Some(disposition)
                     } else {
-                        return Err(Error::Known("Multiple content_disposition fields"));
+                        return Err(Error::DuplicateHeader ("Content-Disposition"));
                     }
                 }
                 Field::Unknown { name, value } => {
@@ -304,9 +304,9 @@ impl<'a> Email<'a> {
         }
 
         #[cfg(feature = "from")]
-        let from = from.ok_or(Error::Known("Expected at least one from field"))?;
+        let from = from.ok_or(Error::MissingHeader ("From"))?;
         #[cfg(feature = "date")]
-        let date = date.ok_or(Error::Known("Expected at least one date field"))?;
+        let date = date.ok_or(Error::MissingHeader ("Date"))?;
 
         #[cfg(feature = "sender")]
         let sender = match sender {
@@ -315,7 +315,7 @@ impl<'a> Email<'a> {
                 if from.len() == 1 {
                     from[0].clone()
                 } else {
-                    return Err(Error::Known("Sender field required but missing"));
+                    return Err(Error::MissingHeader ("Sender"));
                 }
             }
         };

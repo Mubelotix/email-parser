@@ -222,7 +222,7 @@ pub fn bcc(input: &[u8]) -> Res<Vec<Address>> {
     } else if let Ok((input, _cfws)) = cfws(input) {
         (input, Vec::new())
     } else {
-        return Err(Error::Known("Invalid bcc field"));
+        return Err(Error::Unknown ("Invalid bcc field"));
     };
     let (input, ()) = tag(input, b"\r\n")?;
 
@@ -390,7 +390,7 @@ pub fn received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
         } else if let Ok((input, domain)) = domain(input) {
             Ok((input, ReceivedToken::Domain(domain)))
         } else {
-            Err(Error::Known("match error"))
+            Err(Error::Unknown ("match error"))
         }
     })?;
     let (input, ()) = tag(input, b";")?;

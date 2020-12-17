@@ -104,7 +104,7 @@ pub fn decode_base64(mut data: Vec<u8>) -> Result<Vec<u8>, Error> {
                         offset += 1;
                     }
                 }
-                None => return Err(Error::Known("Missing at least 3 bytes")),
+                None => return Err(Error::Unknown ("Missing at least 3 bytes")),
             }
         };
 
@@ -119,7 +119,7 @@ pub fn decode_base64(mut data: Vec<u8>) -> Result<Vec<u8>, Error> {
                         offset += 1;
                     }
                 }
-                None => return Err(Error::Known("Missing at least 2 bytes")),
+                None => return Err(Error::Unknown ("Missing at least 2 bytes")),
             }
         };
 
@@ -127,7 +127,7 @@ pub fn decode_base64(mut data: Vec<u8>) -> Result<Vec<u8>, Error> {
             match data.get(i + 3) {
                 Some(b) if *b == b'=' => break 'inner4 None,
                 Some(b) if b3.is_none() && get_value_encoded(*b).is_some() => {
-                    return Err(Error::Known("Data after end of data"))
+                    return Err(Error::Unknown ("Data after end of data"))
                 }
                 Some(b) => {
                     if let Some(b) = get_value_encoded(*b) {
@@ -137,7 +137,7 @@ pub fn decode_base64(mut data: Vec<u8>) -> Result<Vec<u8>, Error> {
                         offset += 1;
                     }
                 }
-                None => return Err(Error::Known("Missing at least 1 byte")),
+                None => return Err(Error::Unknown ("Missing at least 1 byte")),
             }
         };
 

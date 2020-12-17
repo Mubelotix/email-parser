@@ -39,7 +39,7 @@ pub fn digit(input: &[u8]) -> Result<(&[u8], u8), Error> {
         Some(b'7') => Ok((&input[1..], 7)),
         Some(b'8') => Ok((&input[1..], 8)),
         Some(b'9') => Ok((&input[1..], 9)),
-        _ => Err(Error::Known("Invalid digit")),
+        _ => Err(Error::Unknown ("Invalid digit")),
     }
 }
 
