@@ -48,7 +48,7 @@ pub enum Field<'a> {
     MimeVersion(u8, u8),
     #[cfg(feature = "mime")]
     ContentType {
-        mime_type: MimeType<'a>,
+        mime_type: ContentType<'a>,
         subtype: Cow<'a, str>,
         parameters: HashMap<Cow<'a, str>, Cow<'a, str>>,
     },

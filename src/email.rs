@@ -323,7 +323,7 @@ impl<'a> Email<'a> {
         #[cfg(feature = "mime")]
         let (content_type, body) = (
             content_type.unwrap_or((
-                MimeType::Text,
+                ContentType::Text,
                 Cow::Borrowed("plain"),
                 vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
                     .into_iter()

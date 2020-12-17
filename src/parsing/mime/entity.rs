@@ -42,7 +42,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
 }
 
 pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
-    if raw_entity.mime_type == MimeType::Multipart {
+    if raw_entity.mime_type == ContentType::Multipart {
         match raw_entity.value {
             Cow::Borrowed(value) => {
                 return Ok(Entity::Multipart {
@@ -59,7 +59,7 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
         }
     }
 
-    if raw_entity.mime_type == MimeType::Text {
+    if raw_entity.mime_type == ContentType::Text {
         use textcode::*;
 
         let charset = raw_entity
@@ -115,7 +115,7 @@ pub fn header_part_owned(
         usize,
         (
             ContentTransferEncoding<'static>,
-            MimeType<'static>,
+            ContentType<'static>,
             Cow<'static, str>,
             HashMap<Cow<'static, str>, Cow<'static, str>>,
             Vec<(Cow<'static, str>, Cow<'static, str>)>,
@@ -154,7 +154,7 @@ pub fn header_part(
         usize,
         (
             ContentTransferEncoding,
-            MimeType,
+            ContentType,
             Cow<str>,
             HashMap<Cow<str>, Cow<str>>,
             Vec<(Cow<str>, Cow<str>)>,
@@ -206,7 +206,7 @@ pub fn header_part(
 
     let encoding = encoding.unwrap_or(ContentTransferEncoding::SevenBit);
     let (mime_type, subtype, parameters) = mime_type.unwrap_or((
-        MimeType::Text,
+        ContentType::Text,
         Cow::Borrowed("plain"),
         vec![(Cow::Borrowed("charset"), Cow::Borrowed("us-ascii"))]
             .into_iter()
@@ -274,7 +274,7 @@ mod tests {
     fn raw_entity_test() {
         assert_eq!(
             RawEntity {
-                mime_type: MimeType::Text,
+                mime_type: ContentType::Text,
                 subtype: "plain".into(),
                 description: None,
                 id: None,
@@ -290,7 +290,7 @@ mod tests {
         );
         assert_eq!(
             RawEntity {
-                mime_type: MimeType::Text,
+                mime_type: ContentType::Text,
                 subtype: "plain".into(),
                 description: None,
                 id: None,
@@ -306,7 +306,7 @@ mod tests {
         );
         assert_eq!(
             RawEntity {
-                mime_type: MimeType::Text,
+                mime_type: ContentType::Text,
                 subtype: "html".into(),
                 description: None,
                 id: None,

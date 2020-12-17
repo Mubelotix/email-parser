@@ -5,7 +5,7 @@ use std::collections::HashMap;
 /// A generic MIME Entity.
 #[derive(Debug, PartialEq, Clone)]
 pub struct RawEntity<'a> {
-    pub mime_type: MimeType<'a>,
+    pub mime_type: ContentType<'a>,
     /// The subtype (in lowercase).
     pub subtype: Cow<'a, str>,
     pub description: Option<Cow<'a, str>>,
@@ -50,8 +50,7 @@ pub enum Entity<'a> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum MimeType<'a> {
-    // Fixme: rename to ContentType
+pub enum ContentType<'a> {
     Text,
     Image,
     Audio,
@@ -62,22 +61,22 @@ pub enum MimeType<'a> {
     Unknown(Cow<'a, str>),
 }
 
-impl<'a> MimeType<'a> {
+impl<'a> ContentType<'a> {
     /// Extends the lifetime from `'a` to `'static` by guaranteeing that we have ownership after calling this function.
     /// It will call `to_owned` on references.\
     /// Since there are rarely references, this is almost always free.
-    pub fn into_owned(self) -> MimeType<'static> {
+    pub fn into_owned(self) -> ContentType<'static> {
         match self {
-            MimeType::Text => MimeType::Text,
-            MimeType::Image => MimeType::Image,
-            MimeType::Audio => MimeType::Audio,
-            MimeType::Video => MimeType::Video,
-            MimeType::Application => MimeType::Application,
-            MimeType::Message => MimeType::Message,
-            MimeType::Multipart => MimeType::Multipart,
-            MimeType::Unknown(Cow::Owned(value)) => MimeType::Unknown(Cow::Owned(value)),
-            MimeType::Unknown(Cow::Borrowed(value)) => {
-                MimeType::Unknown(Cow::Owned(value.to_owned()))
+            ContentType::Text => ContentType::Text,
+            ContentType::Image => ContentType::Image,
+            ContentType::Audio => ContentType::Audio,
+            ContentType::Video => ContentType::Video,
+            ContentType::Application => ContentType::Application,
+            ContentType::Message => ContentType::Message,
+            ContentType::Multipart => ContentType::Multipart,
+            ContentType::Unknown(Cow::Owned(value)) => ContentType::Unknown(Cow::Owned(value)),
+            ContentType::Unknown(Cow::Borrowed(value)) => {
+                ContentType::Unknown(Cow::Owned(value.to_owned()))
             }
         }
     }
@@ -150,17 +149,17 @@ impl<'a> Disposition<'a> {
     }
 }
 
-impl<'a> MimeType<'a> {
+impl<'a> ContentType<'a> {
     pub fn is_composite_type(&self) -> bool {
         match self {
-            MimeType::Message => true,
-            MimeType::Multipart => true,
-            MimeType::Text => false,
-            MimeType::Image => false,
-            MimeType::Audio => false,
-            MimeType::Video => false,
-            MimeType::Application => false,
-            MimeType::Unknown(_) => false,
+            ContentType::Message => true,
+            ContentType::Multipart => true,
+            ContentType::Text => false,
+            ContentType::Image => false,
+            ContentType::Audio => false,
+            ContentType::Video => false,
+            ContentType::Application => false,
+            ContentType::Unknown(_) => false,
         }
     }
 }

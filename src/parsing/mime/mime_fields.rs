@@ -117,34 +117,34 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
     Ok((input, (name, index, encoded, value)))
 }
 
-pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, Cow<str>>)> {
+pub fn content_type(input: &[u8]) -> Res<(ContentType, Cow<str>, HashMap<Cow<str>, Cow<str>>)> {
     let (input, ()) = tag_no_case(input, b"Content-Type:", b"cONTENT-tYPE:")?;
     let (input, _) = optional(input, cfws);
 
     let (input, mime_type) = match_parsers(
         input,
         &mut [
-            |input| tag_no_case(input, b"text", b"TEXT").map(|(i, ())| (i, MimeType::Text)),
+            |input| tag_no_case(input, b"text", b"TEXT").map(|(i, ())| (i, ContentType::Text)),
             |input| {
                 tag_no_case(input, b"multipart", b"MULTIPART")
-                    .map(|(i, ())| (i, MimeType::Multipart))
+                    .map(|(i, ())| (i, ContentType::Multipart))
             },
             |input| {
                 tag_no_case(input, b"application", b"APPLICATION")
-                    .map(|(i, ())| (i, MimeType::Application))
+                    .map(|(i, ())| (i, ContentType::Application))
             },
-            |input| tag_no_case(input, b"image", b"IMAGE").map(|(i, ())| (i, MimeType::Image)),
-            |input| tag_no_case(input, b"video", b"VIDEO").map(|(i, ())| (i, MimeType::Video)),
-            |input| tag_no_case(input, b"audio", b"AUDIO").map(|(i, ())| (i, MimeType::Audio)),
+            |input| tag_no_case(input, b"image", b"IMAGE").map(|(i, ())| (i, ContentType::Image)),
+            |input| tag_no_case(input, b"video", b"VIDEO").map(|(i, ())| (i, ContentType::Video)),
+            |input| tag_no_case(input, b"audio", b"AUDIO").map(|(i, ())| (i, ContentType::Audio)),
             |input| {
-                tag_no_case(input, b"message", b"MESSAGE").map(|(i, ())| (i, MimeType::Message))
+                tag_no_case(input, b"message", b"MESSAGE").map(|(i, ())| (i, ContentType::Message))
             },
             |input| {
                 // TODO ietf token
                 let (input, name) = token(input)?;
                 let name = lowercase(Cow::Borrowed(name));
 
-                Ok((input, MimeType::Unknown(name)))
+                Ok((input, ContentType::Unknown(name)))
             },
         ][..],
     )?;
@@ -425,13 +425,13 @@ mod test {
     fn test_content_type() {
         assert_eq!(
             content_type(b"Content-type: tExt/plain\r\n").unwrap().1 .0,
-            MimeType::Text
+            ContentType::Text
         );
         assert_eq!(
-            (MimeType::Message, "external-body".into(), vec![("access-type".into(), "URL".into()), ("url".into(), "ftp://cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar".into())].into_iter().collect()), content_type(b"Content-Type: message/external-body; access-type=URL;\r\n URL*0=\"ftp://\";\r\n URL*1=\"cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar\"\r\n").unwrap().1,
+            (ContentType::Message, "external-body".into(), vec![("access-type".into(), "URL".into()), ("url".into(), "ftp://cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar".into())].into_iter().collect()), content_type(b"Content-Type: message/external-body; access-type=URL;\r\n URL*0=\"ftp://\";\r\n URL*1=\"cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar\"\r\n").unwrap().1,
         );
         assert_eq!(
-            (MimeType::Application, "x-stuff".into(), vec![("title".into(), "This is even more ***fun*** isn\'t it!".into())].into_iter().collect()), content_type(b"Content-Type: application/x-stuff;\r\n title*0*=us-ascii'en'This%20is%20even%20more%20;\r\n title*1*=%2A%2A%2Afun%2A%2A%2A%20;\r\n title*2=\"isn't it!\"\r\n").unwrap().1,
+            (ContentType::Application, "x-stuff".into(), vec![("title".into(), "This is even more ***fun*** isn\'t it!".into())].into_iter().collect()), content_type(b"Content-Type: application/x-stuff;\r\n title*0*=us-ascii'en'This%20is%20even%20more%20;\r\n title*1*=%2A%2A%2Afun%2A%2A%2A%20;\r\n title*2=\"isn't it!\"\r\n").unwrap().1,
         );
         assert_eq!(
             content_type(b"Content-type: text/plain\r\n").unwrap().1 .1,
@@ -442,7 +442,7 @@ mod test {
                 .unwrap()
                 .1
                  .0,
-            MimeType::Multipart
+            ContentType::Multipart
         );
         assert_eq!(
             content_type(b"Content-Type: text/plain; chaRSet=\"iso-8859-1\"\r\n")
