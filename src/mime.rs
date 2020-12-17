@@ -59,7 +59,7 @@ pub enum MimeType<'a> {
     Application,
     Message,
     Multipart,
-    Other(Cow<'a, str>), // FIXME: rename to unknown
+    Unknown(Cow<'a, str>),
 }
 
 impl<'a> MimeType<'a> {
@@ -75,8 +75,10 @@ impl<'a> MimeType<'a> {
             MimeType::Application => MimeType::Application,
             MimeType::Message => MimeType::Message,
             MimeType::Multipart => MimeType::Multipart,
-            MimeType::Other(Cow::Owned(value)) => MimeType::Other(Cow::Owned(value)),
-            MimeType::Other(Cow::Borrowed(value)) => MimeType::Other(Cow::Owned(value.to_owned())),
+            MimeType::Unknown(Cow::Owned(value)) => MimeType::Unknown(Cow::Owned(value)),
+            MimeType::Unknown(Cow::Borrowed(value)) => {
+                MimeType::Unknown(Cow::Owned(value.to_owned()))
+            }
         }
     }
 }
@@ -158,7 +160,7 @@ impl<'a> MimeType<'a> {
             MimeType::Audio => false,
             MimeType::Video => false,
             MimeType::Application => false,
-            MimeType::Other(_) => false,
+            MimeType::Unknown(_) => false,
         }
     }
 }
@@ -170,7 +172,7 @@ pub enum ContentTransferEncoding<'a> {
     Binary,
     QuotedPrintable,
     Base64,
-    Other(Cow<'a, str>),
+    Unknown(Cow<'a, str>),
 }
 
 impl<'a> ContentTransferEncoding<'a> {
@@ -184,11 +186,11 @@ impl<'a> ContentTransferEncoding<'a> {
             ContentTransferEncoding::Binary => ContentTransferEncoding::Binary,
             ContentTransferEncoding::QuotedPrintable => ContentTransferEncoding::QuotedPrintable,
             ContentTransferEncoding::Base64 => ContentTransferEncoding::Base64,
-            ContentTransferEncoding::Other(Cow::Owned(value)) => {
-                ContentTransferEncoding::Other(Cow::Owned(value))
+            ContentTransferEncoding::Unknown(Cow::Owned(value)) => {
+                ContentTransferEncoding::Unknown(Cow::Owned(value))
             }
-            ContentTransferEncoding::Other(Cow::Borrowed(value)) => {
-                ContentTransferEncoding::Other(Cow::Owned(value.to_owned()))
+            ContentTransferEncoding::Unknown(Cow::Borrowed(value)) => {
+                ContentTransferEncoding::Unknown(Cow::Owned(value.to_owned()))
             }
         }
     }

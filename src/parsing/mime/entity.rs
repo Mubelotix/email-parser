@@ -259,7 +259,7 @@ pub fn decode_value<'a>(
         ContentTransferEncoding::QuotedPrintable => {
             Cow::Owned(super::quoted_printables::decode_qp(value.into_owned()))
         }
-        ContentTransferEncoding::Other(_) => {
+        ContentTransferEncoding::Unknown(_) => {
             return Err(Error::Unknown("Unknown format")); // FIXME: Allow user to get this data
         }
         ContentTransferEncoding::Binary => value,

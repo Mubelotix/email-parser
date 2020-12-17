@@ -144,7 +144,7 @@ pub fn content_type(input: &[u8]) -> Res<(MimeType, Cow<str>, HashMap<Cow<str>, 
                 let (input, name) = token(input)?;
                 let name = lowercase(Cow::Borrowed(name));
 
-                Ok((input, MimeType::Other(name)))
+                Ok((input, MimeType::Unknown(name)))
             },
         ][..],
     )?;
@@ -301,7 +301,7 @@ pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
                 let (input, encoding) = token(input)?;
                 let encoding = lowercase(Cow::Borrowed(encoding));
 
-                Ok((input, ContentTransferEncoding::Other(encoding)))
+                Ok((input, ContentTransferEncoding::Unknown(encoding)))
             },
         ][..],
     )?;
