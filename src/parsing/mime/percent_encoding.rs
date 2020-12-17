@@ -116,27 +116,32 @@ pub fn collect_parameters<'a>(
     for (name, values) in complex_parameters.iter_mut() {
         if let Some((encoded, value)) = values.remove(&0) {
             let (mut value, charset, _language) = if encoded {
-                // JUSTIFICATION
-                //  Benefit
-                //      We need `value` to be a reference so that we can return data referencing this data.
-                //  Correctness
-                //      Fortunately, owned values are never used as parameters in this crate.
-                //  Fixme
-                //      It should not even be possible to pass owned values.
-                let value = unsafe {
-                    debug_assert!(matches!(value, Cow::Borrowed(_)));
-                    &*(value.as_ref() as *const str as *const [u8])
-                };
-                let (value, charset) = take_while(value, |c| c != b'\'')?;
-                let charset = Cow::Owned(charset.to_lowercase());
-                let (value, _) = tag(value, b"'")?;
-                let (value, language) = take_while(value, |c| c != b'\'')?;
-                let (value, _) = tag(value, b"'")?;
-                (
-                    Cow::Owned(decode_parameter(value.to_vec(), Cow::Borrowed(&charset))?),
-                    Some(charset),
-                    Some(language),
-                )
+                match value {
+                    Cow::Borrowed(value) => {
+                        let (value, charset) = take_while(value.as_bytes(), |c| c != b'\'')?;
+                        let charset = lowercase(Cow::Borrowed(charset));
+                        let (value, _) = tag(value, b"'")?;
+                        let (value, language) = take_while(value, |c| c != b'\'')?;
+                        let (value, _) = tag(value, b"'")?;
+                        (
+                            Cow::Owned(decode_parameter(value.to_vec(), charset.clone())?),
+                            Some(charset),
+                            Some(Cow::Borrowed(language)),
+                        )
+                    }
+                    Cow::Owned(value) => {
+                        let (value, charset) = take_while(value.as_bytes(), |c| c != b'\'')?;
+                        let charset = lowercase(Cow::Borrowed(charset));
+                        let (value, _) = tag(value, b"'")?;
+                        let (value, language) = take_while(value, |c| c != b'\'')?;
+                        let (value, _) = tag(value, b"'")?;
+                        (
+                            Cow::Owned(decode_parameter(value.to_vec(), charset.clone())?),
+                            Some(Cow::Owned(charset.into_owned())),
+                            Some(Cow::Owned(language.to_owned())),
+                        )
+                    }
+                }
             } else {
                 (value, None, None)
             };
