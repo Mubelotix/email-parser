@@ -26,10 +26,8 @@ pub(crate) fn add_string<'a, 'b>(s1: &'b mut Cow<'a, str>, s2: Cow<'a, str>) {
                 unsafe {
                     if data1.as_ptr().add(data1.len()) == data2.as_ptr() {
                         // this is what guarantee safety
-                        let slice = std::slice::from_raw_parts(
-                            data1.as_ptr(),
-                            data1.len() + data2.len()
-                        );
+                        let slice =
+                            std::slice::from_raw_parts(data1.as_ptr(), data1.len() + data2.len());
                         *data1 = std::str::from_utf8_unchecked(slice);
                         return;
                     }
@@ -58,10 +56,7 @@ pub(crate) fn add_str<'a, 'b>(s1: &'b mut Cow<'a, str>, s2: &'a str) {
             unsafe {
                 if data1.as_ptr().add(data1.len()) == s2.as_ptr() {
                     // this is what guarantee safety
-                    let slice = std::slice::from_raw_parts(
-                        data1.as_ptr(),
-                        data1.len() + s2.len()
-                    );
+                    let slice = std::slice::from_raw_parts(data1.as_ptr(), data1.len() + s2.len());
                     *data1 = std::str::from_utf8_unchecked(slice);
                     return;
                 }
