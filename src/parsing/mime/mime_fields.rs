@@ -32,10 +32,10 @@ pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
             input = new_input;
             number = number
                 .checked_mul(10)
-                .ok_or(Error::Unknown ("Overflow while reading u8."))?;
+                .ok_or(Error::Unknown("Overflow while reading u8."))?;
             number = number
                 .checked_add(new_digit)
-                .ok_or(Error::Unknown ("Overflow while reading u8."))?;
+                .ok_or(Error::Unknown("Overflow while reading u8."))?;
         }
 
         Ok((input, number))
@@ -74,7 +74,7 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
                     Some(
                         index
                             .parse::<u8>()
-                            .map_err(|_| Error::Unknown ("Invalid index"))?,
+                            .map_err(|_| Error::Unknown("Invalid index"))?,
                     )
                 } else {
                     None
@@ -90,7 +90,7 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
                 if input.get(0) == Some(&b'=') {
                     Ok((input, (Cow::Borrowed(name), index, encoded)))
                 } else {
-                    Err(Error::Unknown ("It wont work with this method"))
+                    Err(Error::Unknown("It wont work with this method"))
                 }
             },
             |input| {

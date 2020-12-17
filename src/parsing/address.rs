@@ -136,7 +136,7 @@ pub fn address(input: &[u8]) -> Res<Address> {
     } else if let Ok((input, group)) = group(input) {
         Ok((input, Address::Group(group)))
     } else {
-        Err(Error::Unknown ("Invalid address: not a mailbox nor a group"))
+        Err(Error::Unknown("Invalid address: not a mailbox nor a group"))
     }
 }
 

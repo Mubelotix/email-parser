@@ -70,7 +70,7 @@ pub fn decode_parameter(mut input: Vec<u8>, charset: Cow<str>) -> Result<String,
     use textcode::*;
     let text = match charset.as_ref() {
         "utf-8" | "us-ascii" => {
-            String::from_utf8(input).map_err(|_| Error::Unknown ("Invalid text encoding"))?
+            String::from_utf8(input).map_err(|_| Error::Unknown("Invalid text encoding"))?
         }
         "iso-8859-1" => iso8859_1::decode_to_string(&input),
         "iso-8859-2" => iso8859_2::decode_to_string(&input),
@@ -89,7 +89,7 @@ pub fn decode_parameter(mut input: Vec<u8>, charset: Cow<str>) -> Result<String,
         "iso-8859-16" => iso8859_16::decode_to_string(&input),
         "iso-6937" => iso6937::decode_to_string(&input),
         "gb2312" => gb2312::decode_to_string(&input),
-        _ => return Err(Error::Unknown ("Unknown charset")),
+        _ => return Err(Error::Unknown("Unknown charset")),
     };
 
     Ok(text)

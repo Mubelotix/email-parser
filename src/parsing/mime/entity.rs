@@ -72,10 +72,11 @@ pub fn entity(raw_entity: RawEntity) -> Result<Entity, Error> {
             "utf-8" | "us-ascii" => match raw_entity.value {
                 Cow::Borrowed(value) => Cow::Borrowed(
                     std::str::from_utf8(value)
-                        .map_err(|_| Error::Unknown ("Invalid text encoding"))?,
+                        .map_err(|_| Error::Unknown("Invalid text encoding"))?,
                 ),
                 Cow::Owned(value) => Cow::Owned(
-                    String::from_utf8(value).map_err(|_| Error::Unknown ("Invalid text encoding"))?,
+                    String::from_utf8(value)
+                        .map_err(|_| Error::Unknown("Invalid text encoding"))?,
                 ),
             },
             "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&raw_entity.value)),
@@ -259,7 +260,7 @@ pub fn decode_value<'a>(
             Cow::Owned(super::quoted_printables::decode_qp(value.into_owned()))
         }
         ContentTransferEncoding::Other(_) => {
-            return Err(Error::Unknown ("Unknown format")); // FIXME: Allow user to get this data
+            return Err(Error::Unknown("Unknown format")); // FIXME: Allow user to get this data
         }
         ContentTransferEncoding::Binary => value,
     })

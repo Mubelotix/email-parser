@@ -61,14 +61,14 @@ pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
     let value = match encoding.as_ref() {
         "b" => base64::decode_base64(data.to_owned().into_bytes())?,
         "q" => quoted_printables::decode_header_qp(data.to_owned().into_bytes()),
-        _ => return Err(Error::Unknown ("Unknown encoding")),
+        _ => return Err(Error::Unknown("Unknown encoding")),
     };
 
     use textcode::*;
     let text: Cow<str> = match charset.as_ref() {
-        "utf-8" | "us-ascii" => {
-            Cow::Owned(String::from_utf8(value).map_err(|_| Error::Unknown ("Invalid text encoding"))?)
-        }
+        "utf-8" | "us-ascii" => Cow::Owned(
+            String::from_utf8(value).map_err(|_| Error::Unknown("Invalid text encoding"))?,
+        ),
         "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&value)),
         "iso-8859-2" => Cow::Owned(iso8859_2::decode_to_string(&value)),
         "iso-8859-3" => Cow::Owned(iso8859_3::decode_to_string(&value)),
@@ -86,7 +86,7 @@ pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
         "iso-8859-16" => Cow::Owned(iso8859_16::decode_to_string(&value)),
         "iso-6937" => Cow::Owned(iso6937::decode_to_string(&value)),
         "gb2312" => Cow::Owned(gb2312::decode_to_string(&value)),
-        _ => return Err(Error::Unknown ("Unknown charset")),
+        _ => return Err(Error::Unknown("Unknown charset")),
     };
 
     Ok((input, text))

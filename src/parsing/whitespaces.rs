@@ -62,7 +62,7 @@ pub fn cfws(input: &[u8]) -> Res<Cow<str>> {
                 add_string(&mut output, s);
             }
         } else {
-            return Err(Error::Unknown ("Expected at least one comment"));
+            return Err(Error::Unknown("Expected at least one comment"));
         }
 
         loop {

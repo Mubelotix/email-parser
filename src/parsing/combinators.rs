@@ -22,7 +22,7 @@ pub(crate) fn tag_no_case<'a>(
     // TODO case check
 
     if input.len() < expected.len() {
-        return Err(Error::Unknown (
+        return Err(Error::Unknown(
             "Tag error, input is smaller than expected string",
         ));
     }
@@ -63,7 +63,7 @@ where
             return result;
         }
     }
-    Err(Error::Unknown ("No match arm is matching the data"))
+    Err(Error::Unknown("No match arm is matching the data"))
 }
 
 // FIXME: take_whiles should return &[u8]
@@ -92,10 +92,10 @@ where
 {
     if let Some(character) = input.get(0) {
         if !condition(*character) {
-            return Err(Error::Unknown ("Expected at least one character matching"));
+            return Err(Error::Unknown("Expected at least one character matching"));
         }
     } else {
-        return Err(Error::Unknown (
+        return Err(Error::Unknown(
             "Expected at least one character matching, but there is no character",
         ));
     }
@@ -228,7 +228,7 @@ where
     if input.starts_with(prefix.as_bytes()) {
         input = unsafe { input.get_unchecked(prefix.len()..) };
     } else {
-        return Err(Error::Unknown ("Expected a prefix"));
+        return Err(Error::Unknown("Expected a prefix"));
     }
     parser(input)
 }

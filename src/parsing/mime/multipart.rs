@@ -24,7 +24,7 @@ fn before_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, usize), 
         }
     }
 
-    Err(Error::Unknown ("boundary not found"))
+    Err(Error::Unknown("boundary not found"))
 }
 
 fn before_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
@@ -55,7 +55,7 @@ fn before_closing_boundary_idx(input: &[u8], boundary: &[u8]) -> Result<(usize, 
         }
     }
 
-    Err(Error::Unknown ("closing boundary not found"))
+    Err(Error::Unknown("closing boundary not found"))
 }
 
 fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'a, &'a [u8]> {
@@ -94,7 +94,7 @@ pub fn parse_multipart<'a>(
 ) -> Result<Vec<RawEntity<'a>>, Error> {
     let boundary = parameters
         .get("boundary")
-        .ok_or(Error::Unknown ("Missing boundary parameter"))?;
+        .ok_or(Error::Unknown("Missing boundary parameter"))?;
     let (input, mut parts) = many(&input, |i| before_boundary(i, boundary.as_bytes()))?;
     let (_epilogue, last_part) = before_closing_boundary(input, boundary.as_bytes())?;
     parts.push(last_part);
@@ -114,7 +114,7 @@ pub fn parse_multipart_owned<'a>(
 ) -> Result<Vec<RawEntity<'a>>, Error> {
     let boundary = parameters
         .get("boundary")
-        .ok_or(Error::Unknown ("Missing boundary parameter"))?;
+        .ok_or(Error::Unknown("Missing boundary parameter"))?;
     let mut parts = Vec::new();
     while let Ok((before, len)) = before_boundary_idx(&input, boundary.as_bytes()) {
         let part: Vec<u8> = input.drain(..before).collect();

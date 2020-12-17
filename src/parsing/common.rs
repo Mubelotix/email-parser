@@ -19,7 +19,7 @@ pub fn atom(mut input: &[u8]) -> Res<&str> {
         input = new_input
     }
     let (mut input, atom) =
-        take_while1(input, is_atext).map_err(|_| Error::Unknown ("Atom required"))?;
+        take_while1(input, is_atext).map_err(|_| Error::Unknown("Atom required"))?;
     if let Ok((new_input, _)) = cfws(input) {
         input = new_input
     }
@@ -140,7 +140,7 @@ pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
             add_string(&mut wsp, Cow::Borrowed(text));
             return Ok((i, wsp));
         }
-        Err(Error::Unknown ("No match arm is matching the data"))
+        Err(Error::Unknown("No match arm is matching the data"))
     })?;
 
     while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
