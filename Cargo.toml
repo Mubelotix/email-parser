@@ -1,12 +1,14 @@
 [package]
 name = "email-parser"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Mubelotix <mubelotix@gmail.com>"]
 edition = "2018"
 license = "MIT"
-description = "The fastest and lightest email parsing Rust library."
+description = "The fastest and lightest email parsing Rust library. Supports MIME."
 readme = "README.md"
 repository = "https://github.com/Mubelotix/email-parser"
+categories = ["email", "parser-implementations"]
+keywords = ["email", "mail", "mime", "parser"]
 
 [dependencies]
 textcode = {version="0.2", optional=true}

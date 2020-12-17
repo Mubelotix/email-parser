@@ -1,7 +1,7 @@
 # email-parser
 
 The fastest and lightest email parsing Rust library!\
-This library has no dependency.
+This library has no dependency by default (and only a small optional one).
 
 ## Goal
 
