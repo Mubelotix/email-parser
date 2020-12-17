@@ -67,7 +67,7 @@ pub fn domain_literal<'a>(input: &'a [u8]) -> Res<Cow<'a, str>> {
         if let Ok((new_input, text)) = take_while1(new_input, is_dtext) {
             input = new_input;
             //add_string(&mut output, fws); should it be added?
-            add_string(&mut output, Cow::Borrowed(text));
+            add_str(&mut output, text);
         } else {
             break;
         }

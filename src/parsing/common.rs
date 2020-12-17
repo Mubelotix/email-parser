@@ -39,7 +39,7 @@ pub fn dot_atom_text(input: &[u8]) -> Res<Cow<str>> {
             } {
                 add_string(&mut output, from_slice(&input[..1]));
                 input = new_input;
-                add_string(&mut output, Cow::Borrowed(atom));
+                add_str(&mut output, atom);
             } else {
                 break;
             }
@@ -137,7 +137,7 @@ pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
             }
         } else if let Ok((i, text)) = take_while1(i, is_vchar) {
             previous_was_encoded = false;
-            add_string(&mut wsp, Cow::Borrowed(text));
+            add_str(&mut wsp, text);
             return Ok((i, wsp));
         }
         Err(Error::Unknown("No match arm is matching the data"))

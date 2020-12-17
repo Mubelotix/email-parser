@@ -48,7 +48,7 @@ pub fn quoted_string(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
         };
 
         let new_input = if let Ok((new_input, str)) = take_while1(new_input, is_qtext) {
-            add_string(&mut additionnal_output, Cow::Borrowed(str));
+            add_str(&mut additionnal_output, str);
             new_input
         } else if let Ok((new_input, str)) = quoted_pair(new_input) {
             add_string(&mut additionnal_output, str);

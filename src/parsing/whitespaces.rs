@@ -14,7 +14,7 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
 
     if let Some((before, _crlf)) = before {
         let mut before = Cow::Borrowed(before);
-        add_string(&mut before, Cow::Borrowed(after));
+        add_str(&mut before, after);
         Ok((input, before))
     } else {
         Ok((input, Cow::Borrowed(after)))
