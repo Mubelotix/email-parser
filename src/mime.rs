@@ -63,10 +63,11 @@ pub enum MimeType<'a> {
 }
 
 impl<'a> MimeType<'a> {
+    /// Extends the lifetime from `'a` to `'static` by guaranteeing that we have ownership after calling this function.
+    /// It will call `to_owned` on references.\
+    /// Since there are rarely references, this is almost always free.
     pub fn into_owned(self) -> MimeType<'static> {
         match self {
-            MimeType::Other(Cow::Owned(value)) => MimeType::Other(Cow::Owned(value)),
-            MimeType::Other(Cow::Borrowed(value)) => MimeType::Other(Cow::Owned(value.to_owned())),
             MimeType::Text => MimeType::Text,
             MimeType::Image => MimeType::Image,
             MimeType::Audio => MimeType::Audio,
@@ -74,6 +75,8 @@ impl<'a> MimeType<'a> {
             MimeType::Application => MimeType::Application,
             MimeType::Message => MimeType::Message,
             MimeType::Multipart => MimeType::Multipart,
+            MimeType::Other(Cow::Owned(value)) => MimeType::Other(Cow::Owned(value)),
+            MimeType::Other(Cow::Borrowed(value)) => MimeType::Other(Cow::Owned(value.to_owned())),
         }
     }
 }
@@ -94,16 +97,19 @@ pub enum DispositionType<'a> {
 }
 
 impl<'a> DispositionType<'a> {
+    /// Extends the lifetime from `'a` to `'static` by guaranteeing that we have ownership after calling this function.
+    /// It will call `to_owned` on references.\
+    /// Since there are rarely references, this is almost always free.
     pub fn into_owned(self) -> DispositionType<'static> {
         match self {
+            DispositionType::Inline => DispositionType::Inline,
+            DispositionType::Attachment => DispositionType::Attachment,
             DispositionType::Unknown(Cow::Owned(value)) => {
                 DispositionType::Unknown(Cow::Owned(value))
             }
             DispositionType::Unknown(Cow::Borrowed(value)) => {
                 DispositionType::Unknown(Cow::Owned(value.to_owned()))
             }
-            DispositionType::Inline => DispositionType::Inline,
-            DispositionType::Attachment => DispositionType::Attachment,
         }
     }
 }
@@ -122,6 +128,8 @@ pub struct Disposition<'a> {
 }
 
 impl<'a> Disposition<'a> {
+    /// Extends the lifetime from `'a` to `'static` by guaranteeing that we have ownership after calling this function.
+    /// It will call `to_owned` on references.
     pub fn into_owned(self) -> Disposition<'static> {
         Disposition {
             disposition_type: self.disposition_type.into_owned(),
@@ -166,19 +174,22 @@ pub enum ContentTransferEncoding<'a> {
 }
 
 impl<'a> ContentTransferEncoding<'a> {
+    /// Extends the lifetime from `'a` to `'static` by guaranteeing that we have ownership after calling this function.
+    /// It will call `to_owned` on references.\
+    /// Since there are rarely references, this is almost always free.
     pub fn into_owned(self) -> ContentTransferEncoding<'static> {
         match self {
+            ContentTransferEncoding::SevenBit => ContentTransferEncoding::SevenBit,
+            ContentTransferEncoding::HeightBit => ContentTransferEncoding::HeightBit,
+            ContentTransferEncoding::Binary => ContentTransferEncoding::Binary,
+            ContentTransferEncoding::QuotedPrintable => ContentTransferEncoding::QuotedPrintable,
+            ContentTransferEncoding::Base64 => ContentTransferEncoding::Base64,
             ContentTransferEncoding::Other(Cow::Owned(value)) => {
                 ContentTransferEncoding::Other(Cow::Owned(value))
             }
             ContentTransferEncoding::Other(Cow::Borrowed(value)) => {
                 ContentTransferEncoding::Other(Cow::Owned(value.to_owned()))
             }
-            ContentTransferEncoding::SevenBit => ContentTransferEncoding::SevenBit,
-            ContentTransferEncoding::HeightBit => ContentTransferEncoding::HeightBit,
-            ContentTransferEncoding::Binary => ContentTransferEncoding::Binary,
-            ContentTransferEncoding::QuotedPrintable => ContentTransferEncoding::QuotedPrintable,
-            ContentTransferEncoding::Base64 => ContentTransferEncoding::Base64,
         }
     }
 }
