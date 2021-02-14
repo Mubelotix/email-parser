@@ -74,20 +74,6 @@ fn before_closing_boundary<'a, 'b>(input: &'a [u8], boundary: &'b [u8]) -> Res<'
     }
 }
 
-fn before_closing_boundary_owned(
-    mut input: Vec<u8>,
-    boundary: &[u8],
-) -> Result<(Vec<u8>, Vec<u8>), Error> {
-    let (before, len) = before_closing_boundary_idx(&input, boundary)?;
-
-    let before: Vec<u8> = input.drain(..before).collect();
-    {
-        let _boundary = input.drain(..len);
-    }
-
-    Ok((before, input))
-}
-
 pub fn parse_multipart<'a>(
     input: &'a [u8],
     parameters: &HashMap<Cow<str>, Cow<str>>,
@@ -103,32 +89,6 @@ pub fn parse_multipart<'a>(
     let mut entities = Vec::new();
     for part in parts {
         entities.push(super::entity::raw_entity(Cow::Borrowed(part))?);
-    }
-
-    Ok(entities)
-}
-
-pub fn parse_multipart_owned<'a>(
-    mut input: Vec<u8>,
-    parameters: HashMap<Cow<str>, Cow<str>>,
-) -> Result<Vec<RawEntity<'a>>, Error> {
-    let boundary = parameters
-        .get("boundary")
-        .ok_or(Error::Unknown("Missing boundary parameter"))?;
-    let mut parts = Vec::new();
-    while let Ok((before, len)) = before_boundary_idx(&input, boundary.as_bytes()) {
-        let part: Vec<u8> = input.drain(..before).collect();
-        let _boundary = input.drain(..len);
-        parts.push(part);
-    }
-
-    let (_epilogue, last_part) = before_closing_boundary_owned(input, boundary.as_bytes())?;
-    parts.push(last_part);
-    parts.remove(0); // the prelude
-
-    let mut entities = Vec::new();
-    for part in parts {
-        entities.push(super::entity::raw_entity(Cow::Owned(part))?);
     }
 
     Ok(entities)
