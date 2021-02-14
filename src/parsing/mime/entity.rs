@@ -41,47 +41,27 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
     })
 }
 
-pub fn entity(mut raw_entity: RawEntity) -> Result<Entity, Error> {
+pub fn entity<'a>(raw_entity: &'a RawEntity<'a>) -> Result<Entity<'a>, Error> {
     if raw_entity.mime_type == ContentType::Multipart {
-        match raw_entity.value {
-            Cow::Borrowed(value) => {
-                return Ok(Entity::Multipart {
-                    subtype: raw_entity.subtype,
-                    content: multipart::parse_multipart(value, raw_entity.parameters)?,
-                })
-            }
-            Cow::Owned(value) => {
-                return Ok(Entity::Multipart {
-                    subtype: raw_entity.subtype,
-                    content: multipart::parse_multipart_owned(value, raw_entity.parameters)?,
-                })
-            }
-        }
+        return Ok(Entity::Multipart {
+            subtype: &raw_entity.subtype,
+            content: multipart::parse_multipart(raw_entity.value.as_ref(), &raw_entity.parameters)?,
+        });
     }
 
     if raw_entity.mime_type == ContentType::Text {
         use textcode::*;
 
-        if raw_entity.subtype == "plain" && raw_entity.parameters.get("charset").is_none() {
-            raw_entity
-                .parameters
-                .insert("charset".into(), "us-ascii".into());
-        }
+        // TODO: auto charset for plain text
 
         if let Some(charset) = raw_entity.parameters.get("charset") {
             let charset = charset.to_lowercase();
 
             let value: Cow<str> = match charset.as_str() {
-                "utf-8" | "us-ascii" => match raw_entity.value {
-                    Cow::Borrowed(value) => Cow::Borrowed(
-                        std::str::from_utf8(value)
-                            .map_err(|_| Error::Unknown("Invalid text encoding"))?,
-                    ),
-                    Cow::Owned(value) => Cow::Owned(
-                        String::from_utf8(value)
-                            .map_err(|_| Error::Unknown("Invalid text encoding"))?,
-                    ),
-                },
+                "utf-8" | "us-ascii" => Cow::Borrowed(
+                    std::str::from_utf8(raw_entity.value.as_ref())
+                        .map_err(|_| Error::Unknown("Invalid text encoding"))?,
+                ),
                 "iso-8859-1" => Cow::Owned(iso8859_1::decode_to_string(&raw_entity.value)),
                 "iso-8859-2" => Cow::Owned(iso8859_2::decode_to_string(&raw_entity.value)),
                 "iso-8859-3" => Cow::Owned(iso8859_3::decode_to_string(&raw_entity.value)),
@@ -99,17 +79,17 @@ pub fn entity(mut raw_entity: RawEntity) -> Result<Entity, Error> {
                 "iso-8859-16" => Cow::Owned(iso8859_16::decode_to_string(&raw_entity.value)),
                 "iso-6937" => Cow::Owned(iso6937::decode_to_string(&raw_entity.value)),
                 "gb2312" => Cow::Owned(gb2312::decode_to_string(&raw_entity.value)),
-                _ => return Ok(Entity::Unknown(Box::new(raw_entity))),
+                _ => return Ok(Entity::Unknown),
             };
 
             return Ok(Entity::Text {
-                subtype: raw_entity.subtype,
+                subtype: &raw_entity.subtype,
                 value,
             });
         }
     }
 
-    Ok(Entity::Unknown(Box::new(raw_entity)))
+    Ok(Entity::Unknown)
 }
 
 pub fn header_part_owned(
@@ -288,7 +268,7 @@ mod tests {
                 value: Cow::Borrowed(&[84, 101, 120, 116]),
                 #[cfg(feature = "content-disposition")]
                 disposition: None,
-                additional_headers: vec![]
+                additional_headers: vec![],
             },
             raw_entity(Cow::Borrowed(b"\r\nText")).unwrap()
         );
@@ -304,7 +284,7 @@ mod tests {
                 value: Cow::Borrowed(&[84, 101, 120, 116]),
                 #[cfg(feature = "content-disposition")]
                 disposition: None,
-                additional_headers: vec![]
+                additional_headers: vec![],
             },
             raw_entity(Cow::Owned(b"\r\nText".to_vec())).unwrap()
         );
@@ -320,7 +300,7 @@ mod tests {
                 value: Cow::Borrowed(&[60, 112, 62, 84, 101, 120, 116, 60, 47, 112, 62]),
                 #[cfg(feature = "content-disposition")]
                 disposition: None,
-                additional_headers: vec![("Unknown".into(), " Test".into())]
+                additional_headers: vec![("Unknown".into(), " Test".into())],
             },
             raw_entity(Cow::Owned(
                 b"Content-type: text/html; charset=utf-8\r\nUnknown: Test\r\n\r\n<p>Text</p>"
@@ -335,7 +315,7 @@ mod tests {
     #[test]
     fn entity_test() {
         assert_eq!(Entity::Text {
-            subtype: "html".into(),
+            subtype: &"html".into(),
             value: "<p>Testé</p>".into()
         }, raw_entity(Cow::Owned(b"Content-type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Test=C3=A9</p>".to_vec())).unwrap().parse().unwrap());
     }
