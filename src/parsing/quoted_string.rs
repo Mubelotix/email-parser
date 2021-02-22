@@ -2,7 +2,7 @@ use crate::prelude::*;
 use std::borrow::Cow;
 
 pub fn quoted_pair(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
-    let (input, ()) = tag(input, b"\\")?;
+    let (input, ()) = tag(input, b"\\", "TAG ERROR: A quoted pair must start with a `\\`.")?;
 
     if let Some(character) = input.get(0) {
         if is_vchar(*character) || is_wsp(*character) {

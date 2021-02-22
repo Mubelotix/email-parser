@@ -7,7 +7,7 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
         pair(
             input,
             |input| take_while(input, is_wsp),
-            |input| tag(input, b"\r\n"),
+            |input| tag(input, b"\r\n", "TAG ERROR: A folding whitespace must end with a `\\r\\n` sequence."),
         )
     });
     let (input, after) = take_while1(input, is_wsp)?;
@@ -38,14 +38,14 @@ pub fn ccontent(input: &[u8]) -> Res<Cow<str>> {
 
 #[inline]
 pub fn comment(input: &[u8]) -> Res<Cow<str>> {
-    let (input, ()) = tag(input, b"(")?;
+    let (input, ()) = tag(input, b"(", "TAG ERROR: A comment must start with a `(`.")?;
 
     let (input, _) = ignore_many(input, |input| {
         pair(input, |i| Ok(optional(i, fws)), ccontent)
     })?;
 
     let (input, _) = optional(input, fws);
-    let (input, ()) = tag(input, b")")?;
+    let (input, ()) = tag(input, b")", "TAG ERROR: A comment must end with a `)`.")?;
 
     Ok((input, empty_string()))
 }

@@ -42,12 +42,12 @@ pub fn body_lines(input: &[u8]) -> Result<Vec<Cow<str>>, Error> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
-    let (mut input, ()) = tag(input, b"\r\n")?;
+    let (mut input, ()) = tag(input, b"\r\n", "TAG ERROR: Headers must be followed by a CRLF sequence.")?;
 
     let mut lines = Vec::new();
     loop {
         let (new_input, new_line) = line(input)?;
-        match tag(new_input, b"\r\n") {
+        match tag(new_input, b"\r\n", "TAG ERROR: In a body, a line must end with a CRLF sequence.") {
             Ok((new_input, ())) => input = new_input,
             Err(e) => {
                 if new_input.is_empty() {
@@ -69,11 +69,11 @@ pub fn body(input: &[u8]) -> Result<Option<Cow<str>>, Error> {
         return Ok(None);
     }
 
-    let (mut new_input, ()) = tag(input, b"\r\n")?;
+    let (mut new_input, ()) = tag(input, b"\r\n", "TAG ERROR: Headers must be followed by a CRLF sequence.")?;
 
     loop {
         let (new_input2, ()) = check_line(new_input)?;
-        match tag(new_input2, b"\r\n") {
+        match tag(new_input2, b"\r\n", "TAG ERROR: In a body, a line must end with a CRLF sequence.") {
             Ok((new_input2, ())) => new_input = new_input2,
             Err(e) => {
                 if new_input2.is_empty() {
@@ -107,7 +107,7 @@ pub fn parse_message(input: &[u8]) -> Result<(Vec<Field>, Option<&[u8]>), Error>
         return Ok((fields, None));
     }
 
-    let (new_input, ()) = tag(input, b"\r\n")?;
+    let (new_input, ()) = tag(input, b"\r\n", "TAG ERROR: Headers must be followed by a CRLF sequence.")?;
 
     Ok((fields, Some(new_input)))
 }

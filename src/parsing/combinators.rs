@@ -2,14 +2,12 @@ use crate::prelude::*;
 use std::borrow::Cow;
 
 #[inline]
-pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8]) -> Res<'a, ()> {
+pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8], error_message: &'static str) -> Res<'a, ()> {
     debug_assert!(std::str::from_utf8(expected).is_ok());
     if input.starts_with(expected) {
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
-        Err(Error::TagError(unsafe {
-            std::str::from_utf8_unchecked(expected)
-        }))
+        Err(Error::Explicit(error_message))
     }
 }
 
@@ -18,6 +16,7 @@ pub(crate) fn tag_no_case<'a>(
     input: &'a [u8],
     expected: &'static [u8],
     expected2: &'static [u8],
+    error_message: &'static str,
 ) -> Res<'a, ()> {
     debug_assert_eq!(expected.len(), expected2.len());
     debug_assert!(std::str::from_utf8(expected).is_ok());
@@ -44,7 +43,7 @@ pub(crate) fn tag_no_case<'a>(
             if input.get_unchecked(idx) != expected.get_unchecked(idx)
                 && input.get_unchecked(idx) != expected2.get_unchecked(idx)
             {
-                return Err(Error::TagError(std::str::from_utf8_unchecked(expected)));
+                return Err(Error::Explicit(error_message));
             }
         }
     }
@@ -265,8 +264,8 @@ mod tests {
 
     #[test]
     fn test_optional() {
-        assert!(optional(b"abcdef", |input| tag(input, b"efg")).1.is_none());
-        assert!(optional(b"abcdef", |input| tag(input, b"abc")).1.is_some());
+        assert!(optional(b"abcdef", |input| tag(input, b"efg", "TAG ERROR: Testing")).1.is_none());
+        assert!(optional(b"abcdef", |input| tag(input, b"abc", "TAG ERROR: Testing")).1.is_some());
     }
 
     #[test]
@@ -277,10 +276,10 @@ mod tests {
 
     #[test]
     fn test_tag() {
-        assert!(tag(b"abc", b"def").is_err());
-        assert!(tag(b"abc", b"ab").is_ok());
-        assert_eq!(tag(b"abc", b"abc").unwrap().0, b"");
-        assert!(tag(b"abc", b"Ab").is_err());
-        assert!(tag_no_case(b"abc", b"Ab", b"aB").is_ok());
+        assert!(tag(b"abc", b"def", "TAG ERROR: Testing").is_err());
+        assert!(tag(b"abc", b"ab", "TAG ERROR: Testing").is_ok());
+        assert_eq!(tag(b"abc", b"abc", "TAG ERROR: Testing").unwrap().0, b"");
+        assert!(tag(b"abc", b"Ab", "TAG ERROR: Testing").is_err());
+        assert!(tag_no_case(b"abc", b"Ab", b"aB", "TAG ERROR: Testing no case").is_ok());
     }
 }
