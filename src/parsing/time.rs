@@ -48,7 +48,11 @@ pub fn month(input: &[u8]) -> Res<Month> {
 pub fn day_of_week(input: &[u8]) -> Res<Day> {
     let (input, _fws) = optional(input, fws);
     let (input, day) = day_name(input)?;
-    let (input, ()) = tag(input, b",", "TAG ERROR: In a day_of_week, a day name must be followed by a comma.")?;
+    let (input, ()) = tag(
+        input,
+        b",",
+        "TAG ERROR: In a day_of_week, a day name must be followed by a comma.",
+    )?;
     Ok((input, day))
 }
 
@@ -93,7 +97,11 @@ pub fn time_of_day(input: &[u8]) -> Res<Time> {
     if hour > 23 {
         return Err(Error::Unknown("There is only 24 hours in a day"));
     }
-    let (input, ()) = tag(input, b":", "TAG ERROR: In a time_of_day, the hour must be followed by a colon.")?;
+    let (input, ()) = tag(
+        input,
+        b":",
+        "TAG ERROR: In a time_of_day, the hour must be followed by a colon.",
+    )?;
 
     let (input, minute) = two_digits(input)?;
     if minute > 59 {

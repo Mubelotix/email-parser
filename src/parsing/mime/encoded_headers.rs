@@ -44,19 +44,41 @@ fn encoded_text(input: &[u8]) -> Res<&str> {
 }
 
 pub fn encoded_word(input: &[u8]) -> Res<Cow<str>> {
-    let (input, _) = tag(input, b"=?", "TAG ERROR: An encoded word must start with `=?`.")?;
+    let (input, _) = tag(
+        input,
+        b"=?",
+        "TAG ERROR: An encoded word must start with `=?`.",
+    )?;
     let (input, charset) = charset(input)?;
     let (input, _language) = match optional(input, |input| {
-        pair(input, |input| tag(input, b"*", "TAG ERROR: In an encoded word with encoding, a charset must be followed by a `*`."), encoding)
+        pair(
+            input,
+            |input| {
+                tag(input, b"*", "TAG ERROR: In an encoded word with encoding, a charset must be followed by a `*`.")
+            },
+            encoding,
+        )
     }) {
         (input, Some(((), language))) => (input, Some(language)),
         (input, None) => (input, None),
     };
-    let (input, _) = tag(input, b"?", "TAG ERROR: In an encoded word, a language must be followed by a `?`.")?;
+    let (input, _) = tag(
+        input,
+        b"?",
+        "TAG ERROR: In an encoded word, a language must be followed by a `?`.",
+    )?;
     let (input, encoding) = encoding(input)?;
-    let (input, _) = tag(input, b"?", "TAG ERROR: In an encoded word, a encoding must be followed by a `?`.")?;
+    let (input, _) = tag(
+        input,
+        b"?",
+        "TAG ERROR: In an encoded word, a encoding must be followed by a `?`.",
+    )?;
     let (input, data) = encoded_text(input)?;
-    let (input, _) = tag(input, b"?=", "TAG ERROR: An encoded word must end with `?=`.")?;
+    let (input, _) = tag(
+        input,
+        b"?=",
+        "TAG ERROR: An encoded word must end with `?=`.",
+    )?;
 
     let value = match encoding.as_ref() {
         "b" => base64::decode_base64(data.to_owned().into_bytes())?,

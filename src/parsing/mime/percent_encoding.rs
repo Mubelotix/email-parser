@@ -120,9 +120,17 @@ pub fn collect_parameters<'a>(
                     Cow::Borrowed(value) => {
                         let (value, charset) = take_while(value.as_bytes(), |c| c != b'\'')?;
                         let charset = lowercase(Cow::Borrowed(charset));
-                        let (value, _) = tag(value, b"'", "TAG ERROR: In a parameter list, a charset must be followed by a `'`.")?;
+                        let (value, _) = tag(
+                            value,
+                            b"'",
+                            "TAG ERROR: In a parameter list, a charset must be followed by a `'`.",
+                        )?;
                         let (value, language) = take_while(value, |c| c != b'\'')?;
-                        let (value, _) = tag(value, b"'", "TAG ERROR: In a parameter list, a language must be followed by a `'`.")?;
+                        let (value, _) = tag(
+                            value,
+                            b"'",
+                            "TAG ERROR: In a parameter list, a language must be followed by a `'`.",
+                        )?;
                         (
                             Cow::Owned(decode_parameter(value.to_vec(), charset.clone())?),
                             Some(charset),
@@ -132,9 +140,17 @@ pub fn collect_parameters<'a>(
                     Cow::Owned(value) => {
                         let (value, charset) = take_while(value.as_bytes(), |c| c != b'\'')?;
                         let charset = lowercase(Cow::Borrowed(charset));
-                        let (value, _) = tag(value, b"'", "TAG ERROR: In a parameter list, a charset must be followed by a `'`.")?;
+                        let (value, _) = tag(
+                            value,
+                            b"'",
+                            "TAG ERROR: In a parameter list, a charset must be followed by a `'`.",
+                        )?;
                         let (value, language) = take_while(value, |c| c != b'\'')?;
-                        let (value, _) = tag(value, b"'", "TAG ERROR: In a parameter list, a language must be followed by a `'`.")?;
+                        let (value, _) = tag(
+                            value,
+                            b"'",
+                            "TAG ERROR: In a parameter list, a language must be followed by a `'`.",
+                        )?;
                         (
                             Cow::Owned(decode_parameter(value.to_vec(), charset.clone())?),
                             Some(Cow::Owned(charset.into_owned())),

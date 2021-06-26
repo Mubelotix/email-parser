@@ -4,18 +4,38 @@ use std::borrow::Cow;
 
 pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
     fn no_fold_litteral(input: &[u8]) -> Res<Cow<str>> {
-        let (input, ()) = tag(input, b"[", "TAG ERROR: In message_id, a no_fold_litteral domain must be preceded by a `[`.")?;
+        let (input, ()) = tag(
+            input,
+            b"[",
+            "TAG ERROR: In message_id, a no_fold_litteral domain must be preceded by a `[`.",
+        )?;
         let (input, domain) = take_while(input, is_dtext)?;
-        let (input, ()) = tag(input, b"]", "TAG ERROR: In message_id, a no_fold_litteral domain must be closed by a `]`.")?;
+        let (input, ()) = tag(
+            input,
+            b"]",
+            "TAG ERROR: In message_id, a no_fold_litteral domain must be closed by a `]`.",
+        )?;
         Ok((input, Cow::Borrowed(domain)))
     }
 
     let (input, _cfws) = optional(input, cfws);
-    let (input, ()) = tag(input, b"<", "TAG ERROR: A message ID must start with a `<`.")?;
+    let (input, ()) = tag(
+        input,
+        b"<",
+        "TAG ERROR: A message ID must start with a `<`.",
+    )?;
     let (input, id_left) = dot_atom_text(input)?;
-    let (input, ()) = tag(input, b"@", "TAG ERROR: A message ID right part must be followed by a `@`.")?;
+    let (input, ()) = tag(
+        input,
+        b"@",
+        "TAG ERROR: A message ID right part must be followed by a `@`.",
+    )?;
     let (input, id_right) = match_parsers(input, &mut [dot_atom_text, no_fold_litteral][..])?;
-    let (input, ()) = tag(input, b">", "TAG ERROR: A message ID left part must be followed by a `>`.")?;
+    let (input, ()) = tag(
+        input,
+        b">",
+        "TAG ERROR: A message ID left part must be followed by a `>`.",
+    )?;
     let (input, _cfws) = optional(input, cfws);
 
     Ok((input, (id_left, id_right)))
@@ -23,14 +43,22 @@ pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
 
 pub fn addr_spec(input: &[u8]) -> Res<EmailAddress> {
     let (input, local_part) = local_part(input)?;
-    let (input, ()) = tag(input, b"@", "TAG ERROR: An address local part must be followed by a `@`.")?;
+    let (input, ()) = tag(
+        input,
+        b"@",
+        "TAG ERROR: An address local part must be followed by a `@`.",
+    )?;
     let (input, domain) = domain(input)?;
     Ok((input, EmailAddress { local_part, domain }))
 }
 
 pub fn angle_addr(input: &[u8]) -> Res<EmailAddress> {
     let (input, _cfws) = optional(input, cfws);
-    let (input, ()) = tag(input, b"<", "TAG ERROR: A angle_addr must start with a `<`.")?;
+    let (input, ()) = tag(
+        input,
+        b"<",
+        "TAG ERROR: A angle_addr must start with a `<`.",
+    )?;
     let (input, addr_spec) = addr_spec(input)?;
     let (input, ()) = tag(input, b">", "TAG ERROR: A angle_addr must end with a `>`.")?;
     let (input, _cfws) = optional(input, cfws);
@@ -60,7 +88,11 @@ pub fn domain(input: &[u8]) -> Res<Cow<str>> {
 
 pub fn domain_literal<'a>(input: &'a [u8]) -> Res<Cow<'a, str>> {
     let (input, _cfws) = optional(input, cfws);
-    let (mut input, ()) = tag(input, b"[", "TAG ERROR: A domain litteral must be preceded by a `[`.")?;
+    let (mut input, ()) = tag(
+        input,
+        b"[",
+        "TAG ERROR: A domain litteral must be preceded by a `[`.",
+    )?;
     let mut output = empty_string();
     loop {
         let (new_input, _fws) = optional(input, fws);
@@ -73,7 +105,11 @@ pub fn domain_literal<'a>(input: &'a [u8]) -> Res<Cow<'a, str>> {
         }
     }
     let (input, _fws) = optional(input, fws);
-    let (input, ()) = tag(input, b"]", "TAG ERROR: A domain litteral must be followed by a `]`.")?;
+    let (input, ()) = tag(
+        input,
+        b"]",
+        "TAG ERROR: A domain litteral must be followed by a `]`.",
+    )?;
     let (input, _cfws) = optional(input, cfws);
     Ok((input, output))
 }
@@ -113,7 +149,11 @@ pub fn mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
 
 pub fn group(input: &[u8]) -> Res<(Vec<Cow<str>>, Vec<Mailbox>)> {
     let (input, display_name) = phrase(input)?;
-    let (mut input, ()) = tag(input, b":", "TAG ERROR: A group display name must be followed by a `:`.")?;
+    let (mut input, ()) = tag(
+        input,
+        b":",
+        "TAG ERROR: A group display name must be followed by a `:`.",
+    )?;
 
     let group_list = if let Ok((new_input, mailbox_list)) = mailbox_list(input) {
         input = new_input;
@@ -125,7 +165,11 @@ pub fn group(input: &[u8]) -> Res<(Vec<Cow<str>>, Vec<Mailbox>)> {
         Vec::new()
     };
 
-    let (input, ()) = tag(input, b";", "TAG ERROR: A group mailbox list must be closed by a `;`.")?;
+    let (input, ()) = tag(
+        input,
+        b";",
+        "TAG ERROR: A group mailbox list must be closed by a `;`.",
+    )?;
     let (input, _cfws) = optional(input, cfws);
     Ok((input, (display_name, group_list)))
 }

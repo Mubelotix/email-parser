@@ -31,13 +31,12 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
     Ok(RawEntity {
         mime_type,
         subtype,
-        parameters,
-        id,
         description,
+        id,
+        parameters,
+        disposition,
         value,
         additional_headers,
-        #[cfg(feature = "content-disposition")]
-        disposition,
     })
 }
 
@@ -213,7 +212,11 @@ pub fn header_part(
         ));
     }
 
-    let (input, _) = tag(&input, b"\r\n", "TAG ERROR: A MIME entity header part must be followed by a CRLF sequence.")?;
+    let (input, _) = tag(
+        &input,
+        b"\r\n",
+        "TAG ERROR: A MIME entity header part must be followed by a CRLF sequence.",
+    )?;
 
     Ok((
         input.len(),

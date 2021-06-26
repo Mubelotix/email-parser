@@ -22,7 +22,12 @@ fn token(input: &[u8]) -> Res<&str> {
 }
 
 pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
-    let (input, ()) = tag_no_case(input, b"MIME-Version:", b"mime-vERSION:", "TAG NO CASE ERROR: Header name (Mime-Version) does not match.")?;
+    let (input, ()) = tag_no_case(
+        input,
+        b"MIME-Version:",
+        b"mime-vERSION:",
+        "TAG NO CASE ERROR: Header name (Mime-Version) does not match.",
+    )?;
     let (input, _) = optional(input, cfws);
 
     fn u8_number(input: &[u8]) -> Res<u8> {
@@ -42,18 +47,30 @@ pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
     }
 
     let (input, d1) = u8_number(input)?;
-    let (input, ()) = tag(input, b".", "TAG ERROR: A MIME version's major version number must be followed by a `.`.")?;
+    let (input, ()) = tag(
+        input,
+        b".",
+        "TAG ERROR: A MIME version's major version number must be followed by a `.`.",
+    )?;
     let (input, d2) = u8_number(input)?;
 
     let (input, _cwfs) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(input, b"\r\n", "TAG ERROR: A header (`MIME-Version` in this case) must end with a CRLF sequence.")?;
+    let (input, ()) = tag(
+        input,
+        b"\r\n",
+        "TAG ERROR: A header (`MIME-Version` in this case) must end with a CRLF sequence.",
+    )?;
 
     Ok((input, (d1, d2)))
 }
 
 fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
     let (input, _) = optional(input, cfws);
-    let (input, ()) = tag(input, b";", "TAG ERROR: A MIME parameter must start with `;`.")?;
+    let (input, ()) = tag(
+        input,
+        b";",
+        "TAG ERROR: A MIME parameter must start with `;`.",
+    )?;
     let (input, _) = optional(input, cfws);
     let (input, (mut name, index, encoded)) = match_parsers(
         input,
@@ -66,7 +83,13 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
                 let (mut input, index) = optional(input, |input| {
                     pair(
                         input,
-                        |input| tag(input, b"*", "TAG ERROR: An indexed MIME parameter name must contain a `*`."),
+                        |input| {
+                            tag(
+                                input,
+                                b"*",
+                                "TAG ERROR: An indexed MIME parameter name must contain a `*`.",
+                            )
+                        },
                         |input| take_while1(input, is_digit),
                     )
                 });
@@ -102,7 +125,11 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
 
     name = lowercase(name);
 
-    let (input, ()) = tag(input, b"=", "TAG ERROR: A MIME parameter name must be followed by a `=`.")?;
+    let (input, ()) = tag(
+        input,
+        b"=",
+        "TAG ERROR: A MIME parameter name must be followed by a `=`.",
+    )?;
     let (input, value) = match_parsers(
         input,
         &mut [
@@ -118,26 +145,74 @@ fn parameter(input: &[u8]) -> Res<(Cow<str>, Option<u8>, bool, Cow<str>)> {
 }
 
 pub fn content_type(input: &[u8]) -> Res<(ContentType, Cow<str>, HashMap<Cow<str>, Cow<str>>)> {
-    let (input, ()) = tag_no_case(input, b"Content-Type:", b"cONTENT-tYPE:", "TAG NO CASE ERROR: Header name (Content-Type) does not match.")?;
+    let (input, ()) = tag_no_case(
+        input,
+        b"Content-Type:",
+        b"cONTENT-tYPE:",
+        "TAG NO CASE ERROR: Header name (Content-Type) does not match.",
+    )?;
     let (input, _) = optional(input, cfws);
 
     let (input, mime_type) = match_parsers(
         input,
         &mut [
-            |input| tag_no_case(input, b"text", b"TEXT", "TAG NO CASE ERROR: In a content type header, `text` type does not match.").map(|(i, ())| (i, ContentType::Text)),
             |input| {
-                tag_no_case(input, b"multipart", b"MULTIPART", "TAG NO CASE ERROR: In a content type header, `multipart` type does not match.")
-                    .map(|(i, ())| (i, ContentType::Multipart))
+                tag_no_case(
+                    input,
+                    b"text",
+                    b"TEXT",
+                    "TAG NO CASE ERROR: In a content type header, `text` type does not match.",
+                )
+                .map(|(i, ())| (i, ContentType::Text))
+            },
+            |input| {
+                tag_no_case(
+                    input,
+                    b"multipart",
+                    b"MULTIPART",
+                    "TAG NO CASE ERROR: In a content type header, `multipart` type does not match.",
+                )
+                .map(|(i, ())| (i, ContentType::Multipart))
             },
             |input| {
                 tag_no_case(input, b"application", b"APPLICATION", "TAG NO CASE ERROR: In a content type header, `application` type does not match.")
                     .map(|(i, ())| (i, ContentType::Application))
             },
-            |input| tag_no_case(input, b"image", b"IMAGE", "TAG NO CASE ERROR: In a content type header, `image` type does not match.").map(|(i, ())| (i, ContentType::Image)),
-            |input| tag_no_case(input, b"video", b"VIDEO", "TAG NO CASE ERROR: In a content type header, `video` type does not match.").map(|(i, ())| (i, ContentType::Video)),
-            |input| tag_no_case(input, b"audio", b"AUDIO", "TAG NO CASE ERROR: In a content type header, `audio` type does not match.").map(|(i, ())| (i, ContentType::Audio)),
             |input| {
-                tag_no_case(input, b"message", b"MESSAGE", "TAG NO CASE ERROR: In a content type header, `message` type does not match.").map(|(i, ())| (i, ContentType::Message))
+                tag_no_case(
+                    input,
+                    b"image",
+                    b"IMAGE",
+                    "TAG NO CASE ERROR: In a content type header, `image` type does not match.",
+                )
+                .map(|(i, ())| (i, ContentType::Image))
+            },
+            |input| {
+                tag_no_case(
+                    input,
+                    b"video",
+                    b"VIDEO",
+                    "TAG NO CASE ERROR: In a content type header, `video` type does not match.",
+                )
+                .map(|(i, ())| (i, ContentType::Video))
+            },
+            |input| {
+                tag_no_case(
+                    input,
+                    b"audio",
+                    b"AUDIO",
+                    "TAG NO CASE ERROR: In a content type header, `audio` type does not match.",
+                )
+                .map(|(i, ())| (i, ContentType::Audio))
+            },
+            |input| {
+                tag_no_case(
+                    input,
+                    b"message",
+                    b"MESSAGE",
+                    "TAG NO CASE ERROR: In a content type header, `message` type does not match.",
+                )
+                .map(|(i, ())| (i, ContentType::Message))
             },
             |input| {
                 // TODO ietf token
@@ -148,7 +223,11 @@ pub fn content_type(input: &[u8]) -> Res<(ContentType, Cow<str>, HashMap<Cow<str
             },
         ][..],
     )?;
-    let (input, ()) = tag(input, b"/", "TAG ERROR: A MIME content type must have a `/` separating the type and the subtype.")?;
+    let (input, ()) = tag(
+        input,
+        b"/",
+        "TAG ERROR: A MIME content type must have a `/` separating the type and the subtype.",
+    )?;
     let (input, subtype) = token(input)?;
     let subtype = lowercase(Cow::Borrowed(subtype));
 
@@ -156,7 +235,11 @@ pub fn content_type(input: &[u8]) -> Res<(ContentType, Cow<str>, HashMap<Cow<str
     let parameters = super::percent_encoding::collect_parameters(parameters_vec)?;
 
     let (input, ()) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(input, b"\r\n", "TAG ERROR: A header (`Content-Type` in this case) must end with a CRLF sequence.")?;
+    let (input, ()) = tag(
+        input,
+        b"\r\n",
+        "TAG ERROR: A header (`Content-Type` in this case) must end with a CRLF sequence.",
+    )?;
 
     Ok((input, (mime_type, subtype, parameters)))
 }
@@ -164,7 +247,12 @@ pub fn content_type(input: &[u8]) -> Res<(ContentType, Cow<str>, HashMap<Cow<str
 pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
     use crate::parsing::time::date_time;
 
-    let (input, ()) = tag_no_case(input, b"Content-Disposition:", b"cONTENT-dISPOSITION:", "TAG NO CASE ERROR: Header name (Content-Disposition) does not match.")?;
+    let (input, ()) = tag_no_case(
+        input,
+        b"Content-Disposition:",
+        b"cONTENT-dISPOSITION:",
+        "TAG NO CASE ERROR: Header name (Content-Disposition) does not match.",
+    )?;
     let (input, _) = optional(input, cfws);
 
     let (mut input, disposition_type) = match_parsers(
@@ -261,7 +349,11 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
     disposition.unstructured = super::percent_encoding::collect_parameters(parameters_vec)?;
 
     let (input, ()) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(input, b"\r\n", "TAG ERROR: A header (`Content-Disposition` in this case) must end with a CRLF sequence.")?;
+    let (input, ()) = tag(
+        input,
+        b"\r\n",
+        "TAG ERROR: A header (`Content-Disposition` in this case) must end with a CRLF sequence.",
+    )?;
 
     Ok((input, disposition))
 }
@@ -271,7 +363,7 @@ pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
         input,
         b"Content-Transfer-Encoding:",
         b"cONTENT-tRANSFER-eNCODING:",
-        "TAG NO CASE ERROR: Header name (Content-Transfer-Encoding) does not match."
+        "TAG NO CASE ERROR: Header name (Content-Transfer-Encoding) does not match.",
     )?;
     let (input, _) = optional(input, cfws);
 
@@ -314,17 +406,35 @@ pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
 }
 
 pub fn content_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
-    let (input, ()) = tag_no_case(input, b"Content-ID:", b"cONTENT-id:", "TAG NO CASE ERROR: Header name (Content-ID) does not match.")?;
+    let (input, ()) = tag_no_case(
+        input,
+        b"Content-ID:",
+        b"cONTENT-id:",
+        "TAG NO CASE ERROR: Header name (Content-ID) does not match.",
+    )?;
     let (input, id) = crate::parsing::address::message_id(input)?;
-    let (input, ()) = tag(input, b"\r\n", "TAG ERROR: A header (`Content-ID` in this case) must end with a CRLF sequence.")?;
+    let (input, ()) = tag(
+        input,
+        b"\r\n",
+        "TAG ERROR: A header (`Content-ID` in this case) must end with a CRLF sequence.",
+    )?;
 
     Ok((input, id))
 }
 
 pub fn content_description(input: &[u8]) -> Res<Cow<str>> {
-    let (input, ()) = tag_no_case(input, b"Content-Description:", b"cONTENT-dESCRIPTION:", "TAG NO CASE ERROR: Header name (Content-Description) does not match.")?;
+    let (input, ()) = tag_no_case(
+        input,
+        b"Content-Description:",
+        b"cONTENT-dESCRIPTION:",
+        "TAG NO CASE ERROR: Header name (Content-Description) does not match.",
+    )?;
     let (input, description) = mime_unstructured(input)?;
-    let (input, ()) = tag(input, b"\r\n", "TAG ERROR: A header (`Content-Description` in this case) must end with a CRLF sequence.")?;
+    let (input, ()) = tag(
+        input,
+        b"\r\n",
+        "TAG ERROR: A header (`Content-Description` in this case) must end with a CRLF sequence.",
+    )?;
 
     Ok((input, description))
 }

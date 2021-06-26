@@ -2,7 +2,11 @@ use crate::prelude::*;
 use std::borrow::Cow;
 
 #[inline]
-pub(crate) fn tag<'a>(input: &'a [u8], expected: &'static [u8], error_message: &'static str) -> Res<'a, ()> {
+pub(crate) fn tag<'a>(
+    input: &'a [u8],
+    expected: &'static [u8],
+    error_message: &'static str,
+) -> Res<'a, ()> {
     debug_assert!(std::str::from_utf8(expected).is_ok());
     if input.starts_with(expected) {
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
@@ -264,8 +268,16 @@ mod tests {
 
     #[test]
     fn test_optional() {
-        assert!(optional(b"abcdef", |input| tag(input, b"efg", "TAG ERROR: Testing")).1.is_none());
-        assert!(optional(b"abcdef", |input| tag(input, b"abc", "TAG ERROR: Testing")).1.is_some());
+        assert!(
+            optional(b"abcdef", |input| tag(input, b"efg", "TAG ERROR: Testing"))
+                .1
+                .is_none()
+        );
+        assert!(
+            optional(b"abcdef", |input| tag(input, b"abc", "TAG ERROR: Testing"))
+                .1
+                .is_some()
+        );
     }
 
     #[test]
