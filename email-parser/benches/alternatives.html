@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Performance comparison</title>
+	<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300&display=swap" rel="stylesheet">
+	<style type="text/css">
+		* {
+			padding: 0;
+			margin: 0;
+			color: white;
+			font-size: 3vw;
+			font-family: 'Fira Sans', sans-serif;
+		}
+
+		#chart {
+			display: grid;
+			grid-template-columns: min-content auto;
+			grid-template-rows: 10vw 10vw 10vw 10vw 10vw;
+			padding: 2vw;
+			background: linear-gradient(28deg, #382daa, #a8769d);
+		}
+
+		.left {
+			border-right: 1px dashed white;
+			padding-right: 3vw;
+		}
+
+		.name {
+			margin: 3vw 0;
+			height: 100%;
+		}
+
+		.bar {
+			margin: 3vw 0;
+			background-color: orange;
+			border-top-right-radius: 7px;
+			border-bottom-right-radius: 7px;
+			text-align: center;
+			color: black;
+			line-height: 4vw;
+		}
+
+		#winner {
+			display: flex;
+			flex-direction: row;
+		}
+
+		#winner>.bar {
+			background-color: yellow;
+			color: black;
+		}
+
+		#winner>img {
+			height: 50%;
+			margin: 3vw 0;
+			margin-left: 1vw;
+			position: relative;
+			bottom: .4vw;
+		}
+
+		.additional_info {
+			font-size: .5rem;
+			color: #bbb;
+			position: relative;
+			bottom: .5rem;
+		}
+	</style>
+</head>
+<body>
+	<div id="chart">
+		<div class="left">
+			<div class="name">email_parser<br/><span class="additional_info">(all features off)</span></div>
+		</div>
+		<div id="winner">
+			<div class="bar" style="width: 20%">7,568 ns</div>
+			<img src="data:image/png;base64,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">
+		</div>
+		<div class="left">
+			<div class="name">email_parser<br/><span class="additional_info">(default features)</span></div>
+		</div>
+		<div id="winner">
+			<div class="bar" style="width: 32%">12,140 ns</div>
+		</div>
+		<div class="left">
+			<div class="name">email_parser<br/><span class="additional_info">(all features on)</span></div>
+		</div>
+		<div id="winner">
+			<div class="bar" style="width: 36%">13,583 ns</div>
+		</div>
+		<div class="left">
+			<div class="name">mailparse</div>
+		</div>
+		<div class="bar" style="width: 43%">16,034 ns</div>
+		<div class="left">
+			<div class="name">email_format</div>
+		</div>
+		<div class="bar" style="width: 74%">27,914 ns</div>
+		<div class="left">
+			<div class="name">email</div>
+		</div>
+		<div class="bar" style="width: 100%">37,564 ns</div>
+	</div>
+</body>
+</html>

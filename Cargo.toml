@@ -1,45 +1,4 @@
-[package]
-name = "email-parser"
-version = "0.5.0"
-authors = ["Mubelotix <mubelotix@gmail.com>"]
-edition = "2018"
-license = "MIT"
-description = "The fastest and lightest email parsing Rust library. Supports MIME."
-readme = "README.md"
-repository = "https://github.com/Mubelotix/email-parser"
-categories = ["email", "parser-implementations"]
-keywords = ["email", "mail", "mime", "parser"]
-
-[dependencies]
-textcode = {version="0.2", optional=true}
-
-[features]
-default = ["headers"]
-headers = ["to", "cc", "bcc", "date", "from", "sender", "reply-to", "message-id", "in-reply-to", "references", "subject", "comments", "keywords", "trace"]
-to = []
-cc = []
-bcc = []
-date = []
-from = []
-sender = []
-reply-to = []
-message-id = []
-in-reply-to = []
-references = []
-subject = []
-comments = []
-keywords = []
-trace = []
-benchmarking = ["mime"]
-compatibility-fixes = []
-content-disposition = ["mime"]
-unrecognized-headers = ["mime"]
-mime = ["textcode"]
-
-[dev-dependencies]
-email = "0.0.21"
-email-format = "0.8"
-mailparse = "0.13"
-
-[profile.release]
-codegen-units = 1
+[workspace]
+members = [
+    "email-parser",
+]
