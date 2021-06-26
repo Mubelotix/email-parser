@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::manual_range_contains)]
+#![allow(clippy::inconsistent_struct_constructor)]
 
 //! The fastest and lightest email parsing Rust library!\
 //! This library has no dependency.
