@@ -1,3 +1,5 @@
+use timezone_abbreviations;
+
 use crate::prelude::*;
 
 pub fn day_name(input: &[u8]) -> Res<Day> {
@@ -143,7 +145,31 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
         Some(b'+') => true,
         Some(b'-') => false,
         None => return Err(Error::Unknown("Expected more characters in zone")),
-        _ => return Err(Error::Unknown("Invalid sign character in zone")),
+        _ => {
+            // find the end of the line to match against existing timezone abbreviations
+            if let Some(break_position) = input.iter().position(|e| e == &b'\r' || e == &b'\n') {
+                let position = break_position - 1;
+                if break_position > 0 && position <= timezone_abbreviations::max_abbreviation_len()
+                {
+                    let sub_input = &input[0..=position];
+                    if let Some(abbr) = std::str::from_utf8(&sub_input)
+                        .ok()
+                        .and_then(|abbr| timezone_abbreviations::timezone(&abbr))
+                        .and_then(|abbrs| abbrs.first())
+                    {
+                        return Ok((
+                            &input[break_position..],
+                            Zone {
+                                sign: abbr.sign.is_plus(),
+                                hour_offset: abbr.hour_offset,
+                                minute_offset: abbr.minute_offset,
+                            },
+                        ));
+                    }
+                }
+            }
+            return Err(Error::Unknown("Invalid sign character in zone"));
+        }
     };
     input = &input[1..];
 
