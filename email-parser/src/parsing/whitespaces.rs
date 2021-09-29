@@ -28,6 +28,12 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
 }
 
 #[inline]
+pub fn skip_whitespace(input: &[u8]) -> Res<()> {
+    let (input, _) = take_while(&input, is_wsp)?;
+    Ok((input, ()))
+}
+
+#[inline]
 pub fn ccontent(input: &[u8]) -> Res<Cow<str>> {
     match_parsers(
         input,

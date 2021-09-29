@@ -149,6 +149,8 @@ pub fn mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
         mailboxes.push(new_mailbox);
     }
 
+    let (input, _) = skip_whitespace(&input)?;
+
     Ok((input, mailboxes))
 }
 
