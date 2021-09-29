@@ -12,7 +12,7 @@ keywords = ["email", "mail", "mime", "parser"]
 
 [dependencies]
 textcode = {version="0.2", optional=true}
-timezone-abbreviations = { path = "../../timezone-abbreviations" }
+timezone-abbreviations = "0.1.0"
 
 [features]
 default = ["headers"]
