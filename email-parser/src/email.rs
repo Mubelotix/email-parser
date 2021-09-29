@@ -145,92 +145,47 @@ impl<'a> Email<'a> {
             match field {
                 #[cfg(feature = "from")]
                 Field::From(mailboxes) => {
-                    if from.is_none() {
-                        from = Some(mailboxes)
-                    } else {
-                        return Err(Error::DuplicateHeader("From"));
-                    }
+                    merge_headers(&mut from, mailboxes, "From")?;
                 }
                 #[cfg(feature = "sender")]
                 Field::Sender(mailbox) => {
-                    if sender.is_none() {
-                        sender = Some(mailbox)
-                    } else {
-                        return Err(Error::DuplicateHeader("Sender"));
-                    }
+                    assign_header(&mut sender, mailbox, "Sender")?;
                 }
                 #[cfg(feature = "subject")]
                 Field::Subject(data) => {
-                    if subject.is_none() {
-                        subject = Some(data)
-                    } else {
-                        return Err(Error::DuplicateHeader("Subject"));
-                    }
+                    assign_header(&mut subject, data, "Subject")?;
                 }
                 #[cfg(feature = "date")]
                 Field::Date(data) => {
-                    if date.is_none() {
-                        date = Some(data)
-                    } else {
-                        return Err(Error::DuplicateHeader("Date"));
-                    }
+                    assign_header(&mut date, data, "Date")?;
                 }
                 #[cfg(feature = "to")]
-                Field::To(mut addresses) => {
-                    if let Some(value) = to.as_mut() {
-                        let value: &mut Vec<Address> = value;
-                        value.append(&mut addresses);
-                    } else {
-                        to = Some(addresses)
-                    }
+                Field::To(addresses) => {
+                    merge_headers(&mut to, addresses, "To")?;
                 }
                 #[cfg(feature = "cc")]
                 Field::Cc(addresses) => {
-                    if cc.is_none() {
-                        cc = Some(addresses)
-                    } else {
-                        return Err(Error::DuplicateHeader("Cc"));
-                    }
+                    merge_headers(&mut cc, addresses, "Cc")?;
                 }
                 #[cfg(feature = "bcc")]
                 Field::Bcc(addresses) => {
-                    if bcc.is_none() {
-                        bcc = Some(addresses)
-                    } else {
-                        return Err(Error::DuplicateHeader("Bcc"));
-                    }
+                    merge_headers(&mut bcc, addresses, "Bcc")?;
                 }
                 #[cfg(feature = "message-id")]
                 Field::MessageId(id) => {
-                    if message_id.is_none() {
-                        message_id = Some(id)
-                    } else {
-                        return Err(Error::DuplicateHeader("Message-ID"));
-                    }
+                    assign_header(&mut message_id, id, "Message-ID")?;
                 }
                 #[cfg(feature = "in-reply-to")]
                 Field::InReplyTo(ids) => {
-                    if in_reply_to.is_none() {
-                        in_reply_to = Some(ids)
-                    } else {
-                        return Err(Error::DuplicateHeader("In-Reply-To"));
-                    }
+                    merge_headers(&mut in_reply_to, ids, "In-Reply-To")?;
                 }
                 #[cfg(feature = "references")]
                 Field::References(ids) => {
-                    if references.is_none() {
-                        references = Some(ids)
-                    } else {
-                        return Err(Error::DuplicateHeader("References"));
-                    }
+                    merge_headers(&mut references, ids, "References")?;
                 }
                 #[cfg(feature = "reply-to")]
                 Field::ReplyTo(mailboxes) => {
-                    if reply_to.is_none() {
-                        reply_to = Some(mailboxes)
-                    } else {
-                        return Err(Error::DuplicateHeader("Reply-To"));
-                    }
+                    merge_headers(&mut reply_to, mailboxes, "Reply-To")?;
                 }
                 #[cfg(feature = "comments")]
                 Field::Comments(data) => comments.push(data),
@@ -248,11 +203,7 @@ impl<'a> Email<'a> {
                 }
                 #[cfg(feature = "mime")]
                 Field::MimeVersion(major, minor) => {
-                    if mime_version.is_none() {
-                        mime_version = Some((major, minor))
-                    } else {
-                        return Err(Error::DuplicateHeader("Mime-Version"));
-                    }
+                    assign_header(&mut mime_version, (major, minor), "Mime-Version")?;
                 }
                 #[cfg(feature = "mime")]
                 Field::ContentType {
@@ -260,43 +211,31 @@ impl<'a> Email<'a> {
                     subtype,
                     parameters,
                 } => {
-                    if content_type.is_none() {
-                        content_type = Some((mime_type, subtype, parameters))
-                    } else {
-                        return Err(Error::DuplicateHeader("Content-Type"));
-                    }
+                    assign_header(
+                        &mut content_type,
+                        (mime_type, subtype, parameters),
+                        "Content-Type",
+                    )?;
                 }
                 #[cfg(feature = "mime")]
                 Field::ContentTransferEncoding(encoding) => {
-                    if content_transfer_encoding.is_none() {
-                        content_transfer_encoding = Some(encoding)
-                    } else {
-                        return Err(Error::DuplicateHeader("Content-Transfer-Encoding"));
-                    }
+                    assign_header(
+                        &mut content_transfer_encoding,
+                        encoding,
+                        "Content-Transfer-Encoding",
+                    )?;
                 }
                 #[cfg(feature = "mime")]
                 Field::ContentId(id) => {
-                    if content_id.is_none() {
-                        content_id = Some(id)
-                    } else {
-                        return Err(Error::DuplicateHeader("Content-Id"));
-                    }
+                    assign_header(&mut content_id, id, "Content-Id")?;
                 }
                 #[cfg(feature = "mime")]
                 Field::ContentDescription(description) => {
-                    if content_description.is_none() {
-                        content_description = Some(description)
-                    } else {
-                        return Err(Error::DuplicateHeader("Content-Description"));
-                    }
+                    assign_header(&mut content_description, description, "Content-Description")?;
                 }
                 #[cfg(feature = "content-disposition")]
                 Field::ContentDisposition(disposition) => {
-                    if content_disposition.is_none() {
-                        content_disposition = Some(disposition)
-                    } else {
-                        return Err(Error::DuplicateHeader("Content-Disposition"));
-                    }
+                    assign_header(&mut content_disposition, disposition, "Content-Disposition")?;
                 }
                 Field::Unknown { name, value } => {
                     unknown_fields.push((name, value));
@@ -396,6 +335,45 @@ impl<'a> std::convert::TryFrom<&'a [u8]> for Email<'a> {
     }
 }
 
+#[allow(unused_variables, unused_mut)]
+fn merge_headers<T>(
+    existing: &mut Option<Vec<T>>,
+    mut new: Vec<T>,
+    name: &'static str,
+) -> Result<(), Error> {
+    #[cfg(not(feature = "allow-duplicate-headers"))]
+    if existing.is_some() {
+        return Err(Error::DuplicateHeader(name));
+    } else {
+        *existing = Some(new);
+    }
+
+    #[cfg(feature = "allow-duplicate-headers")]
+    if let Some(value) = existing.as_mut() {
+        let value: &mut Vec<T> = value;
+        value.append(&mut new);
+    } else {
+        *existing = Some(new);
+    }
+    Ok(())
+}
+
+#[allow(unused_variables)]
+fn assign_header<T>(existing: &mut Option<T>, new: T, name: &'static str) -> Result<(), Error> {
+    #[cfg(not(feature = "allow-duplicate-headers"))]
+    if existing.is_some() {
+        return Err(Error::DuplicateHeader(name));
+    } else {
+        *existing = Some(new);
+    }
+
+    #[cfg(feature = "allow-duplicate-headers")]
+    if existing.is_none() {
+        *existing = Some(new);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -424,6 +402,7 @@ mod test {
         )
         .is_err());
 
+        #[cfg(not(feature = "allow-duplicate-headers"))]
         assert!(Email::parse(
             // 2 date fields
             b"\
@@ -444,6 +423,7 @@ mod test {
         )
         .is_err());
 
+        #[cfg(not(feature = "allow-duplicate-headers"))]
         assert!(Email::parse(
             // 2 from fields
             b"\

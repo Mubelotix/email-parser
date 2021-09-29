@@ -36,6 +36,7 @@ compatibility-fixes = []
 content-disposition = ["mime"]
 unrecognized-headers = ["mime"]
 mime = ["textcode"]
+allow-duplicate-headers = []
 
 [dev-dependencies]
 email = "0.0.21"
