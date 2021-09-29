@@ -95,7 +95,12 @@ pub fn day(input: &[u8]) -> Res<u8> {
 }
 
 pub fn time_of_day(input: &[u8]) -> Res<Time> {
-    let (input, hour) = two_digits(input)?;
+    let (input, hour) = match digit(input) {
+        // Support `9:23:23` time format
+        Ok((new_input, digit)) if new_input.starts_with(b":") => (new_input, digit),
+        // Support `09:23:23` time format
+        _ => two_digits(input)?,
+    };
     if hour > 23 {
         return Err(Error::Unknown("There is only 24 hours in a day"));
     }
