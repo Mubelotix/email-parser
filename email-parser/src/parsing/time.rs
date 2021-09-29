@@ -187,7 +187,13 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
     input = &input[1..];
 
     let (input, hour_offset) = two_digits(input)?;
-    let (input, minute_offset) = two_digits(input)?;
+
+    // Some mails have a "00:00" timezone
+    let (input, minute_offset) = if input.starts_with(b":") {
+        two_digits(&input[1..])?
+    } else {
+        two_digits(input)?
+    };
 
     if minute_offset > 59 {
         return Err(Error::Unknown("zone minute_offset out of range"));
