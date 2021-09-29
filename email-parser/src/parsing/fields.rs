@@ -594,7 +594,7 @@ pub fn unknown(input: &[u8]) -> Res<(&str, Cow<str>)> {
         "TAG ERROR: A header name must be followed by a `:`.",
     )?;
     #[cfg(not(feature = "unrecognized-headers"))]
-    let (input, value) = unstructured(input)?;
+    let (input, value) = unstructured_until_linebreak(input)?;
     #[cfg(feature = "unrecognized-headers")]
     let (input, value) = mime_unstructured(input)?;
 

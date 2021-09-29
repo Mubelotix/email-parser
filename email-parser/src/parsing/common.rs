@@ -145,6 +145,25 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     Ok((input, output))
 }
 
+pub fn unstructured_until_linebreak(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
+    let (mut input, output) = collect_many(input, |i| {
+        collect_pair(
+            i,
+            |i| Ok(fws(i).unwrap_or((i, empty_string()))),
+            |i| {
+                let (input, value) = take_while1(i, |f| f != '\r' as u8 && f != '\n' as u8)?;
+                Ok((input, Cow::Borrowed(value)))
+            },
+        )
+    })?;
+
+    while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
+        input = new_input;
+    }
+
+    Ok((input, output))
+}
+
 #[cfg(feature = "mime")]
 pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
     let mut previous_was_encoded = false;
