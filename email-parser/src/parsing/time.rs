@@ -199,6 +199,16 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
         return Err(Error::Unknown("zone minute_offset out of range"));
     }
 
+    // Some emails move the name of the timezone at the end of the date header
+    let (_, comment) = take_while(&input, |c| {
+        c != '\r' as u8 && c != '\n' as u8 && c != '"' as u8
+    })?;
+    let input = if comment.is_empty() {
+        input
+    } else {
+        &input[comment.len()..]
+    };
+
     Ok((
         input,
         Zone {
