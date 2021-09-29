@@ -126,7 +126,6 @@ pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
     let mut previous_was_encoded = false;
     let (mut input, output) = collect_many(input, |i| {
         let (i, mut wsp) = fws(i).unwrap_or((i, empty_string()));
-
         if let Ok((i, text)) = crate::parsing::mime::encoded_headers::encoded_word(i) {
             if previous_was_encoded {
                 return Ok((i, text));
@@ -135,7 +134,7 @@ pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
                 add_string(&mut wsp, text);
                 return Ok((i, wsp));
             }
-        } else if let Ok((i, text)) = take_while1(i, is_vchar) {
+        } else if let Ok((i, text)) = take_while1(i, is_codepage_vchar) {
             previous_was_encoded = false;
             add_str(&mut wsp, text);
             return Ok((i, wsp));
