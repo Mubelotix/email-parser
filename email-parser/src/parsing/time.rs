@@ -63,7 +63,15 @@ pub fn year(input: &[u8]) -> Res<usize> {
 
     let (input, year) =
         take_while1(input, is_digit).map_err(|_e| Error::Unknown("no digit in year"))?;
-    if year.len() < 4 {
+
+    // Some emails have year only as 10 (for 2010)
+    if year.len() == 2 {
+        let year: usize = year
+            .parse()
+            .map_err(|_e| Error::Unknown("Failed to parse year"))?;
+        let (input, _) = fws(input)?;
+        return Ok((input, 2000 + year));
+    } else if year.len() < 4 {
         return Err(Error::Unknown("year is expected to have 4 digits or more"));
     }
     let year: usize = year
