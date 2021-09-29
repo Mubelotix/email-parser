@@ -587,6 +587,17 @@ pub fn trace(
 }
 
 pub fn unknown(input: &[u8]) -> Res<(&str, Cow<str>)> {
+    // A header should never begin with whitespace, but here we are.
+    // We add this to make the parsing more resilient. Supporting:
+    // `    NameOfHeader: ValueOfHeader`
+
+    let input = if input.len() > 0 && input[0].is_ascii_whitespace() {
+        let (new_input, _) = skip_whitespace(input)?;
+        new_input
+    } else {
+        input
+    };
+
     let (input, name) = take_while1(input, is_ftext)?;
     let (input, ()) = tag(
         input,
