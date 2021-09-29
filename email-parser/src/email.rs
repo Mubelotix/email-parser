@@ -269,11 +269,21 @@ impl<'a> Email<'a> {
                     .into_iter()
                     .collect(),
             )),
+            #[allow(unused_variables)]
             if let Some(body) = body {
-                Some(crate::parsing::mime::entity::decode_value(
-                    Cow::Borrowed(body),
-                    content_transfer_encoding.unwrap_or(ContentTransferEncoding::SevenBit),
-                )?)
+                #[cfg(feature = "decode-mime-body")]
+                {
+                    crate::parsing::mime::entity::decode_value(
+                        Cow::Borrowed(body),
+                        content_transfer_encoding.unwrap_or(ContentTransferEncoding::SevenBit),
+                    )
+                    .ok()
+                }
+
+                #[cfg(not(feature = "decode-mime-body"))]
+                {
+                    None
+                }
             } else {
                 None
             },

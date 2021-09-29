@@ -37,6 +37,7 @@ content-disposition = ["mime"]
 unrecognized-headers = ["mime"]
 mime = ["textcode"]
 allow-duplicate-headers = []
+decode-mime-body = []
 
 [dev-dependencies]
 email = "0.0.21"
