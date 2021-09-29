@@ -176,11 +176,12 @@ impl<'a> Email<'a> {
                     }
                 }
                 #[cfg(feature = "to")]
-                Field::To(addresses) => {
-                    if to.is_none() {
-                        to = Some(addresses)
+                Field::To(mut addresses) => {
+                    if let Some(value) = to.as_mut() {
+                        let value: &mut Vec<Address> = value;
+                        value.append(&mut addresses);
                     } else {
-                        return Err(Error::DuplicateHeader("To"));
+                        to = Some(addresses)
                     }
                 }
                 #[cfg(feature = "cc")]
