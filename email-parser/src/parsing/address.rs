@@ -66,7 +66,12 @@ pub fn angle_addr(input: &[u8]) -> Res<EmailAddress> {
 }
 
 pub fn name_addr(input: &[u8]) -> Res<Mailbox> {
-    let (input, display_name) = optional(input, phrase);
+    let (input, display_name) = if let (input, Some(display_name)) = optional(input, in_quotes) {
+        (input, Some(display_name))
+    } else {
+        optional(input, phrase)
+    };
+
     let (input, angle_addr) = angle_addr(input)?;
 
     Ok((

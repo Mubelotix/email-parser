@@ -88,6 +88,16 @@ pub fn word(input: &[u8]) -> Res<Cow<str>> {
     )
 }
 
+pub fn in_quotes(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
+    let (input, _) = fws(input)?;
+    if !input.starts_with(b"\"") {
+        return Err(Error::Unknown("Has to start with \""));
+    }
+    let (input, value) = take_while(&input[1..], |c| c != '"' as u8)?;
+    let (input, _) = fws(&input[1..])?;
+    Ok((&input, vec![Cow::Borrowed(value)]))
+}
+
 pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
     #[cfg(feature = "mime")]
     fn word(input: &[u8]) -> Res<Cow<str>> {
