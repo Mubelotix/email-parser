@@ -312,7 +312,7 @@ impl<'a> Email<'a> {
         let sender = match sender {
             Some(sender) => sender,
             None => {
-                if from.len() == 1 {
+                if from.len() >= 1 {
                     from[0].clone()
                 } else {
                     return Err(Error::MissingHeader("Sender"));
