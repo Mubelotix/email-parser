@@ -26,9 +26,14 @@ pub fn atom(mut input: &[u8]) -> Res<&str> {
     Ok((input, atom))
 }
 
-pub fn dot(input: &[u8]) -> Res<Cow<str>> {
-    if input.starts_with(b".") {
-        Ok((&input[1..], Cow::Borrowed(".")))
+pub fn address_chars(input: &[u8]) -> Res<Cow<str>> {
+    if input.starts_with(b".") || input.starts_with(b"@") {
+        unsafe {
+            Ok((
+                &input[1..],
+                Cow::Borrowed(std::str::from_utf8_unchecked(&input[0..1])),
+            ))
+        }
     } else {
         Err(Error::Unknown(". Required"))
     }
@@ -94,7 +99,7 @@ pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
                     crate::parsing::mime::encoded_headers::encoded_word(i)
                 }),
                 (|i| crate::parsing::common::word(i)),
-                (|i| crate::parsing::common::dot(i)),
+                (|i| crate::parsing::common::address_chars(i)),
             ][..],
         )
     }
