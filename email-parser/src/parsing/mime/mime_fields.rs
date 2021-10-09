@@ -55,9 +55,8 @@ pub fn mime_version(input: &[u8]) -> Res<(u8, u8)> {
     let (input, d2) = u8_number(input)?;
 
     let (input, _cwfs) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`MIME-Version` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -235,9 +234,8 @@ pub fn content_type(input: &[u8]) -> Res<(ContentType, Cow<str>, HashMap<Cow<str
     let parameters = super::percent_encoding::collect_parameters(parameters_vec)?;
 
     let (input, ()) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Content-Type` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -349,9 +347,8 @@ pub fn content_disposition(input: &[u8]) -> Res<Disposition> {
     disposition.unstructured = super::percent_encoding::collect_parameters(parameters_vec)?;
 
     let (input, ()) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Content-Disposition` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -400,7 +397,7 @@ pub fn content_transfer_encoding(input: &[u8]) -> Res<ContentTransferEncoding> {
     )?;
 
     let (input, _cwfs) = ignore_inline_cfws(input)?;
-    let (input, ()) = tag(input, b"\r\n", "TAG ERROR: A header (`Content-Transfer-Encoding` in this case) must end with a CRLF sequence.")?;
+    let (input, ()) = newline(input, "TAG ERROR: A header (`Content-Transfer-Encoding` in this case) must end with a CRLF sequence.")?;
 
     Ok((input, encoding))
 }
@@ -413,9 +410,8 @@ pub fn content_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
         "TAG NO CASE ERROR: Header name (Content-ID) does not match.",
     )?;
     let (input, id) = crate::parsing::address::message_id(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Content-ID` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -430,9 +426,8 @@ pub fn content_description(input: &[u8]) -> Res<Cow<str>> {
         "TAG NO CASE ERROR: Header name (Content-Description) does not match.",
     )?;
     let (input, description) = mime_unstructured(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Content-Description` in this case) must end with a CRLF sequence.",
     )?;
 

@@ -214,9 +214,8 @@ pub fn header_part(
         ));
     }
 
-    let (input, _) = tag(
+    let (input, _) = newline(
         &input,
-        b"\r\n",
         "TAG ERROR: A MIME entity header part must be followed by a CRLF sequence.",
     )?;
 

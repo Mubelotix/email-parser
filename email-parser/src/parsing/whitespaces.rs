@@ -8,10 +8,9 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
             input,
             |input| take_while(input, is_wsp),
             |input| {
-                tag(
+                newline(
                     input,
-                    b"\r\n",
-                    "TAG ERROR: A folding whitespace must end with a `\\r\\n` sequence.",
+                    "TAG ERROR: A folding whitespace must end with a `\r\n` sequence.",
                 )
             },
         )

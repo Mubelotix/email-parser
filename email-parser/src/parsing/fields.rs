@@ -175,9 +175,8 @@ pub fn date(input: &[u8]) -> Res<DateTime> {
         "TAG NO CASE ERROR: Header name (Date) does not match.",
     )?;
     let (input, date_time) = date_time(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Date` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -192,9 +191,8 @@ pub fn from(input: &[u8]) -> Res<Vec<Mailbox>> {
         "TAG NO CASE ERROR: Header name (From) does not match.",
     )?;
     let (input, mailbox_list) = mailbox_list(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`From` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -209,9 +207,8 @@ pub fn sender(input: &[u8]) -> Res<Mailbox> {
         "TAG NO CASE ERROR: Header name (Sender) does not match.",
     )?;
     let (input, mailbox) = mailbox(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Sender` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -226,9 +223,8 @@ pub fn reply_to(input: &[u8]) -> Res<Vec<Address>> {
         "TAG NO CASE ERROR: Header name (Reply-To) does not match.",
     )?;
     let (input, mailbox) = address_list(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Reply-To` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -243,9 +239,8 @@ pub fn to(input: &[u8]) -> Res<Vec<Address>> {
         "TAG NO CASE ERROR: Header name (To) does not match.",
     )?;
     let (input, mailbox) = address_list(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`To` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -260,9 +255,8 @@ pub fn cc(input: &[u8]) -> Res<Vec<Address>> {
         "TAG NO CASE ERROR: Header name (Cc) does not match.",
     )?;
     let (input, mailbox) = address_list(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Cc` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -283,9 +277,8 @@ pub fn bcc(input: &[u8]) -> Res<Vec<Address>> {
     } else {
         return Err(Error::Unknown("Invalid bcc field"));
     };
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Bcc` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -300,9 +293,8 @@ pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
         "TAG NO CASE ERROR: Header name (Message-ID) does not match.",
     )?;
     let (input, id) = crate::parsing::address::message_id(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Message-ID` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -317,9 +309,8 @@ pub fn in_reply_to(input: &[u8]) -> Res<Vec<(Cow<str>, Cow<str>)>> {
         "TAG NO CASE ERROR: Header name (Reply-To) does not match.",
     )?;
     let (input, ids) = many1(input, crate::parsing::address::message_id)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`In-Reply-To` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -334,9 +325,8 @@ pub fn references(input: &[u8]) -> Res<Vec<(Cow<str>, Cow<str>)>> {
         "TAG NO CASE ERROR: Header name (References) does not match.",
     )?;
     let (input, ids) = many1(input, crate::parsing::address::message_id)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`References` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -354,9 +344,8 @@ pub fn subject(input: &[u8]) -> Res<Cow<str>> {
     let (input, subject) = unstructured(input)?;
     #[cfg(feature = "mime")]
     let (input, subject) = mime_unstructured(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Subject` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -374,9 +363,8 @@ pub fn comments(input: &[u8]) -> Res<Cow<str>> {
     let (input, comments) = unstructured(input)?;
     #[cfg(feature = "mime")]
     let (input, comments) = mime_unstructured(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Comments` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -400,9 +388,8 @@ pub fn keywords(input: &[u8]) -> Res<Vec<Vec<Cow<str>>>> {
         keywords.push(new_keyword);
     }
 
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Keywords` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -518,9 +505,8 @@ pub fn return_path(input: &[u8]) -> Res<Option<EmailAddress>> {
                 as fn(input: &[u8]) -> Res<Option<EmailAddress>>,
         ][..],
     )?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Return-Path` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -565,9 +551,8 @@ pub fn received(input: &[u8]) -> Res<(Vec<ReceivedToken>, DateTime)> {
         "TAG ERROR: Received tokens must be followed by a `;`.",
     )?;
     let (input, date_time) = date_time(input)?;
-    let (input, ()) = tag(
+    let (input, ()) = newline(
         input,
-        b"\r\n",
         "TAG ERROR: A header (`Received` in this case) must end with a CRLF sequence.",
     )?;
 
@@ -609,11 +594,7 @@ pub fn unknown(input: &[u8]) -> Res<(&str, Cow<str>)> {
     #[cfg(feature = "unrecognized-headers")]
     let (input, value) = mime_unstructured(input)?;
 
-    let (input, ()) = tag(
-        input,
-        b"\r\n",
-        "TAG ERROR: A header must end with a CRLF sequence.",
-    )?;
+    let (input, ()) = newline(input, "TAG ERROR: A header must end with a CRLF sequence.")?;
 
     Ok((input, (name, value)))
 }
