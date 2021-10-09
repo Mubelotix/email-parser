@@ -1,3 +1,5 @@
+use timezone_abbreviations;
+
 use crate::prelude::*;
 
 pub fn day_name(input: &[u8]) -> Res<Day> {
@@ -61,7 +63,15 @@ pub fn year(input: &[u8]) -> Res<usize> {
 
     let (input, year) =
         take_while1(input, is_digit).map_err(|_e| Error::Unknown("no digit in year"))?;
-    if year.len() < 4 {
+
+    // Some emails have year only as 10 (for 2010)
+    if year.len() == 2 {
+        let year: usize = year
+            .parse()
+            .map_err(|_e| Error::Unknown("Failed to parse year"))?;
+        let (input, _) = fws(input)?;
+        return Ok((input, 2000 + year));
+    } else if year.len() < 4 {
         return Err(Error::Unknown("year is expected to have 4 digits or more"));
     }
     let year: usize = year
@@ -93,7 +103,12 @@ pub fn day(input: &[u8]) -> Res<u8> {
 }
 
 pub fn time_of_day(input: &[u8]) -> Res<Time> {
-    let (input, hour) = two_digits(input)?;
+    let (input, hour) = match digit(input) {
+        // Support `9:23:23` time format
+        Ok((new_input, digit)) if new_input.starts_with(b":") => (new_input, digit),
+        // Support `09:23:23` time format
+        _ => two_digits(input)?,
+    };
     if hour > 23 {
         return Err(Error::Unknown("There is only 24 hours in a day"));
     }
@@ -143,16 +158,56 @@ pub fn zone(input: &[u8]) -> Res<Zone> {
         Some(b'+') => true,
         Some(b'-') => false,
         None => return Err(Error::Unknown("Expected more characters in zone")),
-        _ => return Err(Error::Unknown("Invalid sign character in zone")),
+        _ => {
+            // find the end of the line to match against existing timezone abbreviations
+            if let Some(break_position) = input.iter().position(|e| e == &b'\r' || e == &b'\n') {
+                let position = break_position - 1;
+                if break_position > 0 && position <= timezone_abbreviations::max_abbreviation_len()
+                {
+                    let sub_input = &input[0..=position];
+                    if let Some(abbr) = std::str::from_utf8(&sub_input)
+                        .ok()
+                        .and_then(|abbr| timezone_abbreviations::timezone(&abbr))
+                        .and_then(|abbrs| abbrs.first())
+                    {
+                        return Ok((
+                            &input[break_position..],
+                            Zone {
+                                sign: abbr.sign.is_plus(),
+                                hour_offset: abbr.hour_offset,
+                                minute_offset: abbr.minute_offset,
+                            },
+                        ));
+                    }
+                }
+            }
+            return Err(Error::Unknown("Invalid sign character in zone"));
+        }
     };
     input = &input[1..];
 
     let (input, hour_offset) = two_digits(input)?;
-    let (input, minute_offset) = two_digits(input)?;
+
+    // Some mails have a "00:00" timezone
+    let (input, minute_offset) = if input.starts_with(b":") {
+        two_digits(&input[1..])?
+    } else {
+        two_digits(input)?
+    };
 
     if minute_offset > 59 {
         return Err(Error::Unknown("zone minute_offset out of range"));
     }
+
+    // Some emails move the name of the timezone at the end of the date header
+    let (_, comment) = take_while(&input, |c| {
+        c != '\r' as u8 && c != '\n' as u8 && c != '"' as u8
+    })?;
+    let input = if comment.is_empty() {
+        input
+    } else {
+        &input[comment.len()..]
+    };
 
     Ok((
         input,

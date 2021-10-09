@@ -18,6 +18,11 @@ pub fn is_vchar(character: u8) -> bool {
 }
 
 #[inline]
+pub fn is_codepage_vchar(character: u8) -> bool {
+    character >= 0x21 && character <= 0xfe
+}
+
+#[inline]
 pub fn is_alpha(c: u8) -> bool {
     (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)
 }

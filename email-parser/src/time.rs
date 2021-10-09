@@ -52,6 +52,25 @@ pub struct Date {
     pub year: usize,
 }
 
+impl Date {
+    pub fn month_number(&self) -> u8 {
+        match self.month {
+            Month::January => 1,
+            Month::February => 2,
+            Month::March => 3,
+            Month::April => 4,
+            Month::May => 5,
+            Month::June => 6,
+            Month::July => 7,
+            Month::August => 8,
+            Month::September => 9,
+            Month::October => 10,
+            Month::November => 11,
+            Month::December => 12,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct DateTime {
     pub day_name: Option<Day>,

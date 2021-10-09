@@ -2,6 +2,15 @@ use crate::prelude::*;
 use std::borrow::Cow;
 
 #[inline]
+pub(crate) fn newline<'a>(input: &'a [u8], error_message: &'static str) -> Res<'a, ()> {
+    #[cfg(feature = "compatibility-fixes")]
+    return tag2(input, b"\r\n", b"\n", error_message);
+
+    #[cfg(not(feature = "compatibility-fixes"))]
+    return tag(input, b"\r\n", error_message);
+}
+
+#[inline]
 pub(crate) fn tag<'a>(
     input: &'a [u8],
     expected: &'static [u8],
@@ -12,6 +21,26 @@ pub(crate) fn tag<'a>(
         Ok((unsafe { input.get_unchecked(expected.len()..) }, ()))
     } else {
         Err(Error::Explicit(error_message))
+    }
+}
+
+#[inline]
+pub(crate) fn tag2<'a>(
+    input: &'a [u8],
+    expected1: &'static [u8],
+    expected2: &'static [u8],
+    error_message: &'static str,
+) -> Res<'a, ()> {
+    debug_assert!(std::str::from_utf8(expected1).is_ok());
+    if input.starts_with(expected1) {
+        Ok((unsafe { input.get_unchecked(expected1.len()..) }, ()))
+    } else {
+        debug_assert!(std::str::from_utf8(expected2).is_ok());
+        if input.starts_with(expected2) {
+            Ok((unsafe { input.get_unchecked(expected2.len()..) }, ()))
+        } else {
+            Err(Error::Explicit(error_message))
+        }
     }
 }
 

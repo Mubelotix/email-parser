@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use super::multipart;
 
 pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
+    #[allow(unused)]
     let (
         encoding,
         mime_type,
@@ -34,6 +35,7 @@ pub fn raw_entity(mut input: Cow<[u8]>) -> Result<RawEntity, Error> {
         description,
         id,
         parameters,
+        #[cfg(feature = "content-disposition")]
         disposition,
         value,
         additional_headers,
@@ -212,9 +214,8 @@ pub fn header_part(
         ));
     }
 
-    let (input, _) = tag(
+    let (input, _) = newline(
         &input,
-        b"\r\n",
         "TAG ERROR: A MIME entity header part must be followed by a CRLF sequence.",
     )?;
 

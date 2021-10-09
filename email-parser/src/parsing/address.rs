@@ -66,7 +66,12 @@ pub fn angle_addr(input: &[u8]) -> Res<EmailAddress> {
 }
 
 pub fn name_addr(input: &[u8]) -> Res<Mailbox> {
-    let (input, display_name) = optional(input, phrase);
+    let (input, display_name) = if let (input, Some(display_name)) = optional(input, in_quotes) {
+        (input, Some(display_name))
+    } else {
+        optional(input, phrase)
+    };
+
     let (input, angle_addr) = angle_addr(input)?;
 
     Ok((
@@ -143,6 +148,8 @@ pub fn mailbox_list(input: &[u8]) -> Res<Vec<Mailbox>> {
         input = new_input;
         mailboxes.push(new_mailbox);
     }
+
+    let (input, _) = skip_whitespace(&input)?;
 
     Ok((input, mailboxes))
 }

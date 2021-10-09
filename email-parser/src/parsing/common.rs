@@ -26,6 +26,19 @@ pub fn atom(mut input: &[u8]) -> Res<&str> {
     Ok((input, atom))
 }
 
+pub fn address_chars(input: &[u8]) -> Res<Cow<str>> {
+    if input.starts_with(b".") || input.starts_with(b"@") {
+        unsafe {
+            Ok((
+                &input[1..],
+                Cow::Borrowed(std::str::from_utf8_unchecked(&input[0..1])),
+            ))
+        }
+    } else {
+        Err(Error::Unknown(". Required"))
+    }
+}
+
 pub fn dot_atom_text(input: &[u8]) -> Res<Cow<str>> {
     let (mut input, output) = take_while1(input, is_atext)?;
     let mut output = Cow::Borrowed(output);
@@ -75,6 +88,16 @@ pub fn word(input: &[u8]) -> Res<Cow<str>> {
     )
 }
 
+pub fn in_quotes(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
+    let (input, _) = fws(input)?;
+    if !input.starts_with(b"\"") {
+        return Err(Error::Unknown("Has to start with \""));
+    }
+    let (input, value) = take_while(&input[1..], |c| c != '"' as u8)?;
+    let (input, _) = fws(&input[1..])?;
+    Ok((&input, vec![Cow::Borrowed(value)]))
+}
+
 pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
     #[cfg(feature = "mime")]
     fn word(input: &[u8]) -> Res<Cow<str>> {
@@ -86,6 +109,7 @@ pub fn phrase(input: &[u8]) -> Result<(&[u8], Vec<Cow<str>>), Error> {
                     crate::parsing::mime::encoded_headers::encoded_word(i)
                 }),
                 (|i| crate::parsing::common::word(i)),
+                (|i| crate::parsing::common::address_chars(i)),
             ][..],
         )
     }
@@ -121,12 +145,30 @@ pub fn unstructured(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
     Ok((input, output))
 }
 
+pub fn unstructured_until_linebreak(input: &[u8]) -> Result<(&[u8], Cow<str>), Error> {
+    let (mut input, output) = collect_many(input, |i| {
+        collect_pair(
+            i,
+            |i| Ok(fws(i).unwrap_or((i, empty_string()))),
+            |i| {
+                let (input, value) = take_while1(i, |f| f != '\r' as u8 && f != '\n' as u8)?;
+                Ok((input, Cow::Borrowed(value)))
+            },
+        )
+    })?;
+
+    while let Ok((new_input, _wsp)) = take_while1(input, is_wsp) {
+        input = new_input;
+    }
+
+    Ok((input, output))
+}
+
 #[cfg(feature = "mime")]
 pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
     let mut previous_was_encoded = false;
     let (mut input, output) = collect_many(input, |i| {
         let (i, mut wsp) = fws(i).unwrap_or((i, empty_string()));
-
         if let Ok((i, text)) = crate::parsing::mime::encoded_headers::encoded_word(i) {
             if previous_was_encoded {
                 return Ok((i, text));
@@ -135,7 +177,7 @@ pub fn mime_unstructured(input: &[u8]) -> Res<Cow<str>> {
                 add_string(&mut wsp, text);
                 return Ok((i, wsp));
             }
-        } else if let Ok((i, text)) = take_while1(i, is_vchar) {
+        } else if let Ok((i, text)) = take_while1(i, is_codepage_vchar) {
             previous_was_encoded = false;
             add_str(&mut wsp, text);
             return Ok((i, wsp));

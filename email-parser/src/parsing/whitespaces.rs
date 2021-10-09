@@ -8,10 +8,9 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
             input,
             |input| take_while(input, is_wsp),
             |input| {
-                tag(
+                newline(
                     input,
-                    b"\r\n",
-                    "TAG ERROR: A folding whitespace must end with a `\\r\\n` sequence.",
+                    "TAG ERROR: A folding whitespace must end with a `\r\n` sequence.",
                 )
             },
         )
@@ -25,6 +24,12 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
     } else {
         Ok((input, Cow::Borrowed(after)))
     }
+}
+
+#[inline]
+pub fn skip_whitespace(input: &[u8]) -> Res<()> {
+    let (input, _) = take_while(&input, is_wsp)?;
+    Ok((input, ()))
 }
 
 #[inline]
