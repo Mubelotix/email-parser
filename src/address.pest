@@ -3,6 +3,11 @@
 WSP = _{ " " | "\t" } // todo: such alias slow down the parser
 CRLF = _{ "\r\n" }
 
+// 3.2.1
+
+VCHAR = _{ '\x21'..'\x7E' }
+quoted_pair = { "\\" ~ (VCHAR | WSP) }
+
 // 3.2.2
 
 FWS = _{ (WSP* ~ CRLF)? ~ WSP+ }
