@@ -5,8 +5,9 @@ CFWS = _{ WSP* } // provisory
  
 // 3.2.3
 
-atext_seq = { (ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~")+ }
-specials = _{ "(" | ")" | "<" | ">" | "[" | "]" | ":" | ";" | "@" | "\\" | "," | "." | "\"" }
+atext = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~" }
+atext_seq = { atext+ }
 atom = _{ CFWS? ~ atext_seq ~ CFWS? }
 dot_atom_text = { atext_seq ~ ("." ~ atext_seq)* }
 dot_atom = _{ CFWS? ~ dot_atom_text ~ CFWS? }
+specials = _{ "(" | ")" | "<" | ">" | "[" | "]" | ":" | ";" | "@" | "\\" | "," | "." | "\"" }
