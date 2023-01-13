@@ -1,8 +1,17 @@
 // See https://www.rfc-editor.org/rfc/rfc5322#section-3.4
 
-WSP = _{ " " | "\t" }
-CFWS = _{ WSP* } // provisory
- 
+WSP = _{ " " | "\t" } // todo: such alias slow down the parser
+CRLF = _{ "\r\n" }
+
+// 3.2.2
+
+FWS = _{ (WSP* ~ CRLF)? ~ WSP+ }
+ctext = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
+ctext_seq = { ctext+ }
+ccontent = _{ ctext_seq /*| quoted_pair*/ | comment }
+comment = { "(" ~ (FWS? ~ ccontent)* ~ FWS? ~ ")" }
+CFWS = _{ ((FWS? ~ comment)+ ~ FWS?) | FWS }
+
 // 3.2.3
 
 atext = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~" }
