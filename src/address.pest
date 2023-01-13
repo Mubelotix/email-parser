@@ -11,16 +11,16 @@ quoted_pair = { "\\" ~ (VCHAR | WSP) }
 // 3.2.2
 
 FWS = _{ (WSP* ~ CRLF)? ~ WSP+ }
-ctext = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
-ctext_seq = { ctext+ }
+CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
+ctext_seq = { CTEXT+ }
 ccontent = _{ ctext_seq /*| quoted_pair*/ | comment }
 comment = { "(" ~ (FWS? ~ ccontent)* ~ FWS? ~ ")" }
 CFWS = _{ ((FWS? ~ comment)+ ~ FWS?) | FWS }
 
 // 3.2.3
 
-atext = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~" }
-atext_seq = { atext+ }
+ATEXT = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~" }
+atext_seq = { ATEXT+ }
 atom = _{ CFWS? ~ atext_seq ~ CFWS? }
 dot_atom_text = { atext_seq ~ ("." ~ atext_seq)* }
 dot_atom = _{ CFWS? ~ dot_atom_text ~ CFWS? }
