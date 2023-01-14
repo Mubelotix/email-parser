@@ -13,7 +13,7 @@ quoted_pair = { "\\" ~ (VCHAR | WSP) }
 FWS = _{ (WSP* ~ CRLF)? ~ WSP+ }
 CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
 ctext_seq = { CTEXT+ }
-ccontent = _{ ctext_seq /*| quoted_pair*/ | comment }
+ccontent = _{ ctext_seq | quoted_pair | comment }
 comment = { "(" ~ (FWS? ~ ccontent)* ~ FWS? ~ ")" }
 CFWS = _{ ((FWS? ~ comment)+ ~ FWS?) | FWS }
 
@@ -25,3 +25,9 @@ atom = _{ CFWS? ~ atext_seq ~ CFWS? }
 dot_atom_text = { atext_seq ~ ("." ~ atext_seq)* }
 dot_atom = _{ CFWS? ~ dot_atom_text ~ CFWS? }
 specials = _{ "(" | ")" | "<" | ">" | "[" | "]" | ":" | ";" | "@" | "\\" | "," | "." | "\"" }
+
+// 3.2.4
+
+QTEXT = _{ "!" | '#'..'[' | ']'..'~' }
+qtext_seq = { QTEXT+ }
+quoted_string = { CFWS? ~ "\"" ~ (FWS? ~ (qtext_seq | quoted_pair))* ~ FWS? ~ "\"" ~ CFWS? }

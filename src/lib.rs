@@ -18,12 +18,12 @@ fn test_cfws() {
     let ctext_seq = output.into_iter().next().unwrap().as_str();
     assert_eq!(ctext_seq, "sd");
     
-    let input = "(  sdqf sqfdfsdqf sdqf sf  ) trail";
+    let input = "(  sdqf\\ sqfdfsdqf sdqf sf  ) trail";
     let output = Parser::parse_comment(input).map_err(|e| e.print(input)).unwrap();
     let comment = output.into_iter().next().unwrap();
-    assert_eq!(comment.as_str(), "(  sdqf sqfdfsdqf sdqf sf  )");
+    assert_eq!(comment.as_str(), "(  sdqf\\ sqfdfsdqf sdqf sf  )");
     let ctext_seqs = comment.children().map(|c| c.as_str()).collect::<Vec<_>>();
-    assert_eq!(ctext_seqs, vec!["sdqf", "sqfdfsdqf", "sdqf", "sf"]);
+    assert_eq!(ctext_seqs, vec!["sdqf", "\\ ", "sqfdfsdqf", "sdqf", "sf"]);
 
     let input = "(  level1 level1 (level2 level2  )  level1 ) trail";
     let output = Parser::parse_comment(input).map_err(|e| e.print(input)).unwrap();
@@ -78,4 +78,28 @@ fn test() {
     assert_eq!(dot_atom.as_str(), "bites.the.dust");
     let atoms = dot_atom.children().map(|a| a.as_str()).collect::<Vec<_>>();
     assert_eq!(atoms, vec!["bites", "the", "dust"]);
+}
+
+#[test]
+fn test_quoted_string() {
+    let input = "  \" quoted string \" ";
+    let output = Parser::parse_quoted_string(input).map_err(|e| e.print(input)).unwrap();
+    let quoted_string = output.into_iter().next().unwrap();
+    assert_eq!(quoted_string.as_str(), "  \" quoted string \" ");
+    let qtext_seqs = quoted_string.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(qtext_seqs, vec!["quoted", "string"]);
+
+    let input = "  \" quoted\\ string \" ";
+    let output = Parser::parse_quoted_string(input).map_err(|e| e.print(input)).unwrap();
+    let quoted_string = output.into_iter().next().unwrap();
+    assert_eq!(quoted_string.as_str(), "  \" quoted\\ string \" ");
+    let qtext_seqs = quoted_string.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(qtext_seqs, vec!["quoted", "\\ ", "string"]);
+
+    let input = "  \" quoted\\ test \" \r\n test";
+    let output = Parser::parse_quoted_string(input).map_err(|e| e.print(input)).unwrap();
+    let quoted_string = output.into_iter().next().unwrap();
+    assert_eq!(quoted_string.as_str(), "  \" quoted\\ test \" \r\n ");
+    let qtext_seqs = quoted_string.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(qtext_seqs, vec!["quoted", "\\ ", "test"]);
 }
