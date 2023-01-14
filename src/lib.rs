@@ -124,3 +124,36 @@ fn test_date() {
     let children = date_time.children().map(|c| c.as_str()).collect::<Vec<_>>();
     assert_eq!(children, vec!["14", "Jul", "1789", "14", "00", "00", "+0100"]);
 }
+
+#[test]
+fn test_addr() {
+    let input = "Mubelotix <mubelotix@gmail.com>";
+    let output = Parser::parse_mailbox(input).map_err(|e| e.print(input)).unwrap();
+    let mailbox = output.into_iter().next().unwrap();
+    let children = mailbox.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["Mubelotix ", "mubelotix@gmail.com"]);
+
+    let input = "Cypherpunks: Satoshi Nakamoto <satoshin@gmx.com>, Hal Finney <hal@finney.org>;";
+    let output = Parser::parse_group(input).map_err(|e| e.print(input)).unwrap();
+    let mut group = output.into_iter().next().unwrap().children();
+    let display_name = group.next().unwrap().as_str();
+    assert_eq!(display_name, "Cypherpunks");
+    let mailbox_list = group.next().unwrap();
+    let mailboxes = mailbox_list.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(mailboxes, vec![" Satoshi Nakamoto <satoshin@gmx.com>", " Hal Finney <hal@finney.org>"]);
+}
+
+#[test]
+fn test_addr_spec() {
+    let input = "hal@finney.org";
+    let output = Parser::parse_addr_spec(input).map_err(|e| e.print(input)).unwrap();
+    let addr_spec = output.into_iter().next().unwrap();
+    let children = addr_spec.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["hal", "finney.org"]);
+
+    let input = "mubelotix@[192.168.1.1] ";
+    let output = Parser::parse_addr_spec(input).map_err(|e| e.print(input)).unwrap();
+    let addr_spec = output.into_iter().next().unwrap();
+    let children = addr_spec.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["mubelotix", "[192.168.1.1]"]);
+}

@@ -56,3 +56,24 @@ hour = { ASCII_DIGIT{2} }
 minute = { ASCII_DIGIT{2} }
 second = { ASCII_DIGIT{2} }
 zone = { ("+" | "-") ~ ASCII_DIGIT{4} }
+
+// 3.4.  Address Specification
+
+address = { mailbox | group }
+mailbox = { name_addr | addr_spec }
+name_addr = _{ display_name? ~ angle_addr }
+angle_addr = _{ CFWS? ~ "<" ~ addr_spec ~ ">" ~ CFWS? }
+group = { display_name ~ ":" ~ group_list? ~ ";" ~ CFWS? }
+display_name = { phrase }
+mailbox_list = { mailbox ~ ("," ~ mailbox)* }
+address_list = { address ~ ("," ~ address)* }
+group_list = _{ mailbox_list | CFWS }
+
+// 3.4.1.    Addr-Spec Specification
+
+addr_spec = { local_part ~ "@" ~ domain }
+local_part = _{ dot_atom | quoted_string }
+domain = _{ dot_atom | (CFWS? ~ domain_literal ~ CFWS?) }
+domain_literal = {  "[" ~ (FWS? ~ dtext_seq)* ~ FWS? ~ "]" } // I moved CFWS out
+DTEXT = _{ '!'..'Z' | '^'..'~' }
+dtext_seq = { DTEXT+ }
