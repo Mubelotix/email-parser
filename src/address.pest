@@ -3,12 +3,13 @@
 WSP = _{ " " | "\t" } // todo: such alias slow down the parser
 CRLF = _{ "\r\n" }
 
-// 3.2.1
+// 3.2.1.   Quoted characters
 
 VCHAR = _{ '\x21'..'\x7E' }
+vchar_seq = { VCHAR+ }
 quoted_pair = { "\\" ~ (VCHAR | WSP) }
 
-// 3.2.2
+// 3.2.2.   Folding White Space and Comments
 
 FWS = _{ (WSP* ~ CRLF)? ~ WSP+ }
 CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
@@ -17,7 +18,7 @@ ccontent = _{ ctext_seq | quoted_pair | comment }
 comment = { "(" ~ (FWS? ~ ccontent)* ~ FWS? ~ ")" }
 CFWS = _{ ((FWS? ~ comment)+ ~ FWS?) | FWS }
 
-// 3.2.3
+// 3.2.3.   Atom
 
 ATEXT = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~" }
 atext_seq = { ATEXT+ }
@@ -26,8 +27,14 @@ dot_atom_text = { atext_seq ~ ("." ~ atext_seq)* }
 dot_atom = _{ CFWS? ~ dot_atom_text ~ CFWS? }
 specials = _{ "(" | ")" | "<" | ">" | "[" | "]" | ":" | ";" | "@" | "\\" | "," | "." | "\"" }
 
-// 3.2.4
+// 3.2.4.   Quoted Strings
 
 QTEXT = _{ "!" | '#'..'[' | ']'..'~' }
 qtext_seq = { QTEXT+ }
 quoted_string = { CFWS? ~ "\"" ~ (FWS? ~ (qtext_seq | quoted_pair))* ~ FWS? ~ "\"" ~ CFWS? }
+
+// 3.2.5.   Miscellaneous Tokens
+
+word = { atom | quoted_string }
+phrase = { word+ }
+unstructured = { (FWS? ~ vchar_seq)* ~ WSP*}
