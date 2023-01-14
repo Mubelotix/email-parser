@@ -157,3 +157,26 @@ fn test_addr_spec() {
     let children = addr_spec.children().map(|c| c.as_str()).collect::<Vec<_>>();
     assert_eq!(children, vec!["mubelotix", "[192.168.1.1]"]);
 }
+
+#[test]
+fn test_unstructured_field() {
+    let input = "Value: This is a test\r\n";
+    let output = Parser::parse_unknown_field(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["Value", " This is a test"]);
+
+    let input = "Value: This is a test\r\n test\r\ntest";
+    let output = Parser::parse_unknown_field(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["Value", " This is a test\r\n test"]);
+}
+
+#[test]
+fn test_message() {
+    let input = "X-COM: 2\r\n\r\nbody";
+    let output = Parser::parse_message(input).map_err(|e| e.print(input)).unwrap();
+    let message = output.into_iter().next().unwrap();
+    assert_eq!(format!("{:?}", message), r#"message { text: "X-COM: 2\r\n\r\nbody", children: [unknown_field { text: "X-COM: 2\r\n", children: [field_name { text: "X-COM", children: [] }, unstructured { text: " 2", children: [vchar_seq { text: "2", children: [] }] }] }, body { text: "body", children: [text_seq { text: "body", children: [] }] }] }"#);
+}
