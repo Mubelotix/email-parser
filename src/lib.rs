@@ -103,3 +103,24 @@ fn test_quoted_string() {
     let qtext_seqs = quoted_string.children().map(|c| c.as_str()).collect::<Vec<_>>();
     assert_eq!(qtext_seqs, vec!["quoted", "\\ ", "test"]);
 }
+
+#[test]
+fn test_date() {
+    let input = "Mon, 5 May 2003 18:58:55 +0100 trail";
+    let output = Parser::parse_date_time(input).map_err(|e| e.print(input)).unwrap();
+    let date_time = output.into_iter().next().unwrap();
+    let children = date_time.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["Mon", "5", "May", "2003", "18", "58", "55", "+0100"]);
+
+    let input = "3 Jan 2009 18:15:05 +0000";
+    let output = Parser::parse_date_time(input).map_err(|e| e.print(input)).unwrap();
+    let date_time = output.into_iter().next().unwrap();
+    let children = date_time.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["3", "Jan", "2009", "18", "15", "05", "+0000"]);
+
+    let input = "14 Jul 1789   14:00:00 +0100";
+    let output = Parser::parse_date_time(input).map_err(|e| e.print(input)).unwrap();
+    let date_time = output.into_iter().next().unwrap();
+    let children = date_time.children().map(|c| c.as_str()).collect::<Vec<_>>();
+    assert_eq!(children, vec!["14", "Jul", "1789", "14", "00", "00", "+0100"]);
+}
