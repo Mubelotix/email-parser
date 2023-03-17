@@ -33,7 +33,7 @@ pub fn dot_atom_text(input: &[u8]) -> Res<Cow<str>> {
     loop {
         if input.starts_with(b".") {
             if let Ok((new_input, atom)) = if cfg!(feature = "compatibility-fixes") {
-                take_while(&input[1..], is_atext)
+                unsafe { take_while(&input[1..], is_atext) }
             } else {
                 take_while1(&input[1..], is_atext)
             } {

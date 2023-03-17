@@ -9,7 +9,7 @@ pub fn message_id(input: &[u8]) -> Res<(Cow<str>, Cow<str>)> {
             b"[",
             "TAG ERROR: In message_id, a no_fold_litteral domain must be preceded by a `[`.",
         )?;
-        let (input, domain) = take_while(input, is_dtext)?;
+        let (input, domain) = unsafe { take_while(input, is_dtext)? };
         let (input, ()) = tag(
             input,
             b"]",

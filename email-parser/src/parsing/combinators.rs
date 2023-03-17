@@ -82,7 +82,7 @@ where
 }
 
 #[inline]
-pub fn take_while<F>(input: &[u8], mut condition: F) -> Res<&str>
+pub unsafe fn take_while<F>(input: &[u8], mut condition: F) -> Res<&str>
 where
     F: FnMut(u8) -> bool,
 {
@@ -282,8 +282,8 @@ mod tests {
 
     #[test]
     fn test_take_while() {
-        assert_eq!(take_while(b"     abc", is_wsp).unwrap().1.len(), 5);
-        assert_eq!(take_while(b"abc", is_wsp).unwrap().1.len(), 0);
+        assert_eq!(unsafe {take_while(b"     abc", is_wsp).unwrap().1.len()}, 5);
+        assert_eq!(unsafe {take_while(b"abc", is_wsp).unwrap().1.len()}, 0);
     }
 
     #[test]

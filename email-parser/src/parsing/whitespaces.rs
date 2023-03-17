@@ -6,7 +6,7 @@ pub fn fws(input: &[u8]) -> Res<Cow<str>> {
     let (input, before) = optional(input, |input| {
         pair(
             input,
-            |input| take_while(input, is_wsp),
+            |input| unsafe { take_while(input, is_wsp) },
             |input| {
                 tag(
                     input,
