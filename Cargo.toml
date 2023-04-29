@@ -6,3 +6,6 @@ edition = "2021"
 
 [dependencies]
 faster-pest = { path="../../pest-based-parser/faster-pest" }
+
+[dev-dependencies]
+email-parser = { path="../email-parser" }

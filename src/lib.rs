@@ -2,7 +2,7 @@ use faster_pest::*;
 
 #[derive(Parser)]
 #[grammar = "src/address.pest"]
-struct Parser {
+pub struct Parser {
 
 }
 
@@ -33,15 +33,15 @@ fn test_cfws() {
     assert_eq!(ctext_seqs, vec!["level1", "level1", "(level2 level2  )", "level1"]);
 
     for input in ["  \t  \t after", "   \r\n after", "\r\n after"] {
-        let after = Parser_faster_pest::parse_FWS(input, &mut Vec::new()).unwrap();
-        assert_eq!(after, "after");    
+        let after = Parser_faster_pest::parse_FWS(input.as_bytes(), &mut Vec::new()).unwrap();
+        assert_eq!(after, b"after");    
     }
 
     let input = "after";
-    Parser_faster_pest::parse_FWS(input, &mut Vec::new()).unwrap_err();
+    Parser_faster_pest::parse_FWS(input.as_bytes(), &mut Vec::new()).unwrap_err();
 
     let input = "   \r\nafter";
-    Parser_faster_pest::parse_FWS(input, &mut Vec::new()).unwrap_err();
+    Parser_faster_pest::parse_FWS(input.as_bytes(), &mut Vec::new()).unwrap_err();
 
     let input = "(  level1 level1  \r\n  level1 \r\n test \r\n ) trail";
     let output = Parser::parse_comment(input).map_err(|e| e.print(input)).unwrap();
@@ -51,8 +51,8 @@ fn test_cfws() {
     assert_eq!(ctext_seqs, vec!["level1", "level1", "level1", "test"]);
 
     let input = "  ( cest un commentaire \r\n suivi d'un espace  )  \r\n trail";
-    let after = Parser_faster_pest::parse_CFWS(input, &mut Vec::new()).unwrap();
-    assert_eq!(after, "trail");
+    let after = Parser_faster_pest::parse_CFWS(input.as_bytes(), &mut Vec::new()).unwrap();
+    assert_eq!(after, b"trail");
 }
 
 #[test]
@@ -175,8 +175,9 @@ fn test_unstructured_field() {
 
 #[test]
 fn test_message() {
-    let input = "X-COM: 2\r\n\r\nbody";
+    let input = include_str!("../mail.txt");
     let output = Parser::parse_message(input).map_err(|e| e.print(input)).unwrap();
     let message = output.into_iter().next().unwrap();
+    //println!("{:#?}", message);
     assert_eq!(format!("{:?}", message), r#"message { text: "X-COM: 2\r\n\r\nbody", children: [unknown_field { text: "X-COM: 2\r\n", children: [field_name { text: "X-COM", children: [] }, unstructured { text: " 2", children: [vchar_seq { text: "2", children: [] }] }] }, body { text: "body", children: [text_seq { text: "body", children: [] }] }] }"#);
 }
