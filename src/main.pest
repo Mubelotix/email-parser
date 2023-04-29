@@ -103,6 +103,16 @@ reply_to = { ^"Reply-To:" ~ address_list ~ _CRLF } // 3.6.2
 to = { ^"To:" ~ address_list ~ _CRLF } // 3.6.3
 cc = { ^"Cc:" ~ address_list ~ _CRLF } // 3.6.3
 bcc = { ^"Bcc:" ~ (address_list | CFWS)? ~ _CRLF } // 3.6.3
+message_id = { ^"Message-ID:" ~ msg_id ~ _CRLF } // 3.6.4
+in_reply_to = { ^"In-Reply-To:" ~ msg_id+ ~ _CRLF } // 3.6.4
+references = { ^"References:" ~ msg_id+ ~ _CRLF } // 3.6.4
+
+// 3.6.4 msg_id
+
+msg_id = { _CFWS? ~ "<" ~ id_left ~ "@" ~ id_right ~ ">" ~ _CFWS? }
+id_left = { dot_atom_text }
+id_right = { dot_atom_text | no_fold_literal }
+no_fold_literal = { "[" ~ DTEXT* ~ "]" }
 
 // 3.6.8.    Optional Fields
 

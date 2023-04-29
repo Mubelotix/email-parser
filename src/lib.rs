@@ -1,7 +1,7 @@
 use faster_pest::*;
 
 #[derive(Parser)]
-#[grammar = "src/address.pest"]
+#[grammar = "src/main.pest"]
 pub struct Parser {
 
 }
@@ -220,6 +220,27 @@ fn test_destination_fields() {
     let field = output.into_iter().next().unwrap();
     let children = field.children().collect::<Vec<_>>();
     assert_eq!(format!("{children:?}"), "");*/
+}
+
+#[test]
+fn test_msg_id_fields() {
+    let input = "Message-ID: <sadqf54d@test.com>\r\n";
+    let output = Parser::parse_message_id(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[msg_id { text: \" <sadqf54d@test.com>\", children: [id_left { text: \"sadqf54d\", children: [dot_atom_text { text: \"sadqf54d\", children: [atext_seq { text: \"sadqf54d\" }] }] }, id_right { text: \"test.com\", children: [dot_atom_text { text: \"test.com\", children: [atext_seq { text: \"test\" }, atext_seq { text: \"com\" }] }] }] }]");
+
+    let input = "In-Reply-To: <sqdfsf@test.com> <47@[127.0.0.1]>\r\n";
+    let output = Parser::parse_in_reply_to(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[msg_id { text: \" <sqdfsf@test.com> \", children: [id_left { text: \"sqdfsf\", children: [dot_atom_text { text: \"sqdfsf\", children: [atext_seq { text: \"sqdfsf\" }] }] }, id_right { text: \"test.com\", children: [dot_atom_text { text: \"test.com\", children: [atext_seq { text: \"test\" }, atext_seq { text: \"com\" }] }] }] }, msg_id { text: \"<47@[127.0.0.1]>\", children: [id_left { text: \"47\", children: [dot_atom_text { text: \"47\", children: [atext_seq { text: \"47\" }] }] }, id_right { text: \"[127.0.0.1]\", children: [no_fold_literal { text: \"[127.0.0.1]\" }] }] }]");
+
+    let input = "References: <sqdfsf@test.com> <47@[127.0.0.1]>\r\n";
+    let output = Parser::parse_references(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[msg_id { text: \" <sqdfsf@test.com> \", children: [id_left { text: \"sqdfsf\", children: [dot_atom_text { text: \"sqdfsf\", children: [atext_seq { text: \"sqdfsf\" }] }] }, id_right { text: \"test.com\", children: [dot_atom_text { text: \"test.com\", children: [atext_seq { text: \"test\" }, atext_seq { text: \"com\" }] }] }] }, msg_id { text: \"<47@[127.0.0.1]>\", children: [id_left { text: \"47\", children: [dot_atom_text { text: \"47\", children: [atext_seq { text: \"47\" }] }] }, id_right { text: \"[127.0.0.1]\", children: [no_fold_literal { text: \"[127.0.0.1]\" }] }] }]");
 }
 
 #[test]
