@@ -10,3 +10,10 @@ fn test_message() {
     println!("{} idents", message.children_count());
     assert_eq!(format!("{:?}", message), r#"message { text: "X-COM: 2\r\n\r\nbody", children: [unknown_field { text: "X-COM: 2\r\n", children: [field_name { text: "X-COM", children: [] }, unstructured { text: " 2", children: [vchar_seq { text: "2", children: [] }] }] }, body { text: "body", children: [text_seq { text: "body", children: [] }] }] }"#);
 }
+
+#[test]
+fn test_interface() {
+    let input = include_str!("../mail.txt");
+    let email = Email::parse(input).unwrap();
+    println!("{:#?}", email.subject());
+}
