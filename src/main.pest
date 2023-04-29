@@ -95,7 +95,7 @@ text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
 
 // 3.6.  Field Definitions
 
-fields = _{ (origination_date | from | to | message_id | sender | reply_to | cc | in_reply_to | bcc | references | unknown_field)* }
+fields = _{ (origination_date | from | to | message_id | subject | sender | reply_to | cc | in_reply_to | bcc | references | comments | keywords | unknown_field)* }
 origination_date = { ^"Date:" ~ date_time ~ _CRLF } // 3.6.1
 from = { ^"From:" ~ mailbox_list ~ _CRLF } // 3.6.2
 sender = { ^"Sender:" ~ mailbox ~ _CRLF } // 3.6.2
@@ -106,6 +106,11 @@ bcc = { ^"Bcc:" ~ (address_list | CFWS)? ~ _CRLF } // 3.6.3
 message_id = { ^"Message-ID:" ~ msg_id ~ _CRLF } // 3.6.4
 in_reply_to = { ^"In-Reply-To:" ~ msg_id+ ~ _CRLF } // 3.6.4
 references = { ^"References:" ~ msg_id+ ~ _CRLF } // 3.6.4
+subject = { ^"Subject:" ~ unstructured ~ _CRLF } // 3.6.5
+comments = { ^"Comments:" ~ unstructured ~ _CRLF } // 3.6.5
+keywords = { ^"Keywords:" ~ phrase ~ ("," ~ phrase)* ~ _CRLF } // 3.6.5
+// TODO 3.6.6 resent
+// TODO 3.6.7 trace
 
 // 3.6.4 msg_id
 

@@ -244,6 +244,27 @@ fn test_msg_id_fields() {
 }
 
 #[test]
+fn test_informational_fields() {
+    let input = "Subject: Hello world!\r\n";
+    let output = Parser::parse_subject(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[unstructured { text: \" Hello world!\", children: [WSP_seq2 { text: \" \" }, vchar_seq { text: \"Hello\" }, WSP_seq2 { text: \" \" }, vchar_seq { text: \"world!\" }] }]");
+
+    let input = "Comments: Hello world!\r\n";
+    let output = Parser::parse_comments(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[unstructured { text: \" Hello world!\", children: [WSP_seq2 { text: \" \" }, vchar_seq { text: \"Hello\" }, WSP_seq2 { text: \" \" }, vchar_seq { text: \"world!\" }] }]");
+
+    let input = "Keywords: bitcoin is king\r\n";
+    let output = Parser::parse_keywords(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[phrase { text: \" bitcoin is king\", children: [word { text: \" bitcoin \", children: [WSP_seq2 { text: \" \" }, atext_seq { text: \"bitcoin\" }, WSP_seq2 { text: \" \" }] }, word { text: \"is \", children: [atext_seq { text: \"is\" }, WSP_seq2 { text: \" \" }] }, word { text: \"king\", children: [atext_seq { text: \"king\" }] }] }]");
+}
+
+#[test]
 fn test_message() {
     let input = include_str!("../mail.txt");
     let output = Parser::parse_message(input).map_err(|e| e.print(input)).unwrap();
