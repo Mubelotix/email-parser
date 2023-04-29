@@ -19,7 +19,7 @@ quoted_pair = { "\\" ~ (VCHAR | WSP) }
 
 // 3.2.2.    Folding White Space and Comments
 
-FWS = _{ (WSP_seq1 ~ CRLF)? ~ WSP_seq2 }
+FWS = _{ (WSP_seq1 ~ _CRLF)? ~ WSP_seq2 }
 _FWS = _{ (_WSP_seq1 ~ _CRLF)? ~ _WSP_seq2 }
 CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
 ctext_seq = { CTEXT+ }
