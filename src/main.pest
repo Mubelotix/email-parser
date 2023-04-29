@@ -110,8 +110,8 @@ references = { ^"References:" ~ msg_id+ ~ _CRLF } // 3.6.4
 // 3.6.4 msg_id
 
 msg_id = { _CFWS? ~ "<" ~ id_left ~ "@" ~ id_right ~ ">" ~ _CFWS? }
-id_left = { dot_atom_text }
-id_right = { dot_atom_text | no_fold_literal }
+id_left = _{ dot_atom_text }
+id_right = _{ dot_atom_text | no_fold_literal }
 no_fold_literal = { "[" ~ DTEXT* ~ "]" }
 
 // 3.6.8.    Optional Fields
