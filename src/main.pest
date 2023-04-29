@@ -1,0 +1,126 @@
+// See https://www.rfc-editor.org/rfc/rfc5322#section-3.4
+
+WSP = { " " | "\t" }
+_WSP = _{ " " | "\t" }
+WSP_seq1 = { _WSP* }
+_WSP_seq1 = _{ _WSP* }
+WSP_seq2 = { _WSP+ }
+_WSP_seq2 = _{ _WSP+ }
+CRLF = { "\r\n" }
+_CRLF = _{ "\r\n" }
+
+// 3.2.  Lexical Tokens
+
+// 3.2.1.    Quoted characters
+
+VCHAR = _{ '\x21'..'\x7E' }
+vchar_seq = { VCHAR+ }
+quoted_pair = { "\\" ~ (VCHAR | WSP) }
+
+// 3.2.2.    Folding White Space and Comments
+
+FWS = _{ (WSP_seq1 ~ _CRLF)? ~ WSP_seq2 }
+_FWS = _{ (_WSP_seq1 ~ _CRLF)? ~ _WSP_seq2 }
+CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
+ctext_seq = { CTEXT+ }
+ccontent = _{ ctext_seq | quoted_pair | comment }
+comment = { "(" ~ (FWS? ~ ccontent)* ~ FWS? ~ ")" }
+CFWS = _{ ((FWS? ~ comment)+ ~ FWS?) | FWS }
+_CFWS = _{ ((_FWS? ~ comment)+ ~ _FWS?) | _FWS }
+
+// 3.2.3.    Atom
+
+ATEXT = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | "-" | "/" | "=" | "?" | "^" | "_" | "`" | "{" | "|" | "}" | "~" }
+atext_seq = { ATEXT+ }
+atom = _{ CFWS? ~ atext_seq ~ CFWS? }
+dot_atom_text = { atext_seq ~ ("." ~ atext_seq)* }
+dot_atom = _{ _CFWS? ~ dot_atom_text ~ _CFWS? }
+specials = _{ "(" | ")" | "<" | ">" | "[" | "]" | ":" | ";" | "@" | "\\" | "," | "." | "\"" }
+
+// 3.2.4.    Quoted Strings
+
+QTEXT = _{ "!" | '#'..'[' | ']'..'~' }
+qtext_seq = { QTEXT+ }
+quoted_string = { _CFWS? ~ "\"" ~ (FWS? ~ (qtext_seq | quoted_pair))* ~ FWS? ~ "\"" ~ _CFWS? }
+
+// 3.2.5.    Miscellaneous Tokens
+
+word = { atom | quoted_string }
+phrase = { word+ }
+unstructured = { (FWS? ~ vchar_seq)* ~ WSP*}
+
+// 3.3.  Date and Time Specification
+
+date_time = { (day_of_week ~ ",")? ~ date ~ time ~ _CFWS? }
+day_of_week = _{ _FWS? ~ day_name }
+day_name = { "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" }
+date = _{ (_FWS? ~ day ~ _FWS) ~ month ~ (_FWS ~ year ~ _FWS) } 
+day = { ASCII_DIGIT{1,2} } // In the spec FWS are included in day, year and zone but I moved them one level up
+month = { "Jan" | "Feb" | "Mar" | "Apr" | "May" | "Jun" | "Jul" | "Aug" | "Sep" | "Oct" | "Nov" | "Dec" }
+year = { ASCII_DIGIT{4} }
+time = _{ time_of_day ~ (_FWS ~ zone) }
+time_of_day = _{ hour ~ ":" ~ minute ~ (":" ~ second)? }
+hour = { ASCII_DIGIT{2} }
+minute = { ASCII_DIGIT{2} }
+second = { ASCII_DIGIT{2} }
+zone = { ("+" | "-") ~ ASCII_DIGIT{4} }
+
+// 3.4.  Address Specification
+
+address = { mailbox | group }
+mailbox = { name_addr | addr_spec }
+name_addr = _{ display_name? ~ angle_addr }
+angle_addr = _{ CFWS? ~ "<" ~ addr_spec ~ ">" ~ CFWS? }
+group = { display_name ~ ":" ~ group_list? ~ ";" ~ CFWS? }
+display_name = { phrase }
+mailbox_list = { mailbox ~ ("," ~ mailbox)* }
+address_list = { address ~ ("," ~ address)* }
+group_list = _{ mailbox_list | CFWS }
+
+// 3.4.1.    Addr-Spec Specification
+
+addr_spec = { local_part ~ "@" ~ domain }
+local_part = _{ dot_atom | quoted_string }
+domain = _{ dot_atom | (CFWS? ~ domain_literal ~ CFWS?) }
+domain_literal = {  "[" ~ (FWS? ~ dtext_seq)* ~ FWS? ~ "]" } // I moved CFWS out
+DTEXT = _{ '!'..'Z' | '^'..'~' }
+dtext_seq = { DTEXT+ }
+
+// 3.5.  Overall Message Syntax
+
+message = { fields ~ (_CRLF ~ body)? ~ EOI }
+body = { (text_seq ~ _CRLF)* ~ text_seq } // There is supposed to be a 998 character limit on each line but pest fails to handle large repetitions
+text_seq = { text* }
+text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
+
+// 3.6.  Field Definitions
+
+fields = _{ (origination_date | from | to | message_id | subject | sender | reply_to | cc | in_reply_to | bcc | references | comments | keywords | unknown_field)* }
+origination_date = { ^"Date:" ~ date_time ~ _CRLF } // 3.6.1
+from = { ^"From:" ~ mailbox_list ~ _CRLF } // 3.6.2
+sender = { ^"Sender:" ~ mailbox ~ _CRLF } // 3.6.2
+reply_to = { ^"Reply-To:" ~ address_list ~ _CRLF } // 3.6.2
+to = { ^"To:" ~ address_list ~ _CRLF } // 3.6.3
+cc = { ^"Cc:" ~ address_list ~ _CRLF } // 3.6.3
+bcc = { ^"Bcc:" ~ (address_list | CFWS)? ~ _CRLF } // 3.6.3
+message_id = { ^"Message-ID:" ~ msg_id ~ _CRLF } // 3.6.4
+in_reply_to = { ^"In-Reply-To:" ~ msg_id+ ~ _CRLF } // 3.6.4
+references = { ^"References:" ~ msg_id+ ~ _CRLF } // 3.6.4
+subject = { ^"Subject:" ~ unstructured ~ _CRLF } // 3.6.5
+comments = { ^"Comments:" ~ unstructured ~ _CRLF } // 3.6.5
+keywords = { ^"Keywords:" ~ phrase ~ ("," ~ phrase)* ~ _CRLF } // 3.6.5
+// TODO 3.6.6 resent
+// TODO 3.6.7 trace
+
+// 3.6.4 msg_id
+
+msg_id = { _CFWS? ~ "<" ~ id_left ~ "@" ~ id_right ~ ">" ~ _CFWS? }
+id_left = _{ dot_atom_text }
+id_right = _{ dot_atom_text | no_fold_literal }
+no_fold_literal = { "[" ~ DTEXT* ~ "]" }
+
+// 3.6.8.    Optional Fields
+
+unknown_field = { field_name ~ ":" ~ unstructured ~ _CRLF }
+field_name = { ftext+ }
+ftext = _{ !":" ~ '!'..'~' }
