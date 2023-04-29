@@ -174,6 +174,33 @@ fn test_unstructured_field() {
 }
 
 #[test]
+fn test_origin_fields() {
+    let input = "Date: Mon, 5 May 2003 18:58:55 +0100\r\n";
+    let output = Parser::parse_origination_date(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[date_time { text: \" Mon, 5 May 2003 18:58:55 +0100\", children: [day_name { text: \"Mon\" }, day { text: \"5\" }, month { text: \"May\" }, year { text: \"2003\" }, hour { text: \"18\" }, minute { text: \"58\" }, second { text: \"55\" }, zone { text: \"+0100\" }] }]");
+
+    let input = "From: \"Andreas M. Antonopoulos\" <contact@aantonop.com>, mubelotix@gmail.com\r\n";
+    let output = Parser::parse_from(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[mailbox_list { text: \" \\\"Andreas M. Antonopoulos\\\" <contact@aantonop.com>, mubelotix@gmail.com\", children: [mailbox { text: \" \\\"Andreas M. Antonopoulos\\\" <contact@aantonop.com>\", children: [display_name { text: \" \\\"Andreas M. Antonopoulos\\\" \", children: [phrase { text: \" \\\"Andreas M. Antonopoulos\\\" \", children: [word { text: \" \\\"Andreas M. Antonopoulos\\\" \", children: [quoted_string { text: \" \\\"Andreas M. Antonopoulos\\\" \", children: [qtext_seq { text: \"Andreas\" }, WSP_seq2 { text: \" \" }, qtext_seq { text: \"M.\" }, WSP_seq2 { text: \" \" }, qtext_seq { text: \"Antonopoulos\" }] }] }] }] }, addr_spec { text: \"contact@aantonop.com\", children: [dot_atom_text { text: \"contact\", children: [atext_seq { text: \"contact\" }] }, dot_atom_text { text: \"aantonop.com\", children: [atext_seq { text: \"aantonop\" }, atext_seq { text: \"com\" }] }] }] }, mailbox { text: \" mubelotix@gmail.com\", children: [addr_spec { text: \" mubelotix@gmail.com\", children: [dot_atom_text { text: \"mubelotix\", children: [atext_seq { text: \"mubelotix\" }] }, dot_atom_text { text: \"gmail.com\", children: [atext_seq { text: \"gmail\" }, atext_seq { text: \"com\" }] }] }] }] }]");
+
+    let input = "Sender: \"Chloe Helloco\" <chloe.helloco@ac-orleans-tours.fr>\r\n";
+    let output = Parser::parse_sender(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[mailbox { text: \" \\\"Chloe Helloco\\\" <chloe.helloco@ac-orleans-tours.fr>\", children: [display_name { text: \" \\\"Chloe Helloco\\\" \", children: [phrase { text: \" \\\"Chloe Helloco\\\" \", children: [word { text: \" \\\"Chloe Helloco\\\" \", children: [quoted_string { text: \" \\\"Chloe Helloco\\\" \", children: [qtext_seq { text: \"Chloe\" }, WSP_seq2 { text: \" \" }, qtext_seq { text: \"Helloco\" }] }] }] }] }, addr_spec { text: \"chloe.helloco@ac-orleans-tours.fr\", children: [dot_atom_text { text: \"chloe.helloco\", children: [atext_seq { text: \"chloe\" }, atext_seq { text: \"helloco\" }] }, dot_atom_text { text: \"ac-orleans-tours.fr\", children: [atext_seq { text: \"ac-orleans-tours\" }, atext_seq { text: \"fr\" }] }] }] }]");
+
+    let input = "Reply-To: thevoid@4chan.org\r\n";
+    let output = Parser::parse_reply_to(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[address_list { text: \" thevoid@4chan.org\", children: [address { text: \" thevoid@4chan.org\", children: [mailbox { text: \" thevoid@4chan.org\", children: [addr_spec { text: \" thevoid@4chan.org\", children: [dot_atom_text { text: \"thevoid\", children: [atext_seq { text: \"thevoid\" }] }, dot_atom_text { text: \"4chan.org\", children: [atext_seq { text: \"4chan\" }, atext_seq { text: \"org\" }] }] }] }] }] }]");
+}
+
+#[test]
 fn test_message() {
     let input = include_str!("../mail.txt");
     let output = Parser::parse_message(input).map_err(|e| e.print(input)).unwrap();

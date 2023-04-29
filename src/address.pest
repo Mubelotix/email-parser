@@ -3,7 +3,9 @@
 WSP = { " " | "\t" }
 _WSP = _{ " " | "\t" }
 WSP_seq1 = { _WSP* }
+_WSP_seq1 = _{ _WSP* }
 WSP_seq2 = { _WSP+ }
+_WSP_seq2 = _{ _WSP+ }
 CRLF = { "\r\n" }
 _CRLF = _{ "\r\n" }
 
@@ -18,11 +20,13 @@ quoted_pair = { "\\" ~ (VCHAR | WSP) }
 // 3.2.2.    Folding White Space and Comments
 
 FWS = _{ (WSP_seq1 ~ CRLF)? ~ WSP_seq2 }
+_FWS = _{ (_WSP_seq1 ~ _CRLF)? ~ _WSP_seq2 }
 CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
 ctext_seq = { CTEXT+ }
 ccontent = _{ ctext_seq | quoted_pair | comment }
 comment = { "(" ~ (FWS? ~ ccontent)* ~ FWS? ~ ")" }
 CFWS = _{ ((FWS? ~ comment)+ ~ FWS?) | FWS }
+_CFWS = _{ ((_FWS? ~ comment)+ ~ _FWS?) | _FWS }
 
 // 3.2.3.    Atom
 
@@ -30,14 +34,14 @@ ATEXT = _{ ASCII_ALPHANUMERIC | "!" | "#" | "$" | "%" | "&" | "'" | "*" | "+" | 
 atext_seq = { ATEXT+ }
 atom = _{ CFWS? ~ atext_seq ~ CFWS? }
 dot_atom_text = { atext_seq ~ ("." ~ atext_seq)* }
-dot_atom = _{ CFWS? ~ dot_atom_text ~ CFWS? }
+dot_atom = _{ _CFWS? ~ dot_atom_text ~ _CFWS? }
 specials = _{ "(" | ")" | "<" | ">" | "[" | "]" | ":" | ";" | "@" | "\\" | "," | "." | "\"" }
 
 // 3.2.4.    Quoted Strings
 
 QTEXT = _{ "!" | '#'..'[' | ']'..'~' }
 qtext_seq = { QTEXT+ }
-quoted_string = { CFWS? ~ "\"" ~ (FWS? ~ (qtext_seq | quoted_pair))* ~ FWS? ~ "\"" ~ CFWS? }
+quoted_string = { _CFWS? ~ "\"" ~ (FWS? ~ (qtext_seq | quoted_pair))* ~ FWS? ~ "\"" ~ _CFWS? }
 
 // 3.2.5.    Miscellaneous Tokens
 
@@ -47,14 +51,14 @@ unstructured = { (FWS? ~ vchar_seq)* ~ WSP*}
 
 // 3.3.  Date and Time Specification
 
-date_time = { (day_of_week ~ ",")? ~ date ~ time ~ CFWS? }
-day_of_week = _{ FWS? ~ day_name }
+date_time = { (day_of_week ~ ",")? ~ date ~ time ~ _CFWS? }
+day_of_week = _{ _FWS? ~ day_name }
 day_name = { "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" }
-date = _{ (FWS? ~ day ~ FWS) ~ month ~ (FWS ~ year ~ FWS) } 
+date = _{ (_FWS? ~ day ~ _FWS) ~ month ~ (_FWS ~ year ~ _FWS) } 
 day = { ASCII_DIGIT{1,2} } // In the spec FWS are included in day, year and zone but I moved them one level up
 month = { "Jan" | "Feb" | "Mar" | "Apr" | "May" | "Jun" | "Jul" | "Aug" | "Sep" | "Oct" | "Nov" | "Dec" }
 year = { ASCII_DIGIT{4} }
-time = _{ time_of_day ~ (FWS ~ zone) }
+time = _{ time_of_day ~ (_FWS ~ zone) }
 time_of_day = _{ hour ~ ":" ~ minute ~ (":" ~ second)? }
 hour = { ASCII_DIGIT{2} }
 minute = { ASCII_DIGIT{2} }
@@ -91,7 +95,12 @@ text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
 
 // 3.6.  Field Definitions
 
-fields = _{ unknown_field* }
+fields = _{ (origination_date | from | sender | reply_to | unknown_field)* }
+origination_date = { "Date:" ~ date_time ~ _CRLF } // 3.6.1
+from = { "From:" ~ mailbox_list ~ _CRLF } // 3.6.2
+sender = { "Sender:" ~ mailbox ~ _CRLF } // 3.6.2
+reply_to = { "Reply-To:" ~ address_list ~ _CRLF } // 3.6.2
+
 
 // 3.6.8.    Optional Fields
 
