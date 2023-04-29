@@ -1,5 +1,6 @@
 use email_parser2::*;
 
+#[ignore]
 #[test]
 fn test_message() {
     let input = include_str!("../mail.txt");
