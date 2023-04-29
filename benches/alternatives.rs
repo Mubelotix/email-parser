@@ -8,7 +8,7 @@ const MAIL2: &str = include_str!("../mail.txt");
 
 #[bench]
 fn email_parser2(b: &mut Bencher) {
-    b.iter(|| email_parser2::Parser::parse_message(MAIL2).unwrap());
+    b.iter(|| email_parser2::Parser::parse_message(MAIL2));
 }
 
 #[bench]

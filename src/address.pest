@@ -1,7 +1,11 @@
 // See https://www.rfc-editor.org/rfc/rfc5322#section-3.4
 
-WSP = _{ " " | "\t" } // todo: such alias slow down the parser
-CRLF = _{ "\r\n" }
+WSP = { " " | "\t" }
+_WSP = _{ " " | "\t" }
+WSP_seq1 = { _WSP* }
+WSP_seq2 = { _WSP+ }
+CRLF = { "\r\n" }
+_CRLF = _{ "\r\n" }
 
 // 3.2.  Lexical Tokens
 
@@ -13,7 +17,7 @@ quoted_pair = { "\\" ~ (VCHAR | WSP) }
 
 // 3.2.2.    Folding White Space and Comments
 
-FWS = _{ (WSP* ~ CRLF)? ~ WSP+ }
+FWS = _{ (WSP_seq1 ~ CRLF)? ~ WSP_seq2 }
 CTEXT = _{ '!'..'\'' | '*'..'[' | ']'..'~' }
 ctext_seq = { CTEXT+ }
 ccontent = _{ ctext_seq | quoted_pair | comment }
@@ -81,7 +85,7 @@ dtext_seq = { DTEXT+ }
 // 3.5.  Overall Message Syntax
 
 message = { fields ~ (CRLF ~ body)? ~ EOI }
-body = { (text_seq ~ CRLF)* ~ text_seq } // There is supposed to be a 998 character limit on each line but pest fails to handle large repetitions
+body = { (text_seq ~ _CRLF)* ~ text_seq } // There is supposed to be a 998 character limit on each line but pest fails to handle large repetitions
 text_seq = { text* }
 text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
 
@@ -91,6 +95,6 @@ fields = _{ unknown_field* }
 
 // 3.6.8.    Optional Fields
 
-unknown_field = { field_name ~ ":" ~ unstructured ~ CRLF }
+unknown_field = { field_name ~ ":" ~ unstructured ~ _CRLF }
 field_name = { ftext+ }
 ftext = _{ !":" ~ '!'..'~' }
