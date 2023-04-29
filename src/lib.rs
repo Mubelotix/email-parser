@@ -193,11 +193,33 @@ fn test_origin_fields() {
     let children = field.children().collect::<Vec<_>>();
     assert_eq!(format!("{children:?}"), "[mailbox { text: \" \\\"Chloe Helloco\\\" <chloe.helloco@ac-orleans-tours.fr>\", children: [display_name { text: \" \\\"Chloe Helloco\\\" \", children: [phrase { text: \" \\\"Chloe Helloco\\\" \", children: [word { text: \" \\\"Chloe Helloco\\\" \", children: [quoted_string { text: \" \\\"Chloe Helloco\\\" \", children: [qtext_seq { text: \"Chloe\" }, WSP_seq2 { text: \" \" }, qtext_seq { text: \"Helloco\" }] }] }] }] }, addr_spec { text: \"chloe.helloco@ac-orleans-tours.fr\", children: [dot_atom_text { text: \"chloe.helloco\", children: [atext_seq { text: \"chloe\" }, atext_seq { text: \"helloco\" }] }, dot_atom_text { text: \"ac-orleans-tours.fr\", children: [atext_seq { text: \"ac-orleans-tours\" }, atext_seq { text: \"fr\" }] }] }] }]");
 
-    let input = "Reply-To: thevoid@4chan.org\r\n";
+    let input = "ReplY-To: thevoid@4chan.org\r\n";
     let output = Parser::parse_reply_to(input).map_err(|e| e.print(input)).unwrap();
     let field = output.into_iter().next().unwrap();
     let children = field.children().collect::<Vec<_>>();
     assert_eq!(format!("{children:?}"), "[address_list { text: \" thevoid@4chan.org\", children: [address { text: \" thevoid@4chan.org\", children: [mailbox { text: \" thevoid@4chan.org\", children: [addr_spec { text: \" thevoid@4chan.org\", children: [dot_atom_text { text: \"thevoid\", children: [atext_seq { text: \"thevoid\" }] }, dot_atom_text { text: \"4chan.org\", children: [atext_seq { text: \"4chan\" }, atext_seq { text: \"org\" }] }] }] }] }] }]");
+}
+
+#[test]
+fn test_destination_fields() {
+    let input = "To: \"John Wick\" <john.wick@cock.li>\r\n";
+    let output = Parser::parse_to(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[address_list { text: \" \\\"John Wick\\\" <john.wick@cock.li>\", children: [address { text: \" \\\"John Wick\\\" <john.wick@cock.li>\", children: [mailbox { text: \" \\\"John Wick\\\" <john.wick@cock.li>\", children: [display_name { text: \" \\\"John Wick\\\" \", children: [phrase { text: \" \\\"John Wick\\\" \", children: [word { text: \" \\\"John Wick\\\" \", children: [quoted_string { text: \" \\\"John Wick\\\" \", children: [qtext_seq { text: \"John\" }, WSP_seq2 { text: \" \" }, qtext_seq { text: \"Wick\" }] }] }] }] }, addr_spec { text: \"john.wick@cock.li\", children: [dot_atom_text { text: \"john.wick\", children: [atext_seq { text: \"john\" }, atext_seq { text: \"wick\" }] }, dot_atom_text { text: \"cock.li\", children: [atext_seq { text: \"cock\" }, atext_seq { text: \"li\" }] }] }] }] }] }]");
+
+    let input = "Cc: postmaster@hey.com\r\n";
+    let output = Parser::parse_cc(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "[address_list { text: \" postmaster@hey.com\", children: [address { text: \" postmaster@hey.com\", children: [mailbox { text: \" postmaster@hey.com\", children: [addr_spec { text: \" postmaster@hey.com\", children: [dot_atom_text { text: \"postmaster\", children: [atext_seq { text: \"postmaster\" }] }, dot_atom_text { text: \"hey.com\", children: [atext_seq { text: \"hey\" }, atext_seq { text: \"com\" }] }] }] }] }] }]");
+
+    // TODO
+    /*let input = "Bcc: \r\n";
+    let output = Parser::parse_bcc(input).map_err(|e| e.print(input)).unwrap();
+    let field = output.into_iter().next().unwrap();
+    let children = field.children().collect::<Vec<_>>();
+    assert_eq!(format!("{children:?}"), "");*/
 }
 
 #[test]

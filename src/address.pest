@@ -95,12 +95,14 @@ text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
 
 // 3.6.  Field Definitions
 
-fields = _{ (origination_date | from | sender | reply_to | unknown_field)* }
-origination_date = { "Date:" ~ date_time ~ _CRLF } // 3.6.1
-from = { "From:" ~ mailbox_list ~ _CRLF } // 3.6.2
-sender = { "Sender:" ~ mailbox ~ _CRLF } // 3.6.2
-reply_to = { "Reply-To:" ~ address_list ~ _CRLF } // 3.6.2
-
+fields = _{ (origination_date | from | sender | reply_to | to | cc | bcc | unknown_field)* }
+origination_date = { ^"Date:" ~ date_time ~ _CRLF } // 3.6.1
+from = { ^"From:" ~ mailbox_list ~ _CRLF } // 3.6.2
+sender = { ^"Sender:" ~ mailbox ~ _CRLF } // 3.6.2
+reply_to = { ^"Reply-To:" ~ address_list ~ _CRLF } // 3.6.2
+to = { ^"To:" ~ address_list ~ _CRLF } // 3.6.3
+cc = { ^"Cc:" ~ address_list ~ _CRLF } // 3.6.3
+bcc = { ^"Bcc:" ~ (address_list | CFWS)? ~ _CRLF } // 3.6.3
 
 // 3.6.8.    Optional Fields
 
