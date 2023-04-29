@@ -95,7 +95,7 @@ text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
 
 // 3.6.  Field Definitions
 
-fields = _{ (origination_date | from | sender | reply_to | to | cc | bcc | unknown_field)* }
+fields = _{ (origination_date | from | to | message_id | sender | reply_to | cc | in_reply_to | bcc | references | unknown_field)* }
 origination_date = { ^"Date:" ~ date_time ~ _CRLF } // 3.6.1
 from = { ^"From:" ~ mailbox_list ~ _CRLF } // 3.6.2
 sender = { ^"Sender:" ~ mailbox ~ _CRLF } // 3.6.2
