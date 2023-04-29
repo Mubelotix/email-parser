@@ -88,7 +88,7 @@ dtext_seq = { DTEXT+ }
 
 // 3.5.  Overall Message Syntax
 
-message = { fields ~ (CRLF ~ body)? ~ EOI }
+message = { fields ~ (_CRLF ~ body)? ~ EOI }
 body = { (text_seq ~ _CRLF)* ~ text_seq } // There is supposed to be a 998 character limit on each line but pest fails to handle large repetitions
 text_seq = { text* }
 text = _{ !"\r" ~ !"\n" ~ '\x01'..'\x7F' }
